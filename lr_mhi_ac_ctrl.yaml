@@ -1,0 +1,28 @@
+esphome:
+  name: lr_mhi_ac_ctrl
+  platform: ESP8266
+  board: d1_mini
+  includes:
+    - mhi_ac_ctrl.h
+    - MHI-AC-Ctrl-core.h
+    - MHI-AC-Ctrl-core.cpp
+
+wifi:
+  ssid: "**SSID**"
+  password: "**PASSWORD**"
+
+logger:
+  level: DEBUG
+
+ota:
+
+climate:
+  - platform: custom
+    lambda: |-
+      auto mhi_ac_ctrl = new MhiAcCtrl();
+      App.register_component(mhi_ac_ctrl);
+      return {mhi_ac_ctrl};
+
+    climates:
+      - name: "MHI-AC-Ctrl"
+        id: mhi_ac_ctrl
