@@ -16,6 +16,10 @@ logger:
 
 ota:
 
+sensor:
+
+binary_sensor:
+
 climate:
   - platform: custom
     lambda: |-
