@@ -266,6 +266,14 @@ public:
         }
     }
 
+    std::vector<Sensor *> get_sensors() {
+        return { &error_code_, &outdoor_temperature_ };
+    }
+
+    std::vector<BinarySensor *> get_binary_sensors() {
+        return { &defrost_ };
+    }
+
 protected:
     /// Transmit the state of this climate controller.
     void control(const climate::ClimateCall& call) override

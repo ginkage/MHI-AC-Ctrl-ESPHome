@@ -13,12 +13,12 @@ wifi:
 
 logger:
   level: DEBUG
+  baud_rate: 0
+
+api:
+  reboot_timeout: 0s
 
 ota:
-
-sensor:
-
-binary_sensor:
 
 climate:
   - platform: custom
@@ -30,3 +30,20 @@ climate:
     climates:
       - name: "MHI-AC-Ctrl"
         id: mhi_ac_ctrl
+
+sensor:
+  - platform: custom
+    lambda: |-
+      return ((MhiAcCtrl*)mhi_ac_ctrl)->get_sensors();
+
+    sensors:
+      - name: "Error code"
+      - name: "Outdoor temperature"
+
+binary_sensor:
+  - platform: custom
+    lambda: |-
+      return ((MhiAcCtrl*)mhi_ac_ctrl)->get_binary_sensors();
+
+    binary_sensors:
+      - name: "Defrost"
