@@ -320,7 +320,7 @@ protected:
         if (call.get_fan_mode().has_value()) {
             this->fan_mode = *call.get_fan_mode();
 
-            switch (this->fan_mode) {
+            switch (*this->fan_mode) {
             case climate::CLIMATE_FAN_LOW:
                 fan_ = 1;
                 break;
@@ -365,24 +365,14 @@ protected:
     {
         auto traits = climate::ClimateTraits();
         traits.set_supports_current_temperature(true);
-        traits.set_supports_auto_mode(true);
-        traits.set_supports_cool_mode(true);
-        traits.set_supports_heat_mode(true);
-        traits.set_supports_dry_mode(true);
-        traits.set_supports_fan_only_mode(true);
+        traits.set_supported_modes({ CLIMATE_MODE_AUTO, CLIMATE_MODE_COOL, CLIMATE_MODE_HEAT, CLIMATE_MODE_DRY, CLIMATE_MODE_FAN_ONLY });
         traits.set_supports_two_point_target_temperature(false);
-        traits.set_supports_away(false);
+        traits.set_supported_presets({ CLIMATE_PRESET_NONE });
         traits.set_visual_min_temperature(this->minimum_temperature_);
         traits.set_visual_max_temperature(this->maximum_temperature_);
         traits.set_visual_temperature_step(this->temperature_step_);
-        traits.set_supports_fan_mode_auto(true);
-        traits.set_supports_fan_mode_high(true);
-        traits.set_supports_fan_mode_low(true);
-        traits.set_supports_fan_mode_medium(true);
-        traits.set_supports_swing_mode_off(true);
-        traits.set_supports_swing_mode_both(true);
-        traits.set_supports_swing_mode_vertical(true);
-        traits.set_supports_swing_mode_horizontal(true);
+        traits.set_supported_fan_modes({ CLIMATE_FAN_AUTO, CLIMATE_FAN_LOW, CLIMATE_FAN_MEDIUM, CLIMATE_FAN_HIGH });
+        traits.set_supported_swing_modes({ CLIMATE_SWING_OFF, CLIMATE_SWING_BOTH, CLIMATE_SWING_VERTICAL, CLIMATE_SWING_HORIZONTAL });
         return traits;
     }
 
