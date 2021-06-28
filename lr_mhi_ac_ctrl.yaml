@@ -18,6 +18,9 @@ logger:
 api:
   reboot_timeout: 0s
 
+api:
+  reboot_timeout: 0s
+
 ota:
 
 climate:
