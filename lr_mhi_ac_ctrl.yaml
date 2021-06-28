@@ -14,6 +14,9 @@ wifi:
 logger:
   level: DEBUG
 
+api:
+  reboot_timeout: 0s
+
 ota:
 
 climate:
