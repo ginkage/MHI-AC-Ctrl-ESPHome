@@ -13,6 +13,7 @@ wifi:
 
 logger:
   level: DEBUG
+  baud_rate: 0
 
 api:
   reboot_timeout: 0s
