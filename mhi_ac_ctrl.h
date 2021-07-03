@@ -1,5 +1,4 @@
 #include "MHI-AC-Ctrl-core.h"
-#include "esphome/components/climate/climate.h"
 
 static const char* TAG = "mhi_ac_ctrl";
 
@@ -26,6 +25,12 @@ public:
         // Never send nan to HA
         if (isnan(this->target_temperature))
             this->target_temperature = 24;
+
+        error_code_.set_icon("mdi:alert-circle");
+
+        outdoor_temperature_.set_icon("mdi:thermometer");
+        outdoor_temperature_.set_unit_of_measurement("°C");
+        outdoor_temperature_.set_accuracy_decimals(1);
 
         mhi_ac_ctrl_core.MHIAcCtrlStatus(this);
         mhi_ac_ctrl_core.init();
@@ -160,6 +165,7 @@ public:
         case erropdata_errorcode:
             itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_ERRORCODE), strtmp);
+            error_code_.publish_state(value);
             break;
         case opdata_return_air:
         case erropdata_return_air:
@@ -195,6 +201,7 @@ public:
         case opdata_outdoor:
             dtostrf((value - 94) * 0.25f, 0, 2, strtmp);
             // output_P(status, PSTR(TOPIC_OUTDOOR), strtmp);
+            outdoor_temperature_.publish_state((value - 94) * 0.25f);
             break;
         case opdata_tho_r1:
         case erropdata_tho_r1:
@@ -238,6 +245,7 @@ public:
             //     output_P(status, PSTR(TOPIC_DEFROST), PSTR(PAYLOAD_OP_DEFROST_ON));
             // else
             //     output_P(status, PSTR(TOPIC_DEFROST), PSTR(PAYLOAD_OP_DEFROST_OFF));
+            defrost_.publish_state(value != 0);
             break;
         case opdata_total_comp_run:
         case erropdata_total_comp_run:
@@ -379,4 +387,8 @@ protected:
     ACVanes vanes_;
 
     MHI_AC_Ctrl_Core mhi_ac_ctrl_core;
+
+    Sensor error_code_ { "Error code" };
+    Sensor outdoor_temperature_ { "Outdoor temperature" };
+    BinarySensor defrost_ { "Defrost" };
 };
