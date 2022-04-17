@@ -39,6 +39,13 @@ sensor:
     sensors:
       - name: "Error code"
       - name: "Outdoor temperature"
+      - name: "Return air temperature"
+      - name: "Outdoor unit fan speed"
+      - name: "Indoor unit fan speed"
+      - name: "Current"
+      - name: "Compressor frequency"
+      - name: "Indoor unit run time"
+      - name: "Compressor run time"
 
 binary_sensor:
   - platform: custom
