@@ -40,19 +40,21 @@ public:
 
         indoor_unit_fan_speed_.set_icon("mdi:fan");
 
-        current_.set_icon("mdi:current-ac");
-        current_.set_unit_of_measurement("A");
-        current_.set_accuracy_decimals(2);
-
         compressor_frequency_.set_icon("mdi:sine-wave");
         compressor_frequency_.set_unit_of_measurement("Hz");
         compressor_frequency_.set_accuracy_decimals(1);
 
-        indoor_unit_run_time_.set_icon("mdi:clock");
-        indoor_unit_run_time_.set_unit_of_measurement("h");
+        indoor_unit_total_run_time_.set_icon("mdi:clock");
+        indoor_unit_total_run_time_.set_unit_of_measurement("h");
 
-        compressor_run_time_.set_icon("mdi:clock");
-        compressor_run_time_.set_unit_of_measurement("h");
+        compressor_total_run_time_.set_icon("mdi:clock");
+        compressor_total_run_time_.set_unit_of_measurement("h");
+
+        current_power_.set_icon("mdi:current-ac");
+        current_power_.set_unit_of_measurement("A");
+        current_power_.set_accuracy_decimals(2);
+
+        defrost_.set_icon("mdi:snowflake-melt");
 
         mhi_ac_ctrl_core.MHIAcCtrlStatus(this);
         mhi_ac_ctrl_core.init();
@@ -81,15 +83,15 @@ public:
         Serial.printf_P(PSTR("status=%i value=%i\n"), status, value);
         switch (status) {
         case status_fsck:
-            itoa(value, strtmp, 10);
+            // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_FSCK), strtmp);
             break;
         case status_fmosi:
-            itoa(value, strtmp, 10);
+            // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_FMOSI), strtmp);
             break;
         case status_fmiso:
-            itoa(value, strtmp, 10);
+            // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_FMISO), strtmp);
             break;
         case status_power:
@@ -164,6 +166,7 @@ public:
                 this->swing_mode = climate::CLIMATE_SWING_BOTH;
                 break;
             default:
+                break;
                 // itoa(value, strtmp, 10);
                 // output_P(status, PSTR(TOPIC_VANES), strtmp);
             }
@@ -220,7 +223,7 @@ public:
         case erropdata_total_iu_run:
             // itoa(value * 100, strtmp, 10);
             // output_P(status, PSTR(TOPIC_TOTAL_IU_RUN), strtmp);
-            indoor_unit_run_time_.publish_state(value * 100);
+            indoor_unit_total_run_time_.publish_state(value * 100);
             break;
         case erropdata_outdoor:
         case opdata_outdoor:
@@ -252,7 +255,7 @@ public:
         case erropdata_ct:
             // dtostrf(value * 14 / 51.0f, 0, 2, strtmp);
             // output_P(status, PSTR(TOPIC_CT), strtmp);
-            current_.publish_state(value * 14 / 51.0f);
+            current_power_.publish_state(value * 14 / 51.0f);
             break;
         case opdata_tdsh:
             // itoa(value, strtmp, 10); // formula for calculation not known
@@ -266,7 +269,7 @@ public:
         case erropdata_ou_fanspeed:
             // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_OU_FANSPEED), strtmp);
-            indoor_unit_fan_speed_.publish_state(value);
+            outdoor_unit_fan_speed_.publish_state(value);
             break;
         case opdata_defrost:
             // if (value)
@@ -279,7 +282,7 @@ public:
         case erropdata_total_comp_run:
             // itoa(value * 100, strtmp, 10);
             // output_P(status, PSTR(TOPIC_TOTAL_COMP_RUN), strtmp);
-            compressor_run_time_.publish_state(value * 100);
+            compressor_total_run_time_.publish_state(value * 100);
             break;
         case opdata_ou_eev1:
         case erropdata_ou_eev1:
@@ -302,10 +305,10 @@ public:
             &return_air_temperature_,
             &outdoor_unit_fan_speed_,
             &indoor_unit_fan_speed_,
-            &current_,
+            &current_power_,
             &compressor_frequency_,
-            &indoor_unit_run_time_,
-            &compressor_run_time_
+            &indoor_unit_total_run_time_,
+            &compressor_total_run_time_
         };
     }
 
@@ -432,9 +435,9 @@ protected:
     Sensor return_air_temperature_ { "Return air temperature" };
     Sensor outdoor_unit_fan_speed_ { "Outdoor unit fan speed" };
     Sensor indoor_unit_fan_speed_ { "Indoor unit fan speed" };
-    Sensor current_ { "Current" };
     Sensor compressor_frequency_ { "Compressor frequency" };
-    Sensor indoor_unit_run_time_ { "Indoor unit run time" };
-    Sensor compressor_run_time_ { "Compressor run time" };
+    Sensor indoor_unit_total_run_time_ { "Indoor unit run time" };
+    Sensor compressor_total_run_time_ { "Compressor run time" };
+    Sensor current_power_ { "Current power" };
     BinarySensor defrost_ { "Defrost" };
 };
