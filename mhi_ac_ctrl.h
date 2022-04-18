@@ -68,7 +68,7 @@ public:
         if(millis() - room_temp_api_timeout_ms >= id(room_temp_api_timeout)*1000) {
             mhi_ac_ctrl_core.set_troom(0xff);  // use IU temperature sensor
             room_temp_api_timeout_ms = millis();
-            ESP_LOGD("mhi_ac_ctrl", "room_temp_api_timeout exceeded, using IU temperature sensor value");
+            ESP_LOGD("mhi_ac_ctrl", "did not receive a room_temp_api value, using IU temperature sensor");
         }
 
         int ret = mhi_ac_ctrl_core.loop(100);
@@ -150,7 +150,7 @@ public:
             this->publish_state();
             break;
         case status_fan:
-            itoa(value + 1, strtmp, 10);
+            // itoa(value + 1, strtmp, 10);
             // output_P(status, TOPIC_FAN, strtmp);
             switch (value) {
             case 0:
@@ -170,18 +170,14 @@ public:
             break;
         case status_vanes:
             switch (value) {
-            case vanes_unknown:
-                // output_P(status, PSTR(TOPIC_VANES), PSTR(PAYLOAD_VANES_UNKNOWN));
-                this->swing_mode = climate::CLIMATE_SWING_OFF;
-                break;
             case vanes_swing:
                 // output_P(status, PSTR(TOPIC_VANES), PSTR(PAYLOAD_VANES_SWING));
                 this->swing_mode = climate::CLIMATE_SWING_BOTH;
                 break;
             default:
-                break;
                 // itoa(value, strtmp, 10);
                 // output_P(status, PSTR(TOPIC_VANES), strtmp);
+                this->swing_mode = climate::CLIMATE_SWING_OFF;
             }
             this->publish_state();
             break;
