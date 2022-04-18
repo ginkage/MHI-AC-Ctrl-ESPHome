@@ -62,9 +62,9 @@ public:
 
     void loop() override
     {
-       int ret = mhi_ac_ctrl_core.loop(100);
-       if (ret < 0)
-           Serial.printf_P(PSTR("mhi_ac_ctrl_core.loop error: %i\n"), ret);
+        int ret = mhi_ac_ctrl_core.loop(100);
+        if (ret < 0)
+            ESP_LOGW("mhi_ac_ctrl", "mhi_ac_ctrl_core.loop error: %i", ret);
     }
 
     void dump_config() override
@@ -80,7 +80,7 @@ public:
     {
         char strtmp[10];
         static int mode_tmp = 0xff;
-        Serial.printf_P(PSTR("status=%i value=%i\n"), status, value);
+        ESP_LOGD("mhi_ac_ctrl", "status=%i value=%i", status, value);
         switch (status) {
         case status_fsck:
             // itoa(value, strtmp, 10);
