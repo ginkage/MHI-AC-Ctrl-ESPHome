@@ -1,6 +1,9 @@
 #include "MHI-AC-Ctrl-core.h"
+#define ROOM_TEMP_MQTT 1
 
 static const char* TAG = "mhi_ac_ctrl";
+
+unsigned long room_temp_api_timeout_ms = millis();
 
 class MhiAcCtrl : public climate::Climate,
                   public Component,
@@ -30,7 +33,31 @@ public:
 
         outdoor_temperature_.set_icon("mdi:thermometer");
         outdoor_temperature_.set_unit_of_measurement("°C");
-        outdoor_temperature_.set_accuracy_decimals(1);
+        outdoor_temperature_.set_accuracy_decimals(2);
+
+        return_air_temperature_.set_icon("mdi:thermometer");
+        return_air_temperature_.set_unit_of_measurement("°C");
+        return_air_temperature_.set_accuracy_decimals(2);
+
+        outdoor_unit_fan_speed_.set_icon("mdi:fan");
+
+        indoor_unit_fan_speed_.set_icon("mdi:fan");
+
+        compressor_frequency_.set_icon("mdi:sine-wave");
+        compressor_frequency_.set_unit_of_measurement("Hz");
+        compressor_frequency_.set_accuracy_decimals(1);
+
+        indoor_unit_total_run_time_.set_icon("mdi:clock");
+        indoor_unit_total_run_time_.set_unit_of_measurement("h");
+
+        compressor_total_run_time_.set_icon("mdi:clock");
+        compressor_total_run_time_.set_unit_of_measurement("h");
+
+        current_power_.set_icon("mdi:current-ac");
+        current_power_.set_unit_of_measurement("A");
+        current_power_.set_accuracy_decimals(2);
+
+        defrost_.set_icon("mdi:snowflake-melt");
 
         mhi_ac_ctrl_core.MHIAcCtrlStatus(this);
         mhi_ac_ctrl_core.init();
@@ -38,9 +65,15 @@ public:
 
     void loop() override
     {
-       int ret = mhi_ac_ctrl_core.loop(100);
-       if (ret < 0)
-           Serial.printf_P(PSTR("mhi_ac_ctrl_core.loop error: %i\n"), ret);
+        if(millis() - room_temp_api_timeout_ms >= id(room_temp_api_timeout)*1000) {
+            mhi_ac_ctrl_core.set_troom(0xff);  // use IU temperature sensor
+            room_temp_api_timeout_ms = millis();
+            ESP_LOGD("mhi_ac_ctrl", "room_temp_api_timeout exceeded, using IU temperature sensor value");
+        }
+
+        int ret = mhi_ac_ctrl_core.loop(100);
+        if (ret < 0)
+            ESP_LOGW("mhi_ac_ctrl", "mhi_ac_ctrl_core.loop error: %i", ret);
     }
 
     void dump_config() override
@@ -56,18 +89,18 @@ public:
     {
         char strtmp[10];
         static int mode_tmp = 0xff;
-        Serial.printf_P(PSTR("status=%i value=%i\n"), status, value);
+        ESP_LOGD("mhi_ac_ctrl", "status=%i value=%i", status, value);
         switch (status) {
         case status_fsck:
-            itoa(value, strtmp, 10);
+            // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_FSCK), strtmp);
             break;
         case status_fmosi:
-            itoa(value, strtmp, 10);
+            // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_FMOSI), strtmp);
             break;
         case status_fmiso:
-            itoa(value, strtmp, 10);
+            // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_FMISO), strtmp);
             break;
         case status_power:
@@ -88,10 +121,14 @@ public:
             switch (value) {
             case mode_auto:
                 // if (status != erropdata_mode)
-                //     output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_AUTO));
+                //    output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_AUTO));
                 // else
-                //     output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_STOP));
-                this->mode = climate::CLIMATE_MODE_HEAT_COOL;
+                //    output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_STOP));
+                //    break;
+                if (status != erropdata_mode)
+                    this->mode = climate::CLIMATE_MODE_AUTO;
+                else
+                    this->mode = climate::CLIMATE_MODE_OFF;
                 break;
             case mode_dry:
                 // output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_DRY));
@@ -142,13 +179,14 @@ public:
                 this->swing_mode = climate::CLIMATE_SWING_BOTH;
                 break;
             default:
-                itoa(value, strtmp, 10);
+                break;
+                // itoa(value, strtmp, 10);
                 // output_P(status, PSTR(TOPIC_VANES), strtmp);
             }
             this->publish_state();
             break;
         case status_troom:
-            dtostrf((value - 61) / 4.0, 0, 2, strtmp);
+            // dtostrf((value - 61) / 4.0, 0, 2, strtmp);
             // output_P(status, PSTR(TOPIC_TROOM), strtmp);
             this->current_temperature = (value - 61) / 4.0;
             this->publish_state();
@@ -156,89 +194,95 @@ public:
         case status_tsetpoint:
         case opdata_tsetpoint:
         case erropdata_tsetpoint:
-            itoa(value, strtmp, 10);
+            // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_TSETPOINT), strtmp);
-            this->target_temperature = value;
+            this->target_temperature = (value & 0x7f)/ 2.0;
             this->publish_state();
             break;
         case status_errorcode:
         case erropdata_errorcode:
-            itoa(value, strtmp, 10);
+            // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_ERRORCODE), strtmp);
             error_code_.publish_state(value);
             break;
         case opdata_return_air:
         case erropdata_return_air:
-            dtostrf(value * 0.25f - 15, 0, 2, strtmp);
+            // dtostrf(value * 0.25f - 15, 0, 2, strtmp);
             // output_P(status, PSTR(TOPIC_RETURNAIR), strtmp);
+            return_air_temperature_.publish_state(value * 0.25f - 15);
             break;
         case opdata_thi_r1:
         case erropdata_thi_r1:
-            itoa(0.327f * value - 11.4f, strtmp, 10); // only rough approximation
+            // itoa(0.327f * value - 11.4f, strtmp, 10); // only rough approximation
             // output_P(status, PSTR(TOPIC_THI_R1), strtmp);
             break;
         case opdata_thi_r2:
         case erropdata_thi_r2:
-            itoa(0.327f * value - 11.4f, strtmp, 10); // formula for calculation not known
+            // itoa(0.327f * value - 11.4f, strtmp, 10); // formula for calculation not known
             // output_P(status, PSTR(TOPIC_THI_R2), strtmp);
             break;
         case opdata_thi_r3:
         case erropdata_thi_r3:
-            itoa(0.327f * value - 11.4f, strtmp, 10); // only rough approximation
+            // itoa(0.327f * value - 11.4f, strtmp, 10); // only rough approximation
             // output_P(status, PSTR(TOPIC_THI_R3), strtmp);
             break;
         case opdata_iu_fanspeed:
         case erropdata_iu_fanspeed:
-            itoa(value, strtmp, 10);
+            // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_IU_FANSPEED), strtmp);
+            indoor_unit_fan_speed_.publish_state(value);
             break;
         case opdata_total_iu_run:
         case erropdata_total_iu_run:
-            itoa(value * 100, strtmp, 10);
+            // itoa(value * 100, strtmp, 10);
             // output_P(status, PSTR(TOPIC_TOTAL_IU_RUN), strtmp);
+            indoor_unit_total_run_time_.publish_state(value * 100);
             break;
         case erropdata_outdoor:
         case opdata_outdoor:
-            dtostrf((value - 94) * 0.25f, 0, 2, strtmp);
+            // dtostrf((value - 94) * 0.25f, 0, 2, strtmp);
             // output_P(status, PSTR(TOPIC_OUTDOOR), strtmp);
             outdoor_temperature_.publish_state((value - 94) * 0.25f);
             break;
         case opdata_tho_r1:
         case erropdata_tho_r1:
-            itoa(0.327f * value - 11.4f, strtmp, 10); // formula for calculation not known
+            // itoa(0.327f * value - 11.4f, strtmp, 10); // formula for calculation not known
             // output_P(status, PSTR(TOPIC_THO_R1), strtmp);
             break;
         case opdata_comp:
         case erropdata_comp:
-            dtostrf(
-                highByte(value) * 25.6f + 0.1f * lowByte(value), 0, 2, strtmp); // to be confirmed
+            // dtostrf(
+            //    highByte(value) * 25.6f + 0.1f * lowByte(value), 0, 2, strtmp); // to be confirmed
             // output_P(status, PSTR(TOPIC_COMP), strtmp);
+            compressor_frequency_.publish_state(highByte(value) * 25.6f + 0.1f * lowByte(value));
             break;
         case erropdata_td:
         case opdata_td:
-            if (value < 0x12)
-                strcpy(strtmp, "<=30");
-            else
-                itoa(value / 2 + 32, strtmp, 10);
+            // if (value < 0x12)
+            //    strcpy(strtmp, "<=30");
+            // else
+             //   itoa(value / 2 + 32, strtmp, 10);
             // output_P(status, PSTR(TOPIC_TD), strtmp);
             break;
         case opdata_ct:
         case erropdata_ct:
-            dtostrf(value * 14 / 51.0f, 0, 2, strtmp);
+            // dtostrf(value * 14 / 51.0f, 0, 2, strtmp);
             // output_P(status, PSTR(TOPIC_CT), strtmp);
+            current_power_.publish_state(value * 14 / 51.0f);
             break;
         case opdata_tdsh:
-            itoa(value, strtmp, 10); // formula for calculation not known
+            // itoa(value, strtmp, 10); // formula for calculation not known
             // output_P(status, PSTR(TOPIC_TDSH), strtmp);
             break;
         case opdata_protection_no:
-            itoa(value, strtmp, 10);
+            // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_PROTECTION_NO), strtmp);
             break;
         case opdata_ou_fanspeed:
         case erropdata_ou_fanspeed:
-            itoa(value, strtmp, 10);
+            // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_OU_FANSPEED), strtmp);
+            outdoor_unit_fan_speed_.publish_state(value);
             break;
         case opdata_defrost:
             // if (value)
@@ -249,17 +293,20 @@ public:
             break;
         case opdata_total_comp_run:
         case erropdata_total_comp_run:
-            itoa(value * 100, strtmp, 10);
+            // itoa(value * 100, strtmp, 10);
             // output_P(status, PSTR(TOPIC_TOTAL_COMP_RUN), strtmp);
+            compressor_total_run_time_.publish_state(value * 100);
             break;
         case opdata_ou_eev1:
         case erropdata_ou_eev1:
-            itoa(value, strtmp, 10);
+            // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_OU_EEV1), strtmp);
             break;
         case status_rssi:
         case status_connected:
         case status_cmd:
+        case status_mqtt_lost:
+        case status_wifi_lost:
         case status_tds1820:
         case opdata_unknwon:
             break;
@@ -267,11 +314,30 @@ public:
     }
 
     std::vector<Sensor *> get_sensors() {
-        return { &error_code_, &outdoor_temperature_ };
+        return {
+            &error_code_,
+            &outdoor_temperature_,
+            &return_air_temperature_,
+            &outdoor_unit_fan_speed_,
+            &indoor_unit_fan_speed_,
+            &current_power_,
+            &compressor_frequency_,
+            &indoor_unit_total_run_time_,
+            &compressor_total_run_time_
+        };
     }
 
     std::vector<BinarySensor *> get_binary_sensors() {
         return { &defrost_ };
+    }
+
+    void set_room_temperature(float value) {
+        if ((value > -10) & (value < 48)) {
+            room_temp_api_timeout_ms = millis();  // reset timeout
+            byte tmp = value*4+61;
+            mhi_ac_ctrl_core.set_troom(value*4+61);
+            ESP_LOGD("mhi_ac_ctrl", "set room_temp_api: %f %i %i", value, (byte)(value*4+61), (byte)tmp);
+        }
     }
 
 protected:
@@ -298,7 +364,7 @@ protected:
             case climate::CLIMATE_MODE_FAN_ONLY:
                 mode_ = mode_fan;
                 break;
-            case climate::CLIMATE_MODE_HEAT_COOL:
+            case climate::CLIMATE_MODE_AUTO:
             default:
                 mode_ = mode_auto;
                 break;
@@ -314,7 +380,7 @@ protected:
             tsetpoint_ = (uint)roundf(
                 clamp(this->target_temperature, minimum_temperature_, maximum_temperature_));
 
-            mhi_ac_ctrl_core.set_tsetpoint(tsetpoint_);
+            mhi_ac_ctrl_core.set_tsetpoint((byte)(2 * tsetpoint_));
         }
 
         if (call.get_fan_mode().has_value()) {
@@ -365,7 +431,7 @@ protected:
     {
         auto traits = climate::ClimateTraits();
         traits.set_supports_current_temperature(true);
-        traits.set_supported_modes({ CLIMATE_MODE_OFF, CLIMATE_MODE_HEAT_COOL, CLIMATE_MODE_COOL, CLIMATE_MODE_HEAT, CLIMATE_MODE_DRY, CLIMATE_MODE_FAN_ONLY });
+        traits.set_supported_modes({ CLIMATE_MODE_OFF, CLIMATE_MODE_AUTO, CLIMATE_MODE_COOL, CLIMATE_MODE_HEAT, CLIMATE_MODE_DRY, CLIMATE_MODE_FAN_ONLY });
         traits.set_supports_two_point_target_temperature(false);
         traits.set_supported_presets({ CLIMATE_PRESET_NONE });
         traits.set_visual_min_temperature(this->minimum_temperature_);
@@ -376,8 +442,8 @@ protected:
         return traits;
     }
 
-    float minimum_temperature_ { 16.0f };
-    float maximum_temperature_ { 36.0f };
+    float minimum_temperature_ { 18.0f };
+    float maximum_temperature_ { 30.0f };
     float temperature_step_ { 1.0f };
 
     ACPower power_;
@@ -390,5 +456,12 @@ protected:
 
     Sensor error_code_ { "Error code" };
     Sensor outdoor_temperature_ { "Outdoor temperature" };
+    Sensor return_air_temperature_ { "Return air temperature" };
+    Sensor outdoor_unit_fan_speed_ { "Outdoor unit fan speed" };
+    Sensor indoor_unit_fan_speed_ { "Indoor unit fan speed" };
+    Sensor compressor_frequency_ { "Compressor frequency" };
+    Sensor indoor_unit_total_run_time_ { "Indoor unit run time" };
+    Sensor compressor_total_run_time_ { "Compressor run time" };
+    Sensor current_power_ { "Current power" };
     BinarySensor defrost_ { "Defrost" };
 };
