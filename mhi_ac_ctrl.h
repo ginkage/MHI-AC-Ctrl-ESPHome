@@ -28,7 +28,7 @@ public:
         }
         // Never send nan to HA
         if (isnan(this->target_temperature))
-            this->target_temperature = 24;
+            this->target_temperature = 20;
 
         error_code_.set_icon("mdi:alert-circle");
 
