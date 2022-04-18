@@ -11,6 +11,7 @@ class MhiAcCtrl : public climate::Climate,
 public:
     void setup() override
     {
+        this->power_ = power_off;
         this->current_temperature = NAN;
         // restore set points
         auto restore = this->restore_state_();
@@ -27,7 +28,7 @@ public:
         }
         // Never send nan to HA
         if (isnan(this->target_temperature))
-            this->target_temperature = 24;
+            this->target_temperature = 20;
 
         error_code_.set_icon("mdi:alert-circle");
 
@@ -68,7 +69,7 @@ public:
         if(millis() - room_temp_api_timeout_ms >= id(room_temp_api_timeout)*1000) {
             mhi_ac_ctrl_core.set_troom(0xff);  // use IU temperature sensor
             room_temp_api_timeout_ms = millis();
-            ESP_LOGD("mhi_ac_ctrl", "room_temp_api_timeout exceeded, using IU temperature sensor value");
+            ESP_LOGD("mhi_ac_ctrl", "did not receive a room_temp_api value, using IU temperature sensor");
         }
 
         int ret = mhi_ac_ctrl_core.loop(100);
@@ -87,9 +88,8 @@ public:
 
     void cbiStatusFunction(ACStatus status, int value) override
     {
-        char strtmp[10];
         static int mode_tmp = 0xff;
-        ESP_LOGD("mhi_ac_ctrl", "status=%i value=%i", status, value);
+        ESP_LOGD("mhi_ac_ctrl", "received status=%i value=%i power=%i", status, value, this->power_);
         switch (status) {
         case status_fsck:
             // itoa(value, strtmp, 10);
@@ -105,11 +105,13 @@ public:
             break;
         case status_power:
             if (value == power_on) {
+                this->power_ = power_on;
                 // output_P(status, (TOPIC_POWER), PSTR(PAYLOAD_POWER_ON));
                 cbiStatusFunction(status_mode, mode_tmp);
             } else {
                 // output_P(status, (TOPIC_POWER), (PAYLOAD_POWER_OFF));
                 // output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_OFF));
+                this->power_ = power_off;
                 this->mode = climate::CLIMATE_MODE_OFF;
                 this->publish_state();
             }
@@ -125,10 +127,11 @@ public:
                 // else
                 //    output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_STOP));
                 //    break;
-                if (status != erropdata_mode)
+                if (status != erropdata_mode && this->power_ > 0) {
                     this->mode = climate::CLIMATE_MODE_AUTO;
-                else
+                } else {
                     this->mode = climate::CLIMATE_MODE_OFF;
+                }
                 break;
             case mode_dry:
                 // output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_DRY));
@@ -146,11 +149,13 @@ public:
                 // output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_HEAT));
                 this->mode = climate::CLIMATE_MODE_HEAT;
                 break;
+            default:
+                ESP_LOGD("mhi_ac_ctrl", "unknown status mode value %i", value);
             }
             this->publish_state();
             break;
         case status_fan:
-            itoa(value + 1, strtmp, 10);
+            // itoa(value + 1, strtmp, 10);
             // output_P(status, TOPIC_FAN, strtmp);
             switch (value) {
             case 0:
@@ -170,18 +175,14 @@ public:
             break;
         case status_vanes:
             switch (value) {
-            case vanes_unknown:
-                // output_P(status, PSTR(TOPIC_VANES), PSTR(PAYLOAD_VANES_UNKNOWN));
-                this->swing_mode = climate::CLIMATE_SWING_OFF;
-                break;
             case vanes_swing:
                 // output_P(status, PSTR(TOPIC_VANES), PSTR(PAYLOAD_VANES_SWING));
-                this->swing_mode = climate::CLIMATE_SWING_BOTH;
+                this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
                 break;
             default:
-                break;
                 // itoa(value, strtmp, 10);
                 // output_P(status, PSTR(TOPIC_VANES), strtmp);
+                this->swing_mode = climate::CLIMATE_SWING_OFF;
             }
             this->publish_state();
             break;
@@ -413,8 +414,6 @@ protected:
                 vanes_ = vanes_unknown;
                 break;
             case climate::CLIMATE_SWING_VERTICAL:
-            case climate::CLIMATE_SWING_HORIZONTAL:
-            case climate::CLIMATE_SWING_BOTH:
             default:
                 vanes_ = vanes_swing;
                 break;
@@ -438,7 +437,7 @@ protected:
         traits.set_visual_max_temperature(this->maximum_temperature_);
         traits.set_visual_temperature_step(this->temperature_step_);
         traits.set_supported_fan_modes({ CLIMATE_FAN_AUTO, CLIMATE_FAN_LOW, CLIMATE_FAN_MEDIUM, CLIMATE_FAN_HIGH });
-        traits.set_supported_swing_modes({ CLIMATE_SWING_OFF, CLIMATE_SWING_BOTH, CLIMATE_SWING_VERTICAL, CLIMATE_SWING_HORIZONTAL });
+        traits.set_supported_swing_modes({ CLIMATE_SWING_OFF, CLIMATE_SWING_VERTICAL });
         return traits;
     }
 
