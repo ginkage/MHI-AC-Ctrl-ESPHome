@@ -112,10 +112,14 @@ public:
             switch (value) {
             case mode_auto:
                 // if (status != erropdata_mode)
-                //     output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_AUTO));
+                //    output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_AUTO));
                 // else
-                //     output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_STOP));
-                this->mode = climate::CLIMATE_MODE_HEAT_COOL;
+                //    output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_STOP));
+                //    break;
+                if (status != erropdata_mode)
+                    this->mode = climate::CLIMATE_MODE_AUTO;
+                else
+                    this->mode = climate::CLIMATE_MODE_OFF;
                 break;
             case mode_dry:
                 // output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_DRY));
@@ -183,7 +187,7 @@ public:
         case erropdata_tsetpoint:
             // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_TSETPOINT), strtmp);
-            this->target_temperature = value;
+            this->target_temperature = (value & 0x7f)/ 2.0;
             this->publish_state();
             break;
         case status_errorcode:
@@ -340,7 +344,7 @@ protected:
             case climate::CLIMATE_MODE_FAN_ONLY:
                 mode_ = mode_fan;
                 break;
-            case climate::CLIMATE_MODE_HEAT_COOL:
+            case climate::CLIMATE_MODE_AUTO:
             default:
                 mode_ = mode_auto;
                 break;
@@ -356,7 +360,7 @@ protected:
             tsetpoint_ = (uint)roundf(
                 clamp(this->target_temperature, minimum_temperature_, maximum_temperature_));
 
-            mhi_ac_ctrl_core.set_tsetpoint(tsetpoint_);
+            mhi_ac_ctrl_core.set_tsetpoint((byte)(2 * tsetpoint_));
         }
 
         if (call.get_fan_mode().has_value()) {
@@ -407,7 +411,7 @@ protected:
     {
         auto traits = climate::ClimateTraits();
         traits.set_supports_current_temperature(true);
-        traits.set_supported_modes({ CLIMATE_MODE_OFF, CLIMATE_MODE_HEAT_COOL, CLIMATE_MODE_COOL, CLIMATE_MODE_HEAT, CLIMATE_MODE_DRY, CLIMATE_MODE_FAN_ONLY });
+        traits.set_supported_modes({ CLIMATE_MODE_OFF, CLIMATE_MODE_AUTO, CLIMATE_MODE_COOL, CLIMATE_MODE_HEAT, CLIMATE_MODE_DRY, CLIMATE_MODE_FAN_ONLY });
         traits.set_supports_two_point_target_temperature(false);
         traits.set_supported_presets({ CLIMATE_PRESET_NONE });
         traits.set_visual_min_temperature(this->minimum_temperature_);
@@ -418,8 +422,8 @@ protected:
         return traits;
     }
 
-    float minimum_temperature_ { 16.0f };
-    float maximum_temperature_ { 36.0f };
+    float minimum_temperature_ { 18.0f };
+    float maximum_temperature_ { 30.0f };
     float temperature_step_ { 1.0f };
 
     ACPower power_;
