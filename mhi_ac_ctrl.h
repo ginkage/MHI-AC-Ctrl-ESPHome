@@ -453,14 +453,14 @@ protected:
 
     MHI_AC_Ctrl_Core mhi_ac_ctrl_core;
 
-    Sensor error_code_ { "Error code" };
-    Sensor outdoor_temperature_ { "Outdoor temperature" };
-    Sensor return_air_temperature_ { "Return air temperature" };
-    Sensor outdoor_unit_fan_speed_ { "Outdoor unit fan speed" };
-    Sensor indoor_unit_fan_speed_ { "Indoor unit fan speed" };
-    Sensor compressor_frequency_ { "Compressor frequency" };
-    Sensor indoor_unit_total_run_time_ { "Indoor unit run time" };
-    Sensor compressor_total_run_time_ { "Compressor run time" };
-    Sensor current_power_ { "Current power" };
-    BinarySensor defrost_ { "Defrost" };
+    Sensor error_code_;
+    Sensor outdoor_temperature_;
+    Sensor return_air_temperature_;
+    Sensor outdoor_unit_fan_speed_;
+    Sensor indoor_unit_fan_speed_;
+    Sensor compressor_frequency_;
+    Sensor indoor_unit_total_run_time_;
+    Sensor compressor_total_run_time_;
+    Sensor current_power_;
+    BinarySensor defrost_;
 };
