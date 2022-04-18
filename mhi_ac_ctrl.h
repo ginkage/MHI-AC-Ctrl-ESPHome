@@ -296,6 +296,8 @@ public:
         case status_rssi:
         case status_connected:
         case status_cmd:
+        case status_mqtt_lost:
+        case status_wifi_lost:
         case status_tds1820:
         case opdata_unknwon:
             break;
