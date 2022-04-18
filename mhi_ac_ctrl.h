@@ -11,6 +11,7 @@ class MhiAcCtrl : public climate::Climate,
 public:
     void setup() override
     {
+        this->power_ = power_off;
         this->current_temperature = NAN;
         // restore set points
         auto restore = this->restore_state_();
@@ -87,9 +88,8 @@ public:
 
     void cbiStatusFunction(ACStatus status, int value) override
     {
-        char strtmp[10];
         static int mode_tmp = 0xff;
-        ESP_LOGD("mhi_ac_ctrl", "status=%i value=%i", status, value);
+        ESP_LOGD("mhi_ac_ctrl", "received status=%i value=%i power=%i", status, value, this->power_);
         switch (status) {
         case status_fsck:
             // itoa(value, strtmp, 10);
@@ -105,13 +105,13 @@ public:
             break;
         case status_power:
             if (value == power_on) {
+                this->power_ = power_on;
                 // output_P(status, (TOPIC_POWER), PSTR(PAYLOAD_POWER_ON));
                 cbiStatusFunction(status_mode, mode_tmp);
             } else {
                 // output_P(status, (TOPIC_POWER), (PAYLOAD_POWER_OFF));
                 // output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_OFF));
-                this->mode = climate::CLIMATE_MODE_OFF;
-                this->publish_state();
+                this->power_ = power_off;
             }
             break;
         case status_mode:
@@ -125,10 +125,11 @@ public:
                 // else
                 //    output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_STOP));
                 //    break;
-                if (status != erropdata_mode)
+                if (status != erropdata_mode && this->power_ > 0) {
                     this->mode = climate::CLIMATE_MODE_AUTO;
-                else
+                } else {
                     this->mode = climate::CLIMATE_MODE_OFF;
+                }
                 break;
             case mode_dry:
                 // output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_DRY));
@@ -146,6 +147,8 @@ public:
                 // output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_HEAT));
                 this->mode = climate::CLIMATE_MODE_HEAT;
                 break;
+            default:
+                ESP_LOGD("mhi_ac_ctrl", "unknown status mode value %i", value);
             }
             this->publish_state();
             break;
