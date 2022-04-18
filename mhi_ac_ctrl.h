@@ -112,6 +112,8 @@ public:
                 // output_P(status, (TOPIC_POWER), (PAYLOAD_POWER_OFF));
                 // output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_OFF));
                 this->power_ = power_off;
+                this->mode = climate::CLIMATE_MODE_OFF;
+                this->publish_state();
             }
             break;
         case status_mode:
