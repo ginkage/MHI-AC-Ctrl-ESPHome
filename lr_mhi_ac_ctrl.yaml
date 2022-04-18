@@ -3,7 +3,7 @@ substitutions:
   devicename: "MHI-AC-Ctrl" # Unique device name in HA (sensor names will be prefixed by this name)
 
 esphome:
-  name: mhi-ac-ctrl # ESPHome device name, should be unique
+  name: lr_mhi_ac_ctrl
   platform: ESP8266
   board: d1_mini
   platformio_options:
