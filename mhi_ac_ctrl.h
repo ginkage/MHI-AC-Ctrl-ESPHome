@@ -175,7 +175,7 @@ public:
             switch (value) {
             case vanes_swing:
                 // output_P(status, PSTR(TOPIC_VANES), PSTR(PAYLOAD_VANES_SWING));
-                this->swing_mode = climate::CLIMATE_SWING_BOTH;
+                this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
                 break;
             default:
                 // itoa(value, strtmp, 10);
@@ -412,8 +412,6 @@ protected:
                 vanes_ = vanes_unknown;
                 break;
             case climate::CLIMATE_SWING_VERTICAL:
-            case climate::CLIMATE_SWING_HORIZONTAL:
-            case climate::CLIMATE_SWING_BOTH:
             default:
                 vanes_ = vanes_swing;
                 break;
@@ -437,7 +435,7 @@ protected:
         traits.set_visual_max_temperature(this->maximum_temperature_);
         traits.set_visual_temperature_step(this->temperature_step_);
         traits.set_supported_fan_modes({ CLIMATE_FAN_AUTO, CLIMATE_FAN_LOW, CLIMATE_FAN_MEDIUM, CLIMATE_FAN_HIGH });
-        traits.set_supported_swing_modes({ CLIMATE_SWING_OFF, CLIMATE_SWING_BOTH, CLIMATE_SWING_VERTICAL, CLIMATE_SWING_HORIZONTAL });
+        traits.set_supported_swing_modes({ CLIMATE_SWING_OFF, CLIMATE_SWING_VERTICAL });
         return traits;
     }
 
