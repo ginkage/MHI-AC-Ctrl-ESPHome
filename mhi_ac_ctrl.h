@@ -1,6 +1,9 @@
 #include "MHI-AC-Ctrl-core.h"
+#define ROOM_TEMP_MQTT 1
 
 static const char* TAG = "mhi_ac_ctrl";
+
+unsigned long room_temp_api_timeout_ms = millis();
 
 class MhiAcCtrl : public climate::Climate,
                   public Component,
@@ -62,6 +65,12 @@ public:
 
     void loop() override
     {
+        if(millis() - room_temp_api_timeout_ms >= id(room_temp_api_timeout)*1000) {
+            mhi_ac_ctrl_core.set_troom(0xff);  // use IU temperature sensor
+            room_temp_api_timeout_ms = millis();
+            ESP_LOGD("mhi_ac_ctrl", "room_temp_api_timeout exceeded, using IU temperature sensor value");
+        }
+
         int ret = mhi_ac_ctrl_core.loop(100);
         if (ret < 0)
             ESP_LOGW("mhi_ac_ctrl", "mhi_ac_ctrl_core.loop error: %i", ret);
@@ -320,6 +329,15 @@ public:
 
     std::vector<BinarySensor *> get_binary_sensors() {
         return { &defrost_ };
+    }
+
+    void set_room_temperature(float value) {
+        if ((value > -10) & (value < 48)) {
+            room_temp_api_timeout_ms = millis();  // reset timeout
+            byte tmp = value*4+61;
+            mhi_ac_ctrl_core.set_troom(value*4+61);
+            ESP_LOGD("mhi_ac_ctrl", "set room_temp_api: %f %i %i", value, (byte)(value*4+61), (byte)tmp);
+        }
     }
 
 protected:
