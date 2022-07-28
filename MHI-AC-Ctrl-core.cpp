@@ -43,17 +43,17 @@ void MHI_AC_Ctrl_Core::reset_old_values() {  // used e.g. when MQTT connection t
 }
 
 volatile uint rising_edge_cnt_SCK = 0;
-ICACHE_RAM_ATTR void handleInterrupt_SCK() {
+IRAM_ATTR void handleInterrupt_SCK() {
     rising_edge_cnt_SCK++;
 }
 
 volatile uint rising_edge_cnt_MOSI = 0;
-ICACHE_RAM_ATTR void handleInterrupt_MOSI() {
+IRAM_ATTR void handleInterrupt_MOSI() {
     rising_edge_cnt_MOSI++;
 }
 
 volatile uint rising_edge_cnt_MISO = 0;
-ICACHE_RAM_ATTR void handleInterrupt_MISO() {
+IRAM_ATTR void handleInterrupt_MISO() {
     rising_edge_cnt_MISO++;
 }
 
