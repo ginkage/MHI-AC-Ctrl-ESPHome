@@ -90,6 +90,13 @@ public:
     {
         static int mode_tmp = 0xff;
         ESP_LOGD("mhi_ac_ctrl", "received status=%i value=%i power=%i", status, value, this->power_);
+
+        if (this->power_ == power_off) {
+            // Workaround for status after reboot
+            this->mode = climate::CLIMATE_MODE_OFF;
+            this->publish_state();
+        }
+
         switch (status) {
         case status_fsck:
             // itoa(value, strtmp, 10);
