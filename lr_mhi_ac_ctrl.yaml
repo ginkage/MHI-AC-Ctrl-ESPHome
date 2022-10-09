@@ -59,7 +59,7 @@ api:
             return ((MhiAcCtrl*)id(${deviceid}))->set_room_temperature(value);
     # Call the set_vanes service from HA to set the vane position
     # Needed because the ESPHome Climate class does not support this natively
-    # Possible values: 0-4: static positions, 5: swing, 0: unknown
+    # Possible values: 1-4: static positions, 5: swing, 0: unknown
     - service: set_vanes
       variables:
         value: int
