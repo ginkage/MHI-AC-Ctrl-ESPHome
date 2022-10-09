@@ -157,12 +157,13 @@ public:
                 this->fan_mode = climate::CLIMATE_FAN_LOW;
                 break;
             case 1:
+            case 2:
                 this->fan_mode = climate::CLIMATE_FAN_MEDIUM;
                 break;
-            case 2:
+            case 6:
                 this->fan_mode = climate::CLIMATE_FAN_HIGH;
                 break;
-            case 3:
+            case 7:
                 this->fan_mode = climate::CLIMATE_FAN_AUTO;
                 break;
             }
@@ -376,17 +377,17 @@ protected:
 
             switch (*this->fan_mode) {
             case climate::CLIMATE_FAN_LOW:
-                fan_ = 1;
+                fan_ = 0;
                 break;
             case climate::CLIMATE_FAN_MEDIUM:
-                fan_ = 2;
+                fan_ = 1;
                 break;
             case climate::CLIMATE_FAN_HIGH:
-                fan_ = 3;
+                fan_ = 6;
                 break;
             case climate::CLIMATE_FAN_AUTO:
             default:
-                fan_ = 4;
+                fan_ = 7;
                 break;
             }
 
