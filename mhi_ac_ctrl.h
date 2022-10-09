@@ -60,6 +60,8 @@ public:
 
         defrost_.set_icon("mdi:snowflake-melt");
 
+        vanes_pos_.set_icon("mdi:air-filter");
+
         mhi_ac_ctrl_core.MHIAcCtrlStatus(this);
         mhi_ac_ctrl_core.init();
     }
@@ -98,18 +100,6 @@ public:
         }
 
         switch (status) {
-        case status_fsck:
-            // itoa(value, strtmp, 10);
-            // output_P(status, PSTR(TOPIC_FSCK), strtmp);
-            break;
-        case status_fmosi:
-            // itoa(value, strtmp, 10);
-            // output_P(status, PSTR(TOPIC_FMOSI), strtmp);
-            break;
-        case status_fmiso:
-            // itoa(value, strtmp, 10);
-            // output_P(status, PSTR(TOPIC_FMISO), strtmp);
-            break;
         case status_power:
             if (value == power_on) {
                 this->power_ = power_on;
@@ -162,19 +152,18 @@ public:
             this->publish_state();
             break;
         case status_fan:
-            // itoa(value + 1, strtmp, 10);
-            // output_P(status, TOPIC_FAN, strtmp);
             switch (value) {
             case 0:
                 this->fan_mode = climate::CLIMATE_FAN_LOW;
                 break;
             case 1:
+            case 2:
                 this->fan_mode = climate::CLIMATE_FAN_MEDIUM;
                 break;
-            case 2:
+            case 6:
                 this->fan_mode = climate::CLIMATE_FAN_HIGH;
                 break;
-            case 3:
+            case 7:
                 this->fan_mode = climate::CLIMATE_FAN_AUTO;
                 break;
             }
@@ -191,6 +180,7 @@ public:
                 // output_P(status, PSTR(TOPIC_VANES), strtmp);
                 this->swing_mode = climate::CLIMATE_SWING_OFF;
             }
+            vanes_pos_.publish_state(value);
             this->publish_state();
             break;
         case status_troom:
@@ -310,14 +300,6 @@ public:
             // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_OU_EEV1), strtmp);
             break;
-        case status_rssi:
-        case status_connected:
-        case status_cmd:
-        case status_mqtt_lost:
-        case status_wifi_lost:
-        case status_tds1820:
-        case opdata_unknwon:
-            break;
         }
     }
 
@@ -331,7 +313,8 @@ public:
             &current_power_,
             &compressor_frequency_,
             &indoor_unit_total_run_time_,
-            &compressor_total_run_time_
+            &compressor_total_run_time_,
+            &vanes_pos_
         };
     }
 
@@ -346,6 +329,11 @@ public:
             mhi_ac_ctrl_core.set_troom(value*4+61);
             ESP_LOGD("mhi_ac_ctrl", "set room_temp_api: %f %i %i", value, (byte)(value*4+61), (byte)tmp);
         }
+    }
+
+    void set_vanes(int value) {
+        mhi_ac_ctrl_core.set_vanes(value);
+        ESP_LOGD("mhi_ac_ctrl", "set vanes: %i", value);
     }
 
 protected:
@@ -396,17 +384,17 @@ protected:
 
             switch (*this->fan_mode) {
             case climate::CLIMATE_FAN_LOW:
-                fan_ = 1;
+                fan_ = 0;
                 break;
             case climate::CLIMATE_FAN_MEDIUM:
-                fan_ = 2;
+                fan_ = 1;
                 break;
             case climate::CLIMATE_FAN_HIGH:
-                fan_ = 3;
+                fan_ = 6;
                 break;
             case climate::CLIMATE_FAN_AUTO:
             default:
-                fan_ = 4;
+                fan_ = 7;
                 break;
             }
 
@@ -417,16 +405,16 @@ protected:
             this->swing_mode = *call.get_swing_mode();
 
             switch (this->swing_mode) {
-            case climate::CLIMATE_SWING_OFF:
-                vanes_ = vanes_unknown;
-                break;
             case climate::CLIMATE_SWING_VERTICAL:
-            default:
+                mhi_ac_ctrl_core.set_vanes(vanes_);
                 vanes_ = vanes_swing;
                 break;
+            default:
+            case climate::CLIMATE_SWING_OFF:
+                vanes_ = vanes_unknown;
+                mhi_ac_ctrl_core.set_vanes(vanes_);
+                break;
             }
-
-            mhi_ac_ctrl_core.set_vanes(vanes_);
         }
 
         this->publish_state();
@@ -469,4 +457,5 @@ protected:
     Sensor compressor_total_run_time_;
     Sensor current_power_;
     BinarySensor defrost_;
+    Sensor vanes_pos_;
 };

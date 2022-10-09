@@ -57,6 +57,15 @@ api:
       then:
         - lambda: |-
             return ((MhiAcCtrl*)id(${deviceid}))->set_room_temperature(value);
+    # Call the set_vanes service from HA to set the vane position
+    # Needed because the ESPHome Climate class does not support this natively
+    # Possible values: 1-4: static positions, 5: swing, 0: unknown
+    - service: set_vanes
+      variables:
+        value: int
+      then:
+        - lambda: |-
+            return ((MhiAcCtrl*)id(${deviceid}))->set_vanes(value);
 
 sensor:
   - platform: uptime
@@ -80,6 +89,7 @@ sensor:
       - name: ${devicename} compressor frequency
       - name: ${devicename} indoor unit total run time
       - name: ${devicename} compressor total run time
+      - name: ${devicename} vanes
 
 binary_sensor:
   - platform: custom
