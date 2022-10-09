@@ -98,18 +98,6 @@ public:
         }
 
         switch (status) {
-        case status_fsck:
-            // itoa(value, strtmp, 10);
-            // output_P(status, PSTR(TOPIC_FSCK), strtmp);
-            break;
-        case status_fmosi:
-            // itoa(value, strtmp, 10);
-            // output_P(status, PSTR(TOPIC_FMOSI), strtmp);
-            break;
-        case status_fmiso:
-            // itoa(value, strtmp, 10);
-            // output_P(status, PSTR(TOPIC_FMISO), strtmp);
-            break;
         case status_power:
             if (value == power_on) {
                 this->power_ = power_on;
@@ -309,14 +297,6 @@ public:
         case erropdata_ou_eev1:
             // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_OU_EEV1), strtmp);
-            break;
-        case status_rssi:
-        case status_connected:
-        case status_cmd:
-        case status_mqtt_lost:
-        case status_wifi_lost:
-        case status_tds1820:
-        case opdata_unknwon:
             break;
         }
     }
