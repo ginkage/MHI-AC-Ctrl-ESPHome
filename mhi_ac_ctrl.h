@@ -190,8 +190,6 @@ public:
             this->publish_state();
             break;
         case status_tsetpoint:
-        case opdata_tsetpoint:
-        case erropdata_tsetpoint:
             // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_TSETPOINT), strtmp);
             this->target_temperature = (value & 0x7f)/ 2.0;
@@ -299,6 +297,12 @@ public:
         case erropdata_ou_eev1:
             // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_OU_EEV1), strtmp);
+            break;
+        case opdata_tsetpoint:
+        case erropdata_tsetpoint:
+        case opdata_0x94:
+        case opdata_unknown:
+            // skip these values as they are not used currently
             break;
         }
     }
