@@ -1,7 +1,8 @@
-# Adding a sensor for the HomeAssistant individual devices energy Dashboard
-
+# Adding a sensor
+Adding a sensor for the HomeAssistant individual devices energy Dashboard
 The airco .yaml file needs to be extended with the following:
 
+```
       - name: ${devicename} current power
         id: "current"
 
@@ -16,6 +17,7 @@ The airco .yaml file needs to be extended with the following:
     power_id: "power"
     unit_of_measurement: Wh
     device_class: energy
+```
 
 
 
