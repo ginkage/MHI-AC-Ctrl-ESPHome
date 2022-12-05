@@ -1,5 +1,6 @@
 # Adding a sensor
-Adding a sensor for the HomeAssistant individual devices energy Dashboard
+This shows how to add a sensor for the HomeAssistant 'individual devices' energy Dashboard
+
 The airco .yaml file needs to be extended with the following:
 
 ```
