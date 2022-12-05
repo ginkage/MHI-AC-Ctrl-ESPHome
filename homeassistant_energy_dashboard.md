@@ -1,12 +1,15 @@
 # Adding a sensor
 This shows how to add a sensor for the HomeAssistant 'individual devices' energy Dashboard
 
-The airco .yaml file needs to be extended with the following:
+The airco .yaml file 'current power' sensor needs to be extended with the following 'id':
 
 ```
       - name: ${devicename} current power
         id: "current"
 
+```
+And add the following block:
+```
   - platform: template
     name: ${devicename} power
     id: "power"
