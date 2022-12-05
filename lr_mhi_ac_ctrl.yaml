@@ -86,10 +86,22 @@ sensor:
       - name: ${devicename} outdoor unit fan speed
       - name: ${devicename} indoor unit fan speed
       - name: ${devicename} current power
+        id: "current"
       - name: ${devicename} compressor frequency
       - name: ${devicename} indoor unit total run time
       - name: ${devicename} compressor total run time
       - name: ${devicename} vanes
+  - platform: template
+    name: ${devicename} power
+    id: "power"
+    lambda: return id(current).state * 230;  #I think all units are 230V; real voltage can vary a bit, but has a small impact.
+    unit_of_measurement: W
+    device_class: energy
+  - platform: total_daily_energy
+    name: ${devicename} daily energy
+    power_id: "power"
+    unit_of_measurement: Wh
+    device_class: energy
 
 binary_sensor:
   - platform: custom
