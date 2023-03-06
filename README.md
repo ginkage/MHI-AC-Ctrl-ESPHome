@@ -5,8 +5,10 @@ MHI-AC-Ctrl-core.\* files were forked directly, with no modification, whereas yo
 Just put all these files in your ESPHome folder, flash once, and you're good to go!
 
 # Fan Auto Mode with 4 fan speeds
-Added the solution for the auto mode from: https://github.com/ginkage/MHI-AC-Ctrl-ESPHome/issues/22#issuecomment-1310271934
-Now gets 5 different fan modes but I'm not sure if the auto mode works, keep testing.
+Added the solution for the auto mode from: https://github.com/ginkage/MHI-AC-Ctrl-ESPHome/issues/22#issuecomment-1310271934:
+CLIMATE_FAN_DIFFUSE in fan speed and status sections and reshuffle the numbers and add CLIMATE_FAN_DIFFUSE to the traits.set_supported_fan_modes
+
+Has now 5 different fan modes but I'm not sure if the auto mode works proper, keep testing.
 
 # License
 This project is licensed under the MIT License - see the LICENSE file for details.\
