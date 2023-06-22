@@ -62,6 +62,18 @@ public:
 
         vanes_pos_.set_icon("mdi:air-filter");
 
+        indoor_unit_thi_r1_.set_icon("mdi:thermometer");
+        indoor_unit_thi_r1_.set_unit_of_measurement("°C");
+        indoor_unit_thi_r1_.set_accuracy_decimals(2);
+
+        indoor_unit_thi_r2_.set_icon("mdi:thermometer");
+        indoor_unit_thi_r2_.set_unit_of_measurement("°C");
+        indoor_unit_thi_r2_.set_accuracy_decimals(2);
+
+        indoor_unit_thi_r3_.set_icon("mdi:thermometer");
+        indoor_unit_thi_r3_.set_unit_of_measurement("°C");
+        indoor_unit_thi_r3_.set_accuracy_decimals(2);
+
         energy_used_.set_icon("mdi:lightning-bolt");
         energy_used_.set_unit_of_measurement("kWh");
         energy_used_.set_accuracy_decimals(2);
@@ -214,16 +226,25 @@ public:
             return_air_temperature_.publish_state(value * 0.25f - 15);
             break;
         case opdata_thi_r1:
+            // Indoor Heat exchanger temperature 1 (U-bend)
+           indoor_unit_thi_r1_.publish_state(value);
+           break;
         case erropdata_thi_r1:
             // itoa(0.327f * value - 11.4f, strtmp, 10); // only rough approximation
             // output_P(status, PSTR(TOPIC_THI_R1), strtmp);
             break;
         case opdata_thi_r2:
+            // Indoor Heat exchanger temperature 2 (capillary)
+            indoor_unit_thi_r2_.publish_state(value);
+            break;
         case erropdata_thi_r2:
             // itoa(0.327f * value - 11.4f, strtmp, 10); // formula for calculation not known
             // output_P(status, PSTR(TOPIC_THI_R2), strtmp);
             break;
         case opdata_thi_r3:
+            // Indoor Heat exchanger temperature 3 (suction header)
+            indoor_unit_thi_r3_.publish_state(value);
+            break;
         case erropdata_thi_r3:
             // itoa(0.327f * value - 11.4f, strtmp, 10); // only rough approximation
             // output_P(status, PSTR(TOPIC_THI_R3), strtmp);
@@ -329,7 +350,10 @@ public:
             &indoor_unit_total_run_time_,
             &compressor_total_run_time_,
             &vanes_pos_,
-            &energy_used_
+            &energy_used_,
+            &indoor_unit_thi_r1_,
+            &indoor_unit_thi_r2_,
+            &indoor_unit_thi_r3_
         };
     }
 
@@ -477,4 +501,7 @@ protected:
     BinarySensor defrost_;
     Sensor vanes_pos_;
     Sensor energy_used_;
+    Sensor indoor_unit_thi_r1_;
+    Sensor indoor_unit_thi_r2_;
+    Sensor indoor_unit_thi_r3_;
 };
