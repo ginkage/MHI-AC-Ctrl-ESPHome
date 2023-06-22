@@ -302,7 +302,7 @@ public:
             break;
         case opdata_tsetpoint:
         case erropdata_tsetpoint:
-        case opdata_0x94:
+        case opdata_kwh:
         case opdata_unknown:
             // skip these values as they are not used currently
             break;
