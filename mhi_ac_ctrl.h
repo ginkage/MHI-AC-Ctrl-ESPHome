@@ -425,12 +425,12 @@ public:
         };
     }
 
-    std::vector<TextSensor *> get_binary_sensors() {
-        return { &defrost_ };
+    std::vector<TextSensor *> get_text_sensors() {
+        return { &protection_state_ };
     }
 
-    std::vector<BinarySensor *> get_text_sensors() {
-        return { &protection_state_ };
+    std::vector<BinarySensor *> get_binary_sensors() {
+        return { &defrost_ };
     }
 
     void set_room_temperature(float value) {
