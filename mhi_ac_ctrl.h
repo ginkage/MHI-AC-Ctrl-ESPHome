@@ -92,7 +92,7 @@ public:
 
         protection_state_.set_icon("mdi:shield-alert-outline");
 
-        protection_state_number.set_icon("mdi:shield-alert-outline");
+        protection_state_number_.set_icon("mdi:shield-alert-outline");
 
         energy_used_.set_icon("mdi:lightning-bolt");
         energy_used_.set_unit_of_measurement("kWh");
@@ -421,7 +421,7 @@ public:
             &outdoor_unit_expansion_valve_,
             &outdoor_unit_discharge_pipe_,
             &outdoor_unit_discharge_pipe_super_heat_,
-            protection_state_number_
+            &protection_state_number_
         };
     }
 
