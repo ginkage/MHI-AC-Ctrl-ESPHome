@@ -74,6 +74,22 @@ public:
         indoor_unit_thi_r3_.set_unit_of_measurement("°C");
         indoor_unit_thi_r3_.set_accuracy_decimals(2);
 
+        outdoor_unit_tho_r1_.set_icon("mdi:thermometer");
+        outdoor_unit_tho_r1_.set_unit_of_measurement("°C");
+        outdoor_unit_tho_r1_.set_accuracy_decimals(2);
+
+        outdoor_unit_expansion_valve_.set_icon("mdi:valve");
+        outdoor_unit_expansion_valve_.set_unit_of_measurement("pulse");
+        outdoor_unit_expansion_valve_.set_accuracy_decimals(0);
+
+        outdoor_unit_discharge_pipe_.set_icon("mdi:thermometer");
+        outdoor_unit_discharge_pipe_.set_unit_of_measurement("°C");
+        outdoor_unit_discharge_pipe_.set_accuracy_decimals(1);
+
+        outdoor_unit_discharge_pipe_super_heat_.set_icon("mdi:thermometer");
+        outdoor_unit_discharge_pipe_super_heat_.set_unit_of_measurement("°C");
+        outdoor_unit_discharge_pipe_super_heat_.set_accuracy_decimals(1);
+
         energy_used_.set_icon("mdi:lightning-bolt");
         energy_used_.set_unit_of_measurement("kWh");
         energy_used_.set_accuracy_decimals(2);
@@ -227,7 +243,7 @@ public:
             break;
         case opdata_thi_r1:
             // Indoor Heat exchanger temperature 1 (U-bend)
-           indoor_unit_thi_r1_.publish_state(0.327f * (value - 11.4f));
+           indoor_unit_thi_r1_.publish_state(0.327f * value - 11.4f);
            break;
         case erropdata_thi_r1:
             // itoa(0.327f * value - 11.4f, strtmp, 10); // only rough approximation
@@ -235,7 +251,7 @@ public:
             break;
         case opdata_thi_r2:
             // Indoor Heat exchanger temperature 2 (capillary)
-            indoor_unit_thi_r2_.publish_state(0.327f * (value - 11.4f));
+            indoor_unit_thi_r2_.publish_state(0.327f * value - 11.4f);
             break;
         case erropdata_thi_r2:
             // itoa(0.327f * value - 11.4f, strtmp, 10); // formula for calculation not known
@@ -243,7 +259,7 @@ public:
             break;
         case opdata_thi_r3:
             // Indoor Heat exchanger temperature 3 (suction header)
-            indoor_unit_thi_r3_.publish_state(0.327f * (value - 11.4f));
+            indoor_unit_thi_r3_.publish_state(0.327f * value - 11.4f);
             break;
         case erropdata_thi_r3:
             // itoa(0.327f * value - 11.4f, strtmp, 10); // only rough approximation
@@ -265,9 +281,12 @@ public:
         case opdata_outdoor:
             // dtostrf((value - 94) * 0.25f, 0, 2, strtmp);
             // output_P(status, PSTR(TOPIC_OUTDOOR), strtmp);
-            outdoor_temperature_.publish_state((value - 94) * 0.25f);
+            outdoor_temperature_.publish_state(value - 94 * 0.25f);
             break;
         case opdata_tho_r1:
+            // Indoor Heat exchanger temperature 3 (suction header)
+            outdoor_unit_tho_r1_.publish_state(0.327f * value - 11.4f);
+            break;
         case erropdata_tho_r1:
             // itoa(0.327f * value - 11.4f, strtmp, 10); // formula for calculation not known
             // output_P(status, PSTR(TOPIC_THO_R1), strtmp);
@@ -281,11 +300,10 @@ public:
             break;
         case erropdata_td:
         case opdata_td:
-            // if (value < 0x12)
-            //    strcpy(strtmp, "<=30");
-            // else
-             //   itoa(value / 2 + 32, strtmp, 10);
-            // output_P(status, PSTR(TOPIC_TD), strtmp);
+            if (value < 0x2)
+                outdoor_unit_discharge_pipe_.publish_state(30);
+            else
+                outdoor_unit_discharge_pipe_.publish_state(value / 2 + 32);
             break;
         case opdata_ct:
         case erropdata_ct:
@@ -294,6 +312,7 @@ public:
             current_power_.publish_state(value * 14 / 51.0f);
             break;
         case opdata_tdsh:
+            outdoor_unit_discharge_pipe_super_heat_.publish_state(value);
             // itoa(value, strtmp, 10); // formula for calculation not known
             // output_P(status, PSTR(TOPIC_TDSH), strtmp);
             break;
@@ -321,6 +340,8 @@ public:
             compressor_total_run_time_.publish_state(value * 100);
             break;
         case opdata_ou_eev1:
+            outdoor_unit_expansion_valve_.publish_state(value);
+            break;
         case erropdata_ou_eev1:
             // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_OU_EEV1), strtmp);
@@ -353,7 +374,11 @@ public:
             &energy_used_,
             &indoor_unit_thi_r1_,
             &indoor_unit_thi_r2_,
-            &indoor_unit_thi_r3_
+            &indoor_unit_thi_r3_,
+            &outdoor_unit_tho_r1_,
+            &outdoor_unit_expansion_valve_,
+            &outdoor_unit_discharge_pipe_,
+            &outdoor_unit_discharge_pipe_super_heat_
         };
     }
 
@@ -504,4 +529,8 @@ protected:
     Sensor indoor_unit_thi_r1_;
     Sensor indoor_unit_thi_r2_;
     Sensor indoor_unit_thi_r3_;
+    Sensor outdoor_unit_tho_r1_;
+    Sensor outdoor_unit_expansion_valve_;
+    Sensor outdoor_unit_discharge_pipe_;
+    Sensor outdoor_unit_discharge_pipe_super_heat_;
 };

@@ -94,6 +94,10 @@ sensor:
       - name: ${devicename} Indoor (U-bend) HE temp 1
       - name: ${devicename} Indoor (capillary) HE temp 2
       - name: ${devicename} Indoor (suction header) HE temp 3
+      - name: ${devicename} Outdoor HE temp
+      - name: ${devicename} Outdoor unit exp. valve
+      - name: ${devicename} Outdoor unit discharge pipe
+      - name: ${devicename} Outdoor unit discharge pipe super heat
 
 binary_sensor:
   - platform: custom
