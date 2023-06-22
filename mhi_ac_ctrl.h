@@ -281,7 +281,7 @@ public:
         case opdata_outdoor:
             // dtostrf((value - 94) * 0.25f, 0, 2, strtmp);
             // output_P(status, PSTR(TOPIC_OUTDOOR), strtmp);
-            outdoor_temperature_.publish_state(value - 94 * 0.25f);
+            outdoor_temperature_.publish_state((value - 94) * 0.25f);
             break;
         case opdata_tho_r1:
             // Indoor Heat exchanger temperature 3 (suction header)
