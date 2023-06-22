@@ -64,7 +64,7 @@ public:
 
         energy_used_.set_icon("mdi:lightning-bolt");
         energy_used_.set_unit_of_measurement("kWh");
-        energy_used_.set_accuracy_decimals(4);
+        energy_used_.set_accuracy_decimals(2);
 
         mhi_ac_ctrl_core.MHIAcCtrlStatus(this);
         mhi_ac_ctrl_core.init();
@@ -307,7 +307,8 @@ public:
         case opdata_tsetpoint:
         case erropdata_tsetpoint:
         case opdata_kwh:
-            // formula for calculation not known
+            // https://github.com/absalom-muc/MHI-AC-Ctrl/pull/135
+            // This item is counting the kWh from the point where the AC is powered On
             energy_used_.publish_state(value);
             break;
         case opdata_unknown:
