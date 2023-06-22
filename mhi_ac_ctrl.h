@@ -62,6 +62,10 @@ public:
 
         vanes_pos_.set_icon("mdi:air-filter");
 
+        energy_used_.set_icon("mdi:lightning-bolt");
+        energy_used_.set_unit_of_measurement("kWh");
+        energy_used_.set_accuracy_decimals(2);
+
         mhi_ac_ctrl_core.MHIAcCtrlStatus(this);
         mhi_ac_ctrl_core.init();
     }
@@ -302,7 +306,11 @@ public:
             break;
         case opdata_tsetpoint:
         case erropdata_tsetpoint:
-        case opdata_0x94:
+        case opdata_kwh:
+            // https://github.com/absalom-muc/MHI-AC-Ctrl/pull/135
+            // This item is counting the kWh from the point where the AC is powered On
+            energy_used_.publish_state(value);
+            break;
         case opdata_unknown:
             // skip these values as they are not used currently
             break;
@@ -320,7 +328,8 @@ public:
             &compressor_frequency_,
             &indoor_unit_total_run_time_,
             &compressor_total_run_time_,
-            &vanes_pos_
+            &vanes_pos_,
+            &energy_used_
         };
     }
 
@@ -467,4 +476,5 @@ protected:
     Sensor current_power_;
     BinarySensor defrost_;
     Sensor vanes_pos_;
+    Sensor energy_used_;
 };
