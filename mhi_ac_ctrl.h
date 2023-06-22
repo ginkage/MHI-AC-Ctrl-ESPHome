@@ -309,7 +309,7 @@ public:
         case opdata_kwh:
             // https://github.com/absalom-muc/MHI-AC-Ctrl/pull/135
             // This item is counting the kWh from the point where the AC is powered On
-            energy_used_.publish_state(value);
+            energy_used_.publish_state(value * 0.25);
             break;
         case opdata_unknown:
             // skip these values as they are not used currently
