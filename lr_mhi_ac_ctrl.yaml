@@ -90,6 +90,7 @@ sensor:
       - name: ${devicename} indoor unit total run time
       - name: ${devicename} compressor total run time
       - name: ${devicename} vanes
+      - name: ${devicename} energy used
 
 binary_sensor:
   - platform: custom

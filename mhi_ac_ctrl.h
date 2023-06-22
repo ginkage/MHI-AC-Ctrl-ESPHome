@@ -62,6 +62,10 @@ public:
 
         vanes_pos_.set_icon("mdi:air-filter");
 
+        energy_used_.set_icon("mdi:lightning-bolt");
+        energy_used_.set_unit_of_measurement("kWh");
+        energy_used_.set_accuracy_decimals(2);
+
         mhi_ac_ctrl_core.MHIAcCtrlStatus(this);
         mhi_ac_ctrl_core.init();
     }
@@ -154,9 +158,11 @@ public:
         case status_fan:
             switch (value) {
             case 0:
-                this->fan_mode = climate::CLIMATE_FAN_LOW;
+                this->fan_mode = climate::CLIMATE_FAN_QUIET;
                 break;
             case 1:
+                this->fan_mode = climate::CLIMATE_FAN_LOW;
+                break;
             case 2:
                 this->fan_mode = climate::CLIMATE_FAN_MEDIUM;
                 break;
@@ -300,7 +306,11 @@ public:
             break;
         case opdata_tsetpoint:
         case erropdata_tsetpoint:
-        case opdata_0x94:
+        case opdata_kwh:
+            // https://github.com/absalom-muc/MHI-AC-Ctrl/pull/135
+            // This item is counting the kWh from the point where the AC is powered On
+            energy_used_.publish_state(value * 0.25);
+            break;
         case opdata_unknown:
             // skip these values as they are not used currently
             break;
@@ -318,7 +328,8 @@ public:
             &compressor_frequency_,
             &indoor_unit_total_run_time_,
             &compressor_total_run_time_,
-            &vanes_pos_
+            &vanes_pos_,
+            &energy_used_
         };
     }
 
@@ -387,11 +398,14 @@ protected:
             this->fan_mode = *call.get_fan_mode();
 
             switch (*this->fan_mode) {
-            case climate::CLIMATE_FAN_LOW:
+            case climate::CLIMATE_FAN_QUIET:
                 fan_ = 0;
                 break;
-            case climate::CLIMATE_FAN_MEDIUM:
+            case climate::CLIMATE_FAN_LOW:
                 fan_ = 1;
+                break;
+            case climate::CLIMATE_FAN_MEDIUM:
+                fan_ = 2;
                 break;
             case climate::CLIMATE_FAN_HIGH:
                 fan_ = 6;
@@ -434,7 +448,7 @@ protected:
         traits.set_visual_min_temperature(this->minimum_temperature_);
         traits.set_visual_max_temperature(this->maximum_temperature_);
         traits.set_visual_temperature_step(this->temperature_step_);
-        traits.set_supported_fan_modes({ CLIMATE_FAN_AUTO, CLIMATE_FAN_LOW, CLIMATE_FAN_MEDIUM, CLIMATE_FAN_HIGH });
+        traits.set_supported_fan_modes({ CLIMATE_FAN_AUTO, CLIMATE_FAN_QUIET, CLIMATE_FAN_LOW, CLIMATE_FAN_MEDIUM, CLIMATE_FAN_HIGH });
         traits.set_supported_swing_modes({ CLIMATE_SWING_OFF, CLIMATE_SWING_VERTICAL });
         return traits;
     }
@@ -462,4 +476,5 @@ protected:
     Sensor current_power_;
     BinarySensor defrost_;
     Sensor vanes_pos_;
+    Sensor energy_used_;
 };
