@@ -90,6 +90,10 @@ public:
         outdoor_unit_discharge_pipe_super_heat_.set_unit_of_measurement("°C");
         outdoor_unit_discharge_pipe_super_heat_.set_accuracy_decimals(1);
 
+        protection_state_.set_icon("mdi:shield-alert-outline");
+
+        protection_state_number.set_icon("mdi:shield-alert-outline");
+
         energy_used_.set_icon("mdi:lightning-bolt");
         energy_used_.set_unit_of_measurement("kWh");
         energy_used_.set_accuracy_decimals(2);
@@ -317,6 +321,44 @@ public:
             // output_P(status, PSTR(TOPIC_TDSH), strtmp);
             break;
         case opdata_protection_no:
+            if (value == 0)
+                protection_state_.publish_state("Normal");
+            else if (value == 1)
+                protection_state_.publish_state("Discharge pipe temperature protection control");
+            else if (value == 2)
+                protection_state_.publish_state("Discharge pipe temperature anomaly");
+            else if (value == 3)
+                protection_state_.publish_state("Current safe control of inverter primary current");
+            else if (value == 4)
+                protection_state_.publish_state("High pressure protection control");
+            else if (value == 5)
+                protection_state_.publish_state("High pressure anomaly");
+            else if (value == 6)
+                protection_state_.publish_state("Low pressure protection control");
+            else if (value == 7)
+                protection_state_.publish_state("Low pressure anomaly");
+            else if (value == 8)
+                protection_state_.publish_state("Anti-frost prevention control");
+            else if (value == 9)
+                protection_state_.publish_state("Current cut");
+            else if (value == 10)
+                protection_state_.publish_state("Power transistor protection control");
+            else if (value == 11)
+                protection_state_.publish_state("Power transistor anomaly (Overheat)");
+            else if (value == 12)
+                protection_state_.publish_state("Compression ratio control");
+            else if (value == 13)
+                protection_state_.publish_state("-");
+            else if (value == 14)
+                protection_state_.publish_state("Condensation prevention control");
+            else if (value == 15)
+                protection_state_.publish_state("Current safe control of inverter secondary current");
+            else if (value == 16)
+                protection_state_.publish_state("Stop by compressor rotor lock");
+            else if (value == 17)
+                protection_state_.publish_state("Stop by compressor startup failure");
+            protection_state_number_.publish_state(value);
+            break;
             // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_PROTECTION_NO), strtmp);
             break;
@@ -378,12 +420,17 @@ public:
             &outdoor_unit_tho_r1_,
             &outdoor_unit_expansion_valve_,
             &outdoor_unit_discharge_pipe_,
-            &outdoor_unit_discharge_pipe_super_heat_
+            &outdoor_unit_discharge_pipe_super_heat_,
+            protection_state_number_
         };
     }
 
-    std::vector<BinarySensor *> get_binary_sensors() {
+    std::vector<TextSensor *> get_binary_sensors() {
         return { &defrost_ };
+    }
+
+    std::vector<BinarySensor *> get_text_sensors() {
+        return { &protection_state_ };
     }
 
     void set_room_temperature(float value) {
@@ -533,4 +580,6 @@ protected:
     Sensor outdoor_unit_expansion_valve_;
     Sensor outdoor_unit_discharge_pipe_;
     Sensor outdoor_unit_discharge_pipe_super_heat_;
+    Sensor protection_state_number_;
+    TextSensor protection_state_;
 };
