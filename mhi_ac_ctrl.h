@@ -227,7 +227,7 @@ public:
             break;
         case opdata_thi_r1:
             // Indoor Heat exchanger temperature 1 (U-bend)
-           indoor_unit_thi_r1_.publish_state(value);
+           indoor_unit_thi_r1_.publish_state(0.327f * (value - 11.4f), strtmp, 10);
            break;
         case erropdata_thi_r1:
             // itoa(0.327f * value - 11.4f, strtmp, 10); // only rough approximation
@@ -235,7 +235,7 @@ public:
             break;
         case opdata_thi_r2:
             // Indoor Heat exchanger temperature 2 (capillary)
-            indoor_unit_thi_r2_.publish_state(value);
+            indoor_unit_thi_r2_.publish_state(0.327f * (value - 11.4f), strtmp, 10);
             break;
         case erropdata_thi_r2:
             // itoa(0.327f * value - 11.4f, strtmp, 10); // formula for calculation not known
@@ -243,7 +243,7 @@ public:
             break;
         case opdata_thi_r3:
             // Indoor Heat exchanger temperature 3 (suction header)
-            indoor_unit_thi_r3_.publish_state(value);
+            indoor_unit_thi_r3_.publish_state(0.327f * (value - 11.4f), strtmp, 10);
             break;
         case erropdata_thi_r3:
             // itoa(0.327f * value - 11.4f, strtmp, 10); // only rough approximation
