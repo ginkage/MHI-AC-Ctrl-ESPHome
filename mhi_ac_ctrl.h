@@ -321,42 +321,29 @@ public:
             // output_P(status, PSTR(TOPIC_TDSH), strtmp);
             break;
         case opdata_protection_no:
-            if (value == 0)
-                protection_state_.publish_state("Normal");
-            else if (value == 1)
-                protection_state_.publish_state("Discharge pipe temperature protection control");
-            else if (value == 2)
-                protection_state_.publish_state("Discharge pipe temperature anomaly");
-            else if (value == 3)
-                protection_state_.publish_state("Current safe control of inverter primary current");
-            else if (value == 4)
-                protection_state_.publish_state("High pressure protection control");
-            else if (value == 5)
-                protection_state_.publish_state("High pressure anomaly");
-            else if (value == 6)
-                protection_state_.publish_state("Low pressure protection control");
-            else if (value == 7)
-                protection_state_.publish_state("Low pressure anomaly");
-            else if (value == 8)
-                protection_state_.publish_state("Anti-frost prevention control");
-            else if (value == 9)
-                protection_state_.publish_state("Current cut");
-            else if (value == 10)
-                protection_state_.publish_state("Power transistor protection control");
-            else if (value == 11)
-                protection_state_.publish_state("Power transistor anomaly (Overheat)");
-            else if (value == 12)
-                protection_state_.publish_state("Compression ratio control");
-            else if (value == 13)
-                protection_state_.publish_state("-");
-            else if (value == 14)
-                protection_state_.publish_state("Condensation prevention control");
-            else if (value == 15)
-                protection_state_.publish_state("Current safe control of inverter secondary current");
-            else if (value == 16)
-                protection_state_.publish_state("Stop by compressor rotor lock");
-            else if (value == 17)
-                protection_state_.publish_state("Stop by compressor startup failure");
+            const char* protection_states[] = {
+                "Normal",
+                "Discharge pipe temperature protection control",
+                "Discharge pipe temperature anomaly",
+                "Current safe control of inverter primary current",
+                "High pressure protection control",
+                "High pressure anomaly",
+                "Low pressure protection control",
+                "Low pressure anomaly",
+                "Anti-frost prevention control",
+                "Current cut",
+                "Power transistor protection control",
+                "Power transistor anomaly (Overheat)",
+                "Compression ratio control",
+                "-",
+                "Condensation prevention control",
+                "Current safe control of inverter secondary current",
+                "Stop by compressor rotor lock",
+                "Stop by compressor startup failure"
+            };
+
+            if (value >= 0 && value <= 17)
+                protection_state_.publish_state(protection_states[value]);
             protection_state_number_.publish_state(value);
             break;
             // itoa(value, strtmp, 10);
