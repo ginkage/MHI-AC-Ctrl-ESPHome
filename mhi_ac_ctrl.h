@@ -1,6 +1,6 @@
 #include "MHI-AC-Ctrl-core.h"
 #define ROOM_TEMP_MQTT 1
-#include <map>
+#include <vector>
 #include <string>
 
 static const std::vector<std::string> protection_states = {
