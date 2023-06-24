@@ -3,28 +3,28 @@
 #include <map>
 #include <string>
 
-std::map<int, std::string> protection_states = {
-    {0, "Normal"},
-    {1, "Discharge pipe temperature protection control"},
-    {2, "Discharge pipe temperature anomaly"},
-    {3, "Current safe control of inverter primary current"},
-    {4, "High pressure protection control"},
-    {5, "High pressure anomaly"},
-    {6, "Low pressure protection control"},
-    {7, "Low pressure anomaly"},
-    {8, "Anti-frost prevention control"},
-    {9, "Current cut"},
-    {10, "Power transistor protection control"},
-    {11, "Power transistor anomaly (Overheat)"},
-    {12, "Compression ratio control"},
-    {13, "-"},
-    {14, "Condensation prevention control"},
-    {15, "Current safe control of inverter secondary current"},
-    {16, "Stop by compressor rotor lock"},
-    {17, "Stop by compressor startup failure"}
+static const std::vector<std::string> protection_states = {
+    "Normal",
+    "Discharge pipe temperature protection control",
+    "Discharge pipe temperature anomaly",
+    "Current safe control of inverter primary current",
+    "High pressure protection control",
+    "High pressure anomaly",
+    "Low pressure protection control",
+    "Low pressure anomaly",
+    "Anti-frost prevention control",
+    "Current cut",
+    "Power transistor protection control",
+    "Power transistor anomaly (Overheat)",
+    "Compression ratio control",
+    "-",
+    "Condensation prevention control",
+    "Current safe control of inverter secondary current",
+    "Stop by compressor rotor lock",
+    "Stop by compressor startup failure"
 };
 
-std::string protection_state;
+static std::string protection_state;
 
 static const char* TAG = "mhi_ac_ctrl";
 
@@ -346,7 +346,7 @@ public:
             // output_P(status, PSTR(TOPIC_TDSH), strtmp);
             break;
         case opdata_protection_no:
-            if (protection_states.count(value) > 0)
+            if (value < protection_states.size())
                 protection_state_.publish_state(protection_states[value]);
             protection_state_number_.publish_state(value);
             // itoa(value, strtmp, 10);
