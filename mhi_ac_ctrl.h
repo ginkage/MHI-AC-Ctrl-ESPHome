@@ -349,7 +349,6 @@ public:
             if (protection_states.count(value) > 0)
                 protection_state_.publish_state(protection_states[value]);
             protection_state_number_.publish_state(value);
-            break;
             // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_PROTECTION_NO), strtmp);
             break;
@@ -381,6 +380,7 @@ public:
             break;
         case opdata_tsetpoint:
         case erropdata_tsetpoint:
+            break;
         case opdata_kwh:
             // https://github.com/absalom-muc/MHI-AC-Ctrl/pull/135
             // This item is counting the kWh from the point where the AC is powered On
