@@ -24,8 +24,6 @@ static const std::vector<std::string> protection_states = {
     "Stop by compressor startup failure"
 };
 
-static std::string protection_state;
-
 static const char* TAG = "mhi_ac_ctrl";
 
 unsigned long room_temp_api_timeout_ms = millis();
