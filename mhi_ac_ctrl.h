@@ -1,5 +1,28 @@
 #include "MHI-AC-Ctrl-core.h"
 #define ROOM_TEMP_MQTT 1
+#include <vector>
+#include <string>
+
+static const std::vector<std::string> protection_states = {
+    "Normal",
+    "Discharge pipe temperature protection control",
+    "Discharge pipe temperature anomaly",
+    "Current safe control of inverter primary current",
+    "High pressure protection control",
+    "High pressure anomaly",
+    "Low pressure protection control",
+    "Low pressure anomaly",
+    "Anti-frost prevention control",
+    "Current cut",
+    "Power transistor protection control",
+    "Power transistor anomaly (Overheat)",
+    "Compression ratio control",
+    "-",
+    "Condensation prevention control",
+    "Current safe control of inverter secondary current",
+    "Stop by compressor rotor lock",
+    "Stop by compressor startup failure"
+};
 
 static const char* TAG = "mhi_ac_ctrl";
 
@@ -61,6 +84,38 @@ public:
         defrost_.set_icon("mdi:snowflake-melt");
 
         vanes_pos_.set_icon("mdi:air-filter");
+
+        indoor_unit_thi_r1_.set_icon("mdi:thermometer");
+        indoor_unit_thi_r1_.set_unit_of_measurement("°C");
+        indoor_unit_thi_r1_.set_accuracy_decimals(2);
+
+        indoor_unit_thi_r2_.set_icon("mdi:thermometer");
+        indoor_unit_thi_r2_.set_unit_of_measurement("°C");
+        indoor_unit_thi_r2_.set_accuracy_decimals(2);
+
+        indoor_unit_thi_r3_.set_icon("mdi:thermometer");
+        indoor_unit_thi_r3_.set_unit_of_measurement("°C");
+        indoor_unit_thi_r3_.set_accuracy_decimals(2);
+
+        outdoor_unit_tho_r1_.set_icon("mdi:thermometer");
+        outdoor_unit_tho_r1_.set_unit_of_measurement("°C");
+        outdoor_unit_tho_r1_.set_accuracy_decimals(2);
+
+        outdoor_unit_expansion_valve_.set_icon("mdi:valve");
+        outdoor_unit_expansion_valve_.set_unit_of_measurement("pulse");
+        outdoor_unit_expansion_valve_.set_accuracy_decimals(0);
+
+        outdoor_unit_discharge_pipe_.set_icon("mdi:thermometer");
+        outdoor_unit_discharge_pipe_.set_unit_of_measurement("°C");
+        outdoor_unit_discharge_pipe_.set_accuracy_decimals(1);
+
+        outdoor_unit_discharge_pipe_super_heat_.set_icon("mdi:thermometer");
+        outdoor_unit_discharge_pipe_super_heat_.set_unit_of_measurement("°C");
+        outdoor_unit_discharge_pipe_super_heat_.set_accuracy_decimals(1);
+
+        protection_state_.set_icon("mdi:shield-alert-outline");
+
+        protection_state_number_.set_icon("mdi:shield-alert-outline");
 
         energy_used_.set_icon("mdi:lightning-bolt");
         energy_used_.set_unit_of_measurement("kWh");
@@ -214,16 +269,25 @@ public:
             return_air_temperature_.publish_state(value * 0.25f - 15);
             break;
         case opdata_thi_r1:
+            // Indoor Heat exchanger temperature 1 (U-bend)
+           indoor_unit_thi_r1_.publish_state(0.327f * value - 11.4f);
+           break;
         case erropdata_thi_r1:
             // itoa(0.327f * value - 11.4f, strtmp, 10); // only rough approximation
             // output_P(status, PSTR(TOPIC_THI_R1), strtmp);
             break;
         case opdata_thi_r2:
+            // Indoor Heat exchanger temperature 2 (capillary)
+            indoor_unit_thi_r2_.publish_state(0.327f * value - 11.4f);
+            break;
         case erropdata_thi_r2:
             // itoa(0.327f * value - 11.4f, strtmp, 10); // formula for calculation not known
             // output_P(status, PSTR(TOPIC_THI_R2), strtmp);
             break;
         case opdata_thi_r3:
+            // Indoor Heat exchanger temperature 3 (suction header)
+            indoor_unit_thi_r3_.publish_state(0.327f * value - 11.4f);
+            break;
         case erropdata_thi_r3:
             // itoa(0.327f * value - 11.4f, strtmp, 10); // only rough approximation
             // output_P(status, PSTR(TOPIC_THI_R3), strtmp);
@@ -247,6 +311,9 @@ public:
             outdoor_temperature_.publish_state((value - 94) * 0.25f);
             break;
         case opdata_tho_r1:
+            // Indoor Heat exchanger temperature 3 (suction header)
+            outdoor_unit_tho_r1_.publish_state(0.327f * value - 11.4f);
+            break;
         case erropdata_tho_r1:
             // itoa(0.327f * value - 11.4f, strtmp, 10); // formula for calculation not known
             // output_P(status, PSTR(TOPIC_THO_R1), strtmp);
@@ -260,11 +327,10 @@ public:
             break;
         case erropdata_td:
         case opdata_td:
-            // if (value < 0x12)
-            //    strcpy(strtmp, "<=30");
-            // else
-             //   itoa(value / 2 + 32, strtmp, 10);
-            // output_P(status, PSTR(TOPIC_TD), strtmp);
+            if (value < 0x2)
+                outdoor_unit_discharge_pipe_.publish_state(30);
+            else
+                outdoor_unit_discharge_pipe_.publish_state(value / 2 + 32);
             break;
         case opdata_ct:
         case erropdata_ct:
@@ -273,10 +339,14 @@ public:
             current_power_.publish_state(value * 14 / 51.0f);
             break;
         case opdata_tdsh:
+            outdoor_unit_discharge_pipe_super_heat_.publish_state(value);
             // itoa(value, strtmp, 10); // formula for calculation not known
             // output_P(status, PSTR(TOPIC_TDSH), strtmp);
             break;
         case opdata_protection_no:
+            if (value < protection_states.size())
+                protection_state_.publish_state(protection_states[value]);
+            protection_state_number_.publish_state(value);
             // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_PROTECTION_NO), strtmp);
             break;
@@ -300,12 +370,15 @@ public:
             compressor_total_run_time_.publish_state(value * 100);
             break;
         case opdata_ou_eev1:
+            outdoor_unit_expansion_valve_.publish_state(value);
+            break;
         case erropdata_ou_eev1:
             // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_OU_EEV1), strtmp);
             break;
         case opdata_tsetpoint:
         case erropdata_tsetpoint:
+            break;
         case opdata_kwh:
             // https://github.com/absalom-muc/MHI-AC-Ctrl/pull/135
             // This item is counting the kWh from the point where the AC is powered On
@@ -329,8 +402,20 @@ public:
             &indoor_unit_total_run_time_,
             &compressor_total_run_time_,
             &vanes_pos_,
-            &energy_used_
+            &energy_used_,
+            &indoor_unit_thi_r1_,
+            &indoor_unit_thi_r2_,
+            &indoor_unit_thi_r3_,
+            &outdoor_unit_tho_r1_,
+            &outdoor_unit_expansion_valve_,
+            &outdoor_unit_discharge_pipe_,
+            &outdoor_unit_discharge_pipe_super_heat_,
+            &protection_state_number_
         };
+    }
+
+    std::vector<TextSensor *> get_text_sensors() {
+        return { &protection_state_ };
     }
 
     std::vector<BinarySensor *> get_binary_sensors() {
@@ -477,4 +562,13 @@ protected:
     BinarySensor defrost_;
     Sensor vanes_pos_;
     Sensor energy_used_;
+    Sensor indoor_unit_thi_r1_;
+    Sensor indoor_unit_thi_r2_;
+    Sensor indoor_unit_thi_r3_;
+    Sensor outdoor_unit_tho_r1_;
+    Sensor outdoor_unit_expansion_valve_;
+    Sensor outdoor_unit_discharge_pipe_;
+    Sensor outdoor_unit_discharge_pipe_super_heat_;
+    Sensor protection_state_number_;
+    TextSensor protection_state_;
 };
