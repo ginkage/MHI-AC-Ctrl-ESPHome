@@ -213,16 +213,16 @@ public:
         case status_fan:
             switch (value) {
             case 0:
-                this->fan_mode = climate::CLIMATE_FAN_QUIET;
-                break;
-            case 1:
                 this->fan_mode = climate::CLIMATE_FAN_LOW;
                 break;
-            case 2:
+            case 1:
                 this->fan_mode = climate::CLIMATE_FAN_MEDIUM;
                 break;
-            case 6:
+            case 2:
                 this->fan_mode = climate::CLIMATE_FAN_HIGH;
+                break;
+            case 6:
+                this->fan_mode = climate::CLIMATE_FAN_DIFFUSE;
                 break;
             case 7:
                 this->fan_mode = climate::CLIMATE_FAN_AUTO;
@@ -232,16 +232,25 @@ public:
             break;
         case status_vanes:
             switch (value) {
-            case vanes_swing:
-                // output_P(status, PSTR(TOPIC_VANES), PSTR(PAYLOAD_VANES_SWING));
+            case vanes_unknown:
+                this->swing_mode = climate::CLIMATE_SWING_OFF;
+                break;
+            case vanes_1:
+                this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
+                break;
+            case vanes_2:
+                this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
+                break;
+            case vanes_3:
+                this->swing_mode = climate::CLIMATE_SWING_OFF;
+                break;
+            case vanes_4:
                 this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
                 break;
-            default:
-                // itoa(value, strtmp, 10);
-                // output_P(status, PSTR(TOPIC_VANES), strtmp);
-                this->swing_mode = climate::CLIMATE_SWING_OFF;
+            case vanes_swing:
+                this->swing_mode = climate::CLIMATE_SWING_BOTH;
+                break;
             }
-            vanes_pos_.publish_state(value);
             this->publish_state();
             break;
         case status_troom:
@@ -473,8 +482,7 @@ protected:
         if (call.get_target_temperature().has_value()) {
             this->target_temperature = *call.get_target_temperature();
 
-            tsetpoint_ = (uint)roundf(
-                clamp(this->target_temperature, minimum_temperature_, maximum_temperature_));
+            tsetpoint_ = clamp(this->target_temperature, minimum_temperature_, maximum_temperature_);
 
             mhi_ac_ctrl_core.set_tsetpoint((byte)(2 * tsetpoint_));
         }
@@ -483,16 +491,16 @@ protected:
             this->fan_mode = *call.get_fan_mode();
 
             switch (*this->fan_mode) {
-            case climate::CLIMATE_FAN_QUIET:
+            case climate::CLIMATE_FAN_LOW:
                 fan_ = 0;
                 break;
-            case climate::CLIMATE_FAN_LOW:
+            case climate::CLIMATE_FAN_MEDIUM:
                 fan_ = 1;
                 break;
-            case climate::CLIMATE_FAN_MEDIUM:
+            case climate::CLIMATE_FAN_HIGH:
                 fan_ = 2;
                 break;
-            case climate::CLIMATE_FAN_HIGH:
+            case climate::CLIMATE_FAN_DIFFUSE:
                 fan_ = 6;
                 break;
             case climate::CLIMATE_FAN_AUTO:
@@ -508,16 +516,22 @@ protected:
             this->swing_mode = *call.get_swing_mode();
 
             switch (this->swing_mode) {
-            case climate::CLIMATE_SWING_VERTICAL:
-                mhi_ac_ctrl_core.set_vanes(vanes_);
+            case climate::CLIMATE_SWING_BOTH:
                 vanes_ = vanes_swing;
+                break;
+            case climate::CLIMATE_SWING_VERTICAL:
+                vanes_ = vanes_4;
+                break;
+            case climate::CLIMATE_SWING_HORIZONTAL:
+                vanes_ = vanes_1;
                 break;
             default:
             case climate::CLIMATE_SWING_OFF:
-                vanes_ = vanes_unknown;
-                mhi_ac_ctrl_core.set_vanes(vanes_);
+                vanes_ = vanes_3;
                 break;
             }
+            
+            mhi_ac_ctrl_core.set_vanes(vanes_);
         }
 
         this->publish_state();
@@ -533,18 +547,18 @@ protected:
         traits.set_visual_min_temperature(this->minimum_temperature_);
         traits.set_visual_max_temperature(this->maximum_temperature_);
         traits.set_visual_temperature_step(this->temperature_step_);
-        traits.set_supported_fan_modes({ CLIMATE_FAN_AUTO, CLIMATE_FAN_QUIET, CLIMATE_FAN_LOW, CLIMATE_FAN_MEDIUM, CLIMATE_FAN_HIGH });
-        traits.set_supported_swing_modes({ CLIMATE_SWING_OFF, CLIMATE_SWING_VERTICAL });
+        traits.set_supported_fan_modes({ CLIMATE_FAN_AUTO, CLIMATE_FAN_LOW, CLIMATE_FAN_MEDIUM, CLIMATE_FAN_HIGH, CLIMATE_FAN_DIFFUSE });
+        traits.set_supported_swing_modes({ CLIMATE_SWING_OFF, CLIMATE_SWING_BOTH, CLIMATE_SWING_VERTICAL, CLIMATE_SWING_HORIZONTAL });
         return traits;
     }
 
     float minimum_temperature_ { 18.0f };
     float maximum_temperature_ { 30.0f };
-    float temperature_step_ { 1.0f };
+    float temperature_step_ { 0.5f };
 
     ACPower power_;
     ACMode mode_;
-    uint tsetpoint_;
+    float tsetpoint_;
     uint fan_;
     ACVanes vanes_;
 
