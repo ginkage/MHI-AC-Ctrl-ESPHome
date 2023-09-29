@@ -99,6 +99,7 @@ sensor:
       - name: ${devicename} Outdoor unit discharge pipe
       - name: ${devicename} Outdoor unit discharge pipe super heat
       - name: ${devicename} Protection error state
+      - name: ${devicename} Vanes Left Right
 
 binary_sensor:
   - platform: custom

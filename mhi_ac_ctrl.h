@@ -253,6 +253,20 @@ public:
             }
             this->publish_state();
             break;
+        case status_3Dauto:
+            switch (value) {
+            case 0b00000000:
+                this->swing_mode = climate::CLIMATE_SWING_OFF;
+                break;
+            case 0b00000100:
+                this->swing_mode = climate::CLIMATE_SWING_OFF;
+                break;
+            }
+            this->publish_state();
+            break;
+        case status_vanesLR:
+            vanesLR_.publish_state(value);
+            break;
         case status_troom:
             // dtostrf((value - 61) / 4.0, 0, 2, strtmp);
             // output_P(status, PSTR(TOPIC_TROOM), strtmp);
@@ -419,7 +433,8 @@ public:
             &outdoor_unit_expansion_valve_,
             &outdoor_unit_discharge_pipe_,
             &outdoor_unit_discharge_pipe_super_heat_,
-            &protection_state_number_
+            &protection_state_number_,
+            &vanesLR_
         };
     }
 
@@ -517,7 +532,8 @@ protected:
 
             switch (this->swing_mode) {
             case climate::CLIMATE_SWING_BOTH:
-                vanes_ = vanes_swing;
+                // vanes_ = vanes_swing;
+                mhi_ac_ctrl_core.set_set_3Dauto(0b00000100); // Set swing to 3Dauto
                 break;
             case climate::CLIMATE_SWING_VERTICAL:
                 vanes_ = vanes_4;
@@ -531,7 +547,9 @@ protected:
                 break;
             }
             
-            mhi_ac_ctrl_core.set_vanes(vanes_);
+            if (this->swing_mode != climate::CLIMATE_SWING_BOTH) {
+                mhi_ac_ctrl_core.set_vanes(vanes_);
+            }
         }
 
         this->publish_state();
@@ -585,4 +603,5 @@ protected:
     Sensor outdoor_unit_discharge_pipe_super_heat_;
     Sensor protection_state_number_;
     TextSensor protection_state_;
+    Sensor vanesLR_
 };
