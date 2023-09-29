@@ -533,7 +533,7 @@ protected:
             switch (this->swing_mode) {
             case climate::CLIMATE_SWING_BOTH:
                 // vanes_ = vanes_swing;
-                mhi_ac_ctrl_core.set_set_3Dauto(0b00000100); // Set swing to 3Dauto
+                mhi_ac_ctrl_core.set_3Dauto(0b00000100); // Set swing to 3Dauto
                 break;
             case climate::CLIMATE_SWING_VERTICAL:
                 vanes_ = vanes_4;
