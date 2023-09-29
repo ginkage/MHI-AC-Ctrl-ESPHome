@@ -603,5 +603,5 @@ protected:
     Sensor outdoor_unit_discharge_pipe_super_heat_;
     Sensor protection_state_number_;
     TextSensor protection_state_;
-    Sensor vanesLR_
+    Sensor vanesLR_;
 };
