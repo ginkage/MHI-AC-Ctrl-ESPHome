@@ -258,9 +258,11 @@ public:
             switch (value) {
             case 0b00000000:
                 this->swing_mode = climate::CLIMATE_SWING_OFF;
+                Dauto_.publish_state(false);
                 break;
             case 0b00000100:
-                this->swing_mode = climate::CLIMATE_SWING_OFF;
+                this->swing_mode = climate::CLIMATE_SWING_BOTH;
+                Dauto_.publish_state(true);
                 break;
             }
             this->publish_state();
@@ -435,7 +437,8 @@ public:
             &outdoor_unit_discharge_pipe_,
             &outdoor_unit_discharge_pipe_super_heat_,
             &protection_state_number_,
-            &vanesLR_
+            &vanesLR_,
+            &Dauto_
         };
     }
 
@@ -610,4 +613,5 @@ protected:
     Sensor protection_state_number_;
     TextSensor protection_state_;
     Sensor vanesLR_;
+    Sensor Dauto_;
 };
