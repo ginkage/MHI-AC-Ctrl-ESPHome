@@ -461,6 +461,11 @@ public:
         ESP_LOGD("mhi_ac_ctrl", "set vanes: %i", value);
     }
 
+    void set_vanesLR(int value) {
+        mhi_ac_ctrl_core.set_vanesLR(value);
+        ESP_LOGD("mhi_ac_ctrl", "set vanes Left Right: %i", value);
+    }
+
 protected:
     /// Transmit the state of this climate controller.
     void control(const climate::ClimateCall& call) override
