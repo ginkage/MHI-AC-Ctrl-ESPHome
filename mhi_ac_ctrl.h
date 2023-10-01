@@ -257,7 +257,6 @@ public:
         case status_3Dauto:
             switch (value) {
             case 0b00000000:
-                this->swing_mode = climate::CLIMATE_SWING_OFF;
                 Dauto_.publish_state(false);
                 break;
             case 0b00000100:
@@ -466,6 +465,19 @@ public:
 
     void set_vanesLR(int value) {
         mhi_ac_ctrl_core.set_vanesLR(value);
+        ESP_LOGD("mhi_ac_ctrl", "set vanes Left Right: %i", value);
+    }
+
+    void set_3Dauto(bool value) {
+        ESP_LOGD("mhi_ac_ctrl", "set 3D auto: %s", value);
+        if (value){
+            mhi_ac_ctrl_core.set_3Dauto(AC3Dauto::Dauto_on); // Set swing to 3Dauto
+            ESP_LOGD("mhi_ac_ctrl", "set 3D auto: on");
+        }
+        else {
+            mhi_ac_ctrl_core.set_3Dauto(AC3Dauto::Dauto_off); // Set swing to 3Dauto
+            ESP_LOGD("mhi_ac_ctrl", "set 3D auto: off");
+        }
         ESP_LOGD("mhi_ac_ctrl", "set vanes Left Right: %i", value);
     }
 
