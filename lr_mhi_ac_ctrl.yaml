@@ -219,9 +219,13 @@ switch:
     optimistic: true
     turn_on_action:
       - lambda: |-
-          ESP_LOGD("main", "Turn on 3DAuto");
-          return ((MhiAcCtrl*)id(${deviceid}))->set_3Dauto(1);
+          if (id(Dauto_received).state !=1){
+            ESP_LOGD("main", "Turn on 3DAuto");
+            return ((MhiAcCtrl*)id(${deviceid}))->set_3Dauto(1);
+          }
     turn_off_action:
       - lambda: |-
-          ESP_LOGD("main", "Turn off 3DAuto");
-          return ((MhiAcCtrl*)id(${deviceid}))->set_3Dauto(0);
+          if (id(Dauto_received).state !=0){
+            ESP_LOGD("main", "Turn off 3DAuto");
+            return ((MhiAcCtrl*)id(${deviceid}))->set_3Dauto(0);
+          }
