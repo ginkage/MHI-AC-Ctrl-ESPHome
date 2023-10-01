@@ -203,6 +203,7 @@ switch:
   - platform: template
     name: "3D Auto"
     id: fan_control_3Dauto
+    icon: mdi:video-3d
     optimistic: true
     turn_on_action:
       - lambda: |-
