@@ -252,6 +252,7 @@ public:
                 this->swing_mode = climate::CLIMATE_SWING_BOTH;
                 break;
             }
+            vanes_pos_.publish_state(value);
             this->publish_state();
             break;
         case status_3Dauto:
