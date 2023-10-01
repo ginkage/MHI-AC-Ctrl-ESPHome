@@ -123,6 +123,19 @@ sensor:
                   id(fan_control_lr).publish_state("Swing");
                 }
       - name: ${devicename} 3D Auto
+        id: Dauto_received
+        on_value:
+          then:
+            - lambda: |-
+                bool received_value = id(Dauto_received).state;
+                if (received_value) {
+                  ESP_LOGD("main", "received 3DAuto from AC");
+                  id(fan_control_3Dauto).publish_state(true);
+                }
+                else {
+                  ESP_LOGD("main", "received 3DAuto off from AC");
+                  id(fan_control_3Dauto).publish_state(false);
+                }
 
 binary_sensor:
   - platform: custom
@@ -186,3 +199,16 @@ select:
             return ((MhiAcCtrl*)id(${deviceid}))->set_vanesLR(8);
           }
 
+switch:
+  - platform: template
+    name: "3D Auto"
+    id: fan_control_3Dauto
+    optimistic: true
+    turn_on_action:
+      - lambda: |-
+          ESP_LOGD("main", "Turn on 3DAuto");
+          return ((MhiAcCtrl*)id(${deviceid}))->set_3Dauto(1);
+    turn_off_action:
+      - lambda: |-
+          ESP_LOGD("main", "Turn off 3DAuto");
+          return ((MhiAcCtrl*)id(${deviceid}))->set_3Dauto(0);
