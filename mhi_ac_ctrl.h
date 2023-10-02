@@ -250,6 +250,7 @@ public:
             }
             }
             else {
+                switch (value) {
                 case vanes_unknown:
                 case vanes_1:
                 case vanes_2:
@@ -260,6 +261,7 @@ public:
                 case vanes_swing:
                     this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
                     break;
+                }
 
             }
             vanes_pos_.publish_state(value);
