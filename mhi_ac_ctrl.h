@@ -160,6 +160,8 @@ public:
         }
         int vanesLR_swing_value = vanesLR_swing;
         int vanesLR_sensor_value = vanesLR_.state;
+        int vanesUD_swing_value = vanes_swing;
+        int vanesUD_sensor_value = vanes_.state;
 
         switch (status) {
         case status_power:
@@ -266,6 +268,43 @@ public:
             vanes_pos_.publish_state(value);
             this->publish_state();
             break;
+        case status_vanesLR:
+            if (vanesUD_sensor_value == vanesUD_swing_value) {
+                switch (value) {
+                    case vanesLR_1:
+                    case vanesLR_2:
+                    case vanesLR_3:
+                    case vanesLR_4:
+                    case vanesLR_5:
+                    case vanesLR_6:
+                    case vanesLR_7:
+                        this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
+                        break;
+                    case vanesLR_swing:
+                        this->swing_mode = climate::CLIMATE_SWING_BOTH;
+                        break;
+                }
+            }
+            else {
+                switch (value) {
+                    case vanesLR_1:
+                    case vanesLR_2:
+                    case vanesLR_3:
+                    case vanesLR_4:
+                    case vanesLR_5:
+                    case vanesLR_6:
+                    case vanesLR_7:
+                        this->swing_mode = climate::CLIMATE_SWING_OFF;
+                        break;
+                    case vanesLR_swing:
+                        this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
+                        break;
+                }
+
+            }
+            this->publish_state();
+            vanesLR_.publish_state(value);
+            break;
         case status_3Dauto:
             switch (value) {
             case 0b00000000:
@@ -277,9 +316,6 @@ public:
                 break;
             }
             this->publish_state();
-            break;
-        case status_vanesLR:
-            vanesLR_.publish_state(value);
             break;
         case status_troom:
             // dtostrf((value - 61) / 4.0, 0, 2, strtmp);
