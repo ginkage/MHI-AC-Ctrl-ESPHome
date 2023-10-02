@@ -232,25 +232,32 @@ public:
             this->publish_state();
             break;
         case status_vanes:
+            if (status_vanesLR_ = vanesLR_swing) {
             switch (value) {
             case vanes_unknown:
-                this->swing_mode = climate::CLIMATE_SWING_OFF;
-                break;
             case vanes_1:
-                this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
-                break;
             case vanes_2:
-                this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
-                break;
             case vanes_3:
-                this->swing_mode = climate::CLIMATE_SWING_OFF;
-                break;
             case vanes_4:
                 this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
                 break;
             case vanes_swing:
                 this->swing_mode = climate::CLIMATE_SWING_BOTH;
                 break;
+            }
+            }
+            else {
+                case vanes_unknown:
+                case vanes_1:
+                case vanes_2:
+                case vanes_3:
+                case vanes_4:
+                    this->swing_mode = climate::CLIMATE_SWING_Off;
+                    break;
+                case vanes_swing:
+                    this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
+                    break;
+
             }
             vanes_pos_.publish_state(value);
             this->publish_state();
