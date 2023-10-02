@@ -137,7 +137,7 @@ static byte MOSI_frame[33];
 
   static uint call_counter = 0;           // counts how often this loop was called
   static unsigned long lastTroomInternalMillis = 0; // remember when Troom internal has changed
-  if (frameSize == 33 )
+  if (frameSize == 33)
     MISO_frame[0] = 0xAA;
 
    
@@ -220,7 +220,7 @@ static byte MOSI_frame[33];
   MISO_frame[CBH] = highByte(checksum);
   MISO_frame[CBL] = lowByte(checksum);
 
-  if (frameSize == 33 ) { // Only for framesize 33 (WF-RAC)
+  if (frameSize == 33) { // Only for framesize 33 (WF-RAC)
     MISO_frame[DB16] = 0;
     MISO_frame[DB16] |= new_VanesLR1;
     MISO_frame[DB17] = 0;
@@ -267,7 +267,7 @@ static byte MOSI_frame[33];
   if ((MOSI_frame[CBH] << 8 | MOSI_frame[CBL]) != checksum)
     return err_msg_invalid_checksum;
 
-  if (frameSize == 33 ) { // Only for framesize 33 (WF-RAC)
+  if (frameSize == 33) { // Only for framesize 33 (WF-RAC)
     checksum = calc_checksumFrame33(MOSI_frame);
     if ( MOSI_frame[CBL2] != lowByte(checksum ) ) 
       return err_msg_invalid_checksum;
@@ -275,7 +275,7 @@ static byte MOSI_frame[33];
 
   if (new_datapacket_received) {
 
-    if (frameSize == 33 ) { // Only for framesize 33 (WF-RAC)
+    if (frameSize == 33) { // Only for framesize 33 (WF-RAC)
       byte vanesLRtmp = (MOSI_frame[DB16] & 0x07) + ((MOSI_frame[DB17] & 0x01) << 4);
       if (vanesLRtmp != status_vanesLR_old) { // Vanes Left Right
         if ((vanesLRtmp & 0x10) != 0) // Vanes LR status swing
