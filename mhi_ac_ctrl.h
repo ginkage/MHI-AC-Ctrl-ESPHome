@@ -161,7 +161,7 @@ public:
         int vanesLR_swing_value = vanesLR_swing;
         int vanesLR_sensor_value = vanesLR_.state;
         int vanesUD_swing_value = vanes_swing;
-        int vanesUD_sensor_value = vanes_.state;
+        int vanesUD_sensor_value = vanes_pos_.state;
 
         switch (status) {
         case status_power:
