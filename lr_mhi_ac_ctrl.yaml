@@ -117,9 +117,9 @@ sensor:
                 } else if (received_value == 5.0) {
                   id(fan_control_lr).publish_state("Right");
                 } else if (received_value == 6.0) {
-                  id(fan_control_lr).publish_state("Left/Right");
+                  id(fan_control_lr).publish_state("Wide");
                 } else if (received_value == 7.0) {
-                  id(fan_control_lr).publish_state("Right/Left");
+                  id(fan_control_lr).publish_state("Spot");
                 } else if (received_value == 8.0) {
                   id(fan_control_lr).publish_state("Swing");
                 }
@@ -176,8 +176,8 @@ select:
       - "Center"
       - "Center/Right"
       - "Right"
-      - "Left/Right"
-      - "Right/Left"
+      - "Wide"
+      - "Spot"
       - "Swing"
     on_value:
       - lambda: |-
@@ -196,9 +196,9 @@ select:
             vanesLR = 4;
           } else if (id(fan_control_lr).state == "Right") {
             vanesLR = 5;
-          } else if (id(fan_control_lr).state == "Left/Right") {
+          } else if (id(fan_control_lr).state == "Wide") {
             vanesLR = 6;
-          } else if (id(fan_control_lr).state == "Right/Left") {
+          } else if (id(fan_control_lr).state == "Spot") {
             vanesLR = 7;
           } else if (id(fan_control_lr).state == "Swing") {
             vanesLR = 8;
