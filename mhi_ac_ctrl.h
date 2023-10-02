@@ -252,7 +252,7 @@ public:
                 case vanes_2:
                 case vanes_3:
                 case vanes_4:
-                    this->swing_mode = climate::CLIMATE_SWING_Off;
+                    this->swing_mode = climate::CLIMATE_SWING_OFF;
                     break;
                 case vanes_swing:
                     this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
