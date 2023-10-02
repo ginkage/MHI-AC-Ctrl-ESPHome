@@ -158,6 +158,8 @@ public:
             this->mode = climate::CLIMATE_MODE_OFF;
             this->publish_state();
         }
+        int vanesLR_swing_value = vanesLR_swing;
+        int vanesLR_sensor_value = vanesLR_.state;
 
         switch (status) {
         case status_power:
@@ -232,9 +234,6 @@ public:
             this->publish_state();
             break;
         case status_vanes:
-            int vanesLR_swing_value = vanesLR_swing;
-            int vanesLR_sensor_value = vanesLR_.state;
-            
             if (vanesLR_sensor_value == vanesLR_swing_value) {
             switch (value) {
             case vanes_unknown:
