@@ -232,7 +232,7 @@ public:
             this->publish_state();
             break;
         case status_vanes:
-            if (vanesLR_ = vanesLR_swing) {
+            if (vanesLR_ == vanesLR_swing) {
             switch (value) {
             case vanes_unknown:
             case vanes_1:
