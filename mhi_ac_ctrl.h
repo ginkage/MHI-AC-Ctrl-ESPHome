@@ -218,16 +218,16 @@ public:
         case status_fan:
             switch (value) {
             case 0:
-                this->fan_mode = climate::CLIMATE_FAN_LOW;
+                this->fan_mode = climate::CLIMATE_FAN_QUIET;
                 break;
             case 1:
-                this->fan_mode = climate::CLIMATE_FAN_MEDIUM;
+                this->fan_mode = climate::CLIMATE_FAN_LOW;
                 break;
             case 2:
-                this->fan_mode = climate::CLIMATE_FAN_HIGH;
+                this->fan_mode = climate::CLIMATE_FAN_MEDIUM;
                 break;
             case 6:
-                this->fan_mode = climate::CLIMATE_FAN_DIFFUSE;
+                this->fan_mode = climate::CLIMATE_FAN_HIGH;
                 break;
             case 7:
                 this->fan_mode = climate::CLIMATE_FAN_AUTO;
@@ -639,7 +639,7 @@ protected:
         traits.set_visual_min_temperature(this->minimum_temperature_);
         traits.set_visual_max_temperature(this->maximum_temperature_);
         traits.set_visual_temperature_step(this->temperature_step_);
-        traits.set_supported_fan_modes({ CLIMATE_FAN_AUTO, CLIMATE_FAN_LOW, CLIMATE_FAN_MEDIUM, CLIMATE_FAN_HIGH, CLIMATE_FAN_DIFFUSE });
+        traits.set_supported_fan_modes({ CLIMATE_FAN_AUTO, CLIMATE_FAN_QUIET, CLIMATE_FAN_LOW, CLIMATE_FAN_MEDIUM, CLIMATE_FAN_HIGH });
         traits.set_supported_swing_modes({ CLIMATE_SWING_OFF, CLIMATE_SWING_BOTH, CLIMATE_SWING_VERTICAL, CLIMATE_SWING_HORIZONTAL });
         return traits;
     }
