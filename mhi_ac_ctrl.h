@@ -159,7 +159,7 @@ public:
             this->publish_state();
         }
         int vanesLR_swing_value = vanesLR_swing;
-        int vanesLR_sensor_value = vanesLR_.state;
+        int vanesLR_sensor_value = vanesLR_pos_.state;
         int vanesUD_swing_value = vanes_swing;
         int vanesUD_sensor_value = vanes_pos_.state;
         
@@ -281,7 +281,7 @@ public:
                     case vanesLR_6:
                     case vanesLR_7:
                         this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
-                        vanesLR_old_.publish_state(value);
+                        vanesLR_pos_old_.publish_state(value);
                         break;
                     case vanesLR_swing:
                         this->swing_mode = climate::CLIMATE_SWING_BOTH;
@@ -298,7 +298,7 @@ public:
                     case vanesLR_6:
                     case vanesLR_7:
                         this->swing_mode = climate::CLIMATE_SWING_OFF;
-                        vanesLR_old_.publish_state(value);
+                        vanesLR_pos_old_.publish_state(value);
                         break;
                     case vanesLR_swing:
                         this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
@@ -307,7 +307,7 @@ public:
 
             }
             this->publish_state();
-            vanesLR_.publish_state(value);
+            vanesLR_pos_.publish_state(value);
             break;
         case status_3Dauto:
             switch (value) {
@@ -315,7 +315,6 @@ public:
                 Dauto_.publish_state(false);
                 break;
             case 0b00000100:
-                this->swing_mode = climate::CLIMATE_SWING_BOTH;
                 Dauto_.publish_state(true);
                 break;
             }
@@ -488,8 +487,8 @@ public:
             &outdoor_unit_discharge_pipe_,
             &outdoor_unit_discharge_pipe_super_heat_,
             &protection_state_number_,
-            &vanesLR_,
-            &Dauto_
+            &vanesLR_pos_,
+            &Dauto_,
         };
     }
 
@@ -602,37 +601,29 @@ protected:
 
         if (call.get_swing_mode().has_value()) {
             this->swing_mode = *call.get_swing_mode();
-            
-            vanesLR_ = vanesLR_4;
-            ifdef vanesLR_old_ {
-                vanesLR = vanesLR_old_;
-            }
-            vanes_ = vanes_3;
-            ifdef vanes_pos_old_ {
-                vanes_ = vanes_pos_old_;
-            }
+            int vanesLR_pos_old_value = vanesLR_pos_old_.has_state() ? vanesLR_pos_old_.state : 4;
+            int vanes_pos_old_value = vanes_pos_old_.has_state() ? vanes_pos_old_.state : 4;
+            vanesLR_ = static_cast<ACVanesLR>(vanesLR_pos_old_value);
+            vanes_ = static_cast<ACVanes>(vanes_pos_old_value);
+
             switch (this->swing_mode) {
             case climate::CLIMATE_SWING_OFF:
-                mhi_ac_ctrl_core.set_vanesLR(vanesLR_); // Set vanesLR
-                mhi_ac_ctrl_core.set_vanes(vanes_); // Set vanes
                 break;
             case climate::CLIMATE_SWING_VERTICAL:
                 vanes_ = vanes_swing;
-                mhi_ac_ctrl_core.set_vanes(vanes_); // Set vanes to swing
                 break;
             case climate::CLIMATE_SWING_HORIZONTAL:
                 vanesLR_ = vanesLR_swing;
-                mhi_ac_ctrl_core.set_vanesLR(vanesLR_); // Set vanesLR to swing
                 break;
             default:
             case climate::CLIMATE_SWING_BOTH:
                 // vanes_ = vanes_swing;
                 vanesLR_ = vanesLR_swing;
-                mhi_ac_ctrl_core.set_vanesLR(vanesLR_); // Set vanesLR to swing
                 vanes_ = vanes_swing;
-                mhi_ac_ctrl_core.set_vanes(vanes_); // Set vanes to swing
                 break;
             }
+            mhi_ac_ctrl_core.set_vanesLR(vanesLR_); // Set vanesLR to swing
+            mhi_ac_ctrl_core.set_vanes(vanes_); // Set vanes to swing
         }
 
         this->publish_state();
@@ -662,6 +653,7 @@ protected:
     float tsetpoint_;
     uint fan_;
     ACVanes vanes_;
+    ACVanesLR vanesLR_;
 
     MHI_AC_Ctrl_Core mhi_ac_ctrl_core;
 
@@ -687,7 +679,7 @@ protected:
     Sensor outdoor_unit_discharge_pipe_super_heat_;
     Sensor protection_state_number_;
     TextSensor protection_state_;
-    Sensor vanesLR_;
-    Sensor vanesLR_old_;
+    Sensor vanesLR_pos_;
+    Sensor vanesLR_pos_old_;
     Sensor Dauto_;
 };

@@ -91,6 +91,22 @@ sensor:
       - name: ${devicename} compressor total run time
       - name: ${devicename} vanes
         id: vanes_UD_received
+        on_value:
+          then:
+            - lambda: |-
+                float received_value = id(vanes_UD_received).state;
+                if (received_value == 1.0) {
+                  id(fan_control_ud).publish_state("Up");
+                } else if (received_value == 2.0) {
+                  id(fan_control_ud).publish_state("Up/Center");
+                } else if (received_value == 3.0) {
+                  id(fan_control_ud).publish_state("Center/Down");
+                } else if (received_value == 4.0) {
+                  id(fan_control_ud).publish_state("Down");
+                } else if (received_value == 5.0) {
+                  id(fan_control_ud).publish_state("Swing");
+                }
+
       - name: ${devicename} energy used
       - name: ${devicename} Indoor (U-bend) HE temp 1
       - name: ${devicename} Indoor (capillary) HE temp 2
@@ -170,7 +186,7 @@ select:
     icon: mdi:arrow-left-right
     optimistic: true
     options:
-      - "3D Auto"
+      # - "3D Auto"
       - "Left"
       - "Left/Center"
       - "Center"
@@ -217,7 +233,7 @@ select:
     icon: mdi:arrow-up-down
     optimistic: true
     options:
-      - "3D Auto"
+      # - "3D Auto"
       - "Up"
       - "Up/Center"
       - "Center/Down"
