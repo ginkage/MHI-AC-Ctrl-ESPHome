@@ -578,16 +578,16 @@ protected:
             this->fan_mode = *call.get_fan_mode();
 
             switch (*this->fan_mode) {
-            case climate::CLIMATE_FAN_LOW:
+            case climate::CLIMATE_FAN_QUIET:
                 fan_ = 0;
                 break;
-            case climate::CLIMATE_FAN_MEDIUM:
+            case climate::CLIMATE_FAN_LOW:
                 fan_ = 1;
                 break;
-            case climate::CLIMATE_FAN_HIGH:
+            case climate::CLIMATE_FAN_MEDIUM:
                 fan_ = 2;
                 break;
-            case climate::CLIMATE_FAN_DIFFUSE:
+            case climate::CLIMATE_FAN_HIGH:
                 fan_ = 6;
                 break;
             case climate::CLIMATE_FAN_AUTO:
