@@ -603,13 +603,13 @@ protected:
         if (call.get_swing_mode().has_value()) {
             this->swing_mode = *call.get_swing_mode();
             
-            vanesLR_ = vanesLR_4
+            vanesLR_ = vanesLR_4;
             ifdef vanesLR_old_ {
-                vanesLR = vanesLR_old_
+                vanesLR = vanesLR_old_;
             }
-            vanes_ = vanes_3
+            vanes_ = vanes_3;
             ifdef vanes_pos_old_ {
-                vanes_ = vanes_pos_old_
+                vanes_ = vanes_pos_old_;
             }
             switch (this->swing_mode) {
             case climate::CLIMATE_SWING_OFF:
@@ -617,19 +617,19 @@ protected:
                 mhi_ac_ctrl_core.set_vanes(vanes_); // Set vanes
                 break;
             case climate::CLIMATE_SWING_VERTICAL:
-                vanes_ = vanes_swing
+                vanes_ = vanes_swing;
                 mhi_ac_ctrl_core.set_vanes(vanes_); // Set vanes to swing
                 break;
             case climate::CLIMATE_SWING_HORIZONTAL:
-                vanesLR_ = vanesLR_swing
+                vanesLR_ = vanesLR_swing;
                 mhi_ac_ctrl_core.set_vanesLR(vanesLR_); // Set vanesLR to swing
                 break;
             default:
             case climate::CLIMATE_SWING_BOTH:
                 // vanes_ = vanes_swing;
-                vanesLR_ = vanesLR_swing
+                vanesLR_ = vanesLR_swing;
                 mhi_ac_ctrl_core.set_vanesLR(vanesLR_); // Set vanesLR to swing
-                vanes_ = vanes_swing
+                vanes_ = vanes_swing;
                 mhi_ac_ctrl_core.set_vanes(vanes_); // Set vanes to swing
                 break;
             }
