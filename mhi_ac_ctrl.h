@@ -162,7 +162,7 @@ public:
         int vanesLR_sensor_value = vanesLR_.state;
         int vanesUD_swing_value = vanes_swing;
         int vanesUD_sensor_value = vanes_pos_.state;
-
+        
         switch (status) {
         case status_power:
             if (value == power_on) {
@@ -237,31 +237,33 @@ public:
             break;
         case status_vanes:
             if (vanesLR_sensor_value == vanesLR_swing_value) {
-            switch (value) {
-            case vanes_unknown:
-            case vanes_1:
-            case vanes_2:
-            case vanes_3:
-            case vanes_4:
-                this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
-                break;
-            case vanes_swing:
-                this->swing_mode = climate::CLIMATE_SWING_BOTH;
-                break;
-            }
+                switch (value) {
+                    case vanes_unknown:
+                    case vanes_1:
+                    case vanes_2:
+                    case vanes_3:
+                    case vanes_4:
+                        this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
+                        vanes_pos_old_.publish_state(value);
+                        break;
+                    case vanes_swing:
+                        this->swing_mode = climate::CLIMATE_SWING_BOTH;
+                        break;
+                }
             }
             else {
                 switch (value) {
-                case vanes_unknown:
-                case vanes_1:
-                case vanes_2:
-                case vanes_3:
-                case vanes_4:
-                    this->swing_mode = climate::CLIMATE_SWING_OFF;
-                    break;
-                case vanes_swing:
-                    this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
-                    break;
+                    case vanes_unknown:
+                    case vanes_1:
+                    case vanes_2:
+                    case vanes_3:
+                    case vanes_4:
+                        this->swing_mode = climate::CLIMATE_SWING_OFF;
+                        vanes_pos_old_.publish_state(value);
+                        break;
+                    case vanes_swing:
+                        this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
+                        break;
                 }
 
             }
@@ -279,6 +281,7 @@ public:
                     case vanesLR_6:
                     case vanesLR_7:
                         this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
+                        vanesLR_old_.publish_state(value);
                         break;
                     case vanesLR_swing:
                         this->swing_mode = climate::CLIMATE_SWING_BOTH;
@@ -295,6 +298,7 @@ public:
                     case vanesLR_6:
                     case vanesLR_7:
                         this->swing_mode = climate::CLIMATE_SWING_OFF;
+                        vanesLR_old_.publish_state(value);
                         break;
                     case vanesLR_swing:
                         this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
@@ -598,26 +602,36 @@ protected:
 
         if (call.get_swing_mode().has_value()) {
             this->swing_mode = *call.get_swing_mode();
-
+            
+            vanesLR_ = vanesLR_4
+            ifdef vanesLR_old_ {
+                vanesLR = vanesLR_old_
+            }
+            vanes_ = vanes_3
+            ifdef vanes_pos_old_ {
+                vanes_ = vanes_pos_old_
+            }
             switch (this->swing_mode) {
-            case climate::CLIMATE_SWING_BOTH:
-                // vanes_ = vanes_swing;
-                mhi_ac_ctrl_core.set_3Dauto(AC3Dauto::Dauto_on); // Set swing to 3Dauto
+            case climate::CLIMATE_SWING_OFF:
+                mhi_ac_ctrl_core.set_vanesLR(vanesLR_); // Set vanesLR
+                mhi_ac_ctrl_core.set_vanes(vanes_); // Set vanes
                 break;
             case climate::CLIMATE_SWING_VERTICAL:
-                vanes_ = vanes_4;
+                vanes_ = vanes_swing
+                mhi_ac_ctrl_core.set_vanes(vanes_); // Set vanes to swing
                 break;
             case climate::CLIMATE_SWING_HORIZONTAL:
-                vanes_ = vanes_1;
+                vanesLR_ = vanesLR_swing
+                mhi_ac_ctrl_core.set_vanesLR(vanesLR_); // Set vanesLR to swing
                 break;
             default:
-            case climate::CLIMATE_SWING_OFF:
-                vanes_ = vanes_3;
+            case climate::CLIMATE_SWING_BOTH:
+                // vanes_ = vanes_swing;
+                vanesLR_ = vanesLR_swing
+                mhi_ac_ctrl_core.set_vanesLR(vanesLR_); // Set vanesLR to swing
+                vanes_ = vanes_swing
+                mhi_ac_ctrl_core.set_vanes(vanes_); // Set vanes to swing
                 break;
-            }
-            
-            if (this->swing_mode != climate::CLIMATE_SWING_BOTH) {
-                mhi_ac_ctrl_core.set_vanes(vanes_);
             }
         }
 
@@ -662,6 +676,7 @@ protected:
     Sensor current_power_;
     BinarySensor defrost_;
     Sensor vanes_pos_;
+    Sensor vanes_pos_old_;
     Sensor energy_used_;
     Sensor indoor_unit_thi_r1_;
     Sensor indoor_unit_thi_r2_;
@@ -673,5 +688,6 @@ protected:
     Sensor protection_state_number_;
     TextSensor protection_state_;
     Sensor vanesLR_;
+    Sensor vanesLR_old_;
     Sensor Dauto_;
 };
