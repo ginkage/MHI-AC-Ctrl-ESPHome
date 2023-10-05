@@ -181,7 +181,7 @@ text_sensor:
 
 select:
   - platform: template
-    name: "Fan Control Left Right"
+    name: ${devicename} Fan Control Left Right
     id: fan_control_lr
     icon: mdi:arrow-left-right
     optimistic: true
@@ -228,7 +228,7 @@ select:
           }
 
   - platform: template
-    name: "Fan Control Up Down"
+    name: ${devicename} Fan Control Up Down
     id: fan_control_ud
     icon: mdi:arrow-up-down
     optimistic: true
@@ -267,7 +267,7 @@ select:
 
 switch:
   - platform: template
-    name: "3D Auto"
+    name: ${devicename} 3D Auto
     id: fan_control_3Dauto
     icon: mdi:video-3d
     optimistic: true
