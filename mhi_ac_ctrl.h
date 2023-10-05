@@ -236,6 +236,7 @@ public:
             this->publish_state();
             break;
         case status_vanes:
+            // Vanes Up Down, also known as Vertical
             if (vanesLR_sensor_value == vanesLR_swing_value) {
                 switch (value) {
                     case vanes_unknown:
@@ -243,7 +244,7 @@ public:
                     case vanes_2:
                     case vanes_3:
                     case vanes_4:
-                        this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
+                        this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
                         vanes_pos_old_.publish_state(value);
                         break;
                     case vanes_swing:
@@ -262,7 +263,7 @@ public:
                         vanes_pos_old_.publish_state(value);
                         break;
                     case vanes_swing:
-                        this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
+                        this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
                         break;
                 }
 
@@ -280,7 +281,7 @@ public:
                     case vanesLR_5:
                     case vanesLR_6:
                     case vanesLR_7:
-                        this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
+                        this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
                         vanesLR_pos_old_.publish_state(value);
                         break;
                     case vanesLR_swing:
@@ -301,7 +302,7 @@ public:
                         vanesLR_pos_old_.publish_state(value);
                         break;
                     case vanesLR_swing:
-                        this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
+                        this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
                         break;
                 }
 
