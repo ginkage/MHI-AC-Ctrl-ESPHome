@@ -123,6 +123,7 @@ public:
 
         mhi_ac_ctrl_core.MHIAcCtrlStatus(this);
         mhi_ac_ctrl_core.init();
+        mhi_ac_ctrl_core.set_frame_size(33); // switch to framesize 33 (like WF-RAC). Only 20 or 33 possible
     }
 
     void loop() override
@@ -157,7 +158,11 @@ public:
             this->mode = climate::CLIMATE_MODE_OFF;
             this->publish_state();
         }
-
+        int vanesLR_swing_value = vanesLR_swing;
+        int vanesLR_sensor_value = vanesLR_pos_.state;
+        int vanesUD_swing_value = vanes_swing;
+        int vanesUD_sensor_value = vanes_pos_.state;
+        
         switch (status) {
         case status_power:
             if (value == power_on) {
@@ -213,16 +218,16 @@ public:
         case status_fan:
             switch (value) {
             case 0:
-                this->fan_mode = climate::CLIMATE_FAN_LOW;
+                this->fan_mode = climate::CLIMATE_FAN_QUIET;
                 break;
             case 1:
-                this->fan_mode = climate::CLIMATE_FAN_MEDIUM;
+                this->fan_mode = climate::CLIMATE_FAN_LOW;
                 break;
             case 2:
-                this->fan_mode = climate::CLIMATE_FAN_HIGH;
+                this->fan_mode = climate::CLIMATE_FAN_MEDIUM;
                 break;
             case 6:
-                this->fan_mode = climate::CLIMATE_FAN_DIFFUSE;
+                this->fan_mode = climate::CLIMATE_FAN_HIGH;
                 break;
             case 7:
                 this->fan_mode = climate::CLIMATE_FAN_AUTO;
@@ -231,24 +236,87 @@ public:
             this->publish_state();
             break;
         case status_vanes:
+            // Vanes Up Down, also known as Vertical
+            if (vanesLR_sensor_value == vanesLR_swing_value) {
+                switch (value) {
+                    case vanes_unknown:
+                    case vanes_1:
+                    case vanes_2:
+                    case vanes_3:
+                    case vanes_4:
+                        this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
+                        vanes_pos_old_.publish_state(value);
+                        break;
+                    case vanes_swing:
+                        this->swing_mode = climate::CLIMATE_SWING_BOTH;
+                        break;
+                }
+            }
+            else {
+                switch (value) {
+                    case vanes_unknown:
+                    case vanes_1:
+                    case vanes_2:
+                    case vanes_3:
+                    case vanes_4:
+                        this->swing_mode = climate::CLIMATE_SWING_OFF;
+                        vanes_pos_old_.publish_state(value);
+                        break;
+                    case vanes_swing:
+                        this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
+                        break;
+                }
+
+            }
+            vanes_pos_.publish_state(value);
+            this->publish_state();
+            break;
+        case status_vanesLR:
+            if (vanesUD_sensor_value == vanesUD_swing_value) {
+                switch (value) {
+                    case vanesLR_1:
+                    case vanesLR_2:
+                    case vanesLR_3:
+                    case vanesLR_4:
+                    case vanesLR_5:
+                    case vanesLR_6:
+                    case vanesLR_7:
+                        this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
+                        vanesLR_pos_old_.publish_state(value);
+                        break;
+                    case vanesLR_swing:
+                        this->swing_mode = climate::CLIMATE_SWING_BOTH;
+                        break;
+                }
+            }
+            else {
+                switch (value) {
+                    case vanesLR_1:
+                    case vanesLR_2:
+                    case vanesLR_3:
+                    case vanesLR_4:
+                    case vanesLR_5:
+                    case vanesLR_6:
+                    case vanesLR_7:
+                        this->swing_mode = climate::CLIMATE_SWING_OFF;
+                        vanesLR_pos_old_.publish_state(value);
+                        break;
+                    case vanesLR_swing:
+                        this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
+                        break;
+                }
+
+            }
+            this->publish_state();
+            vanesLR_pos_.publish_state(value);
+            break;
+        case status_3Dauto:
             switch (value) {
-            case vanes_unknown:
-                this->swing_mode = climate::CLIMATE_SWING_OFF;
+            case 0b00000000:
+                Dauto_.publish_state(false);
                 break;
-            case vanes_1:
-                this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
-                break;
-            case vanes_2:
-                this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
-                break;
-            case vanes_3:
-                this->swing_mode = climate::CLIMATE_SWING_OFF;
-                break;
-            case vanes_4:
-                this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
-                break;
-            case vanes_swing:
-                this->swing_mode = climate::CLIMATE_SWING_BOTH;
+            case 0b00000100:
+                Dauto_.publish_state(true);
                 break;
             }
             this->publish_state();
@@ -419,7 +487,9 @@ public:
             &outdoor_unit_expansion_valve_,
             &outdoor_unit_discharge_pipe_,
             &outdoor_unit_discharge_pipe_super_heat_,
-            &protection_state_number_
+            &protection_state_number_,
+            &vanesLR_pos_,
+            &Dauto_,
         };
     }
 
@@ -443,6 +513,24 @@ public:
     void set_vanes(int value) {
         mhi_ac_ctrl_core.set_vanes(value);
         ESP_LOGD("mhi_ac_ctrl", "set vanes: %i", value);
+    }
+
+    void set_vanesLR(int value) {
+        mhi_ac_ctrl_core.set_vanesLR(value);
+        ESP_LOGD("mhi_ac_ctrl", "set vanes Left Right: %i", value);
+    }
+
+    void set_3Dauto(bool value) {
+        // ESP_LOGD("mhi_ac_ctrl", "set 3D auto: %s", value);
+        if (value){
+            ESP_LOGD("mhi_ac_ctrl", "set 3D auto: on");
+            mhi_ac_ctrl_core.set_3Dauto(AC3Dauto::Dauto_on); // Set swing to 3Dauto
+        }
+        else {
+            ESP_LOGD("mhi_ac_ctrl", "set 3D auto: off");
+            mhi_ac_ctrl_core.set_3Dauto(AC3Dauto::Dauto_off); // Set swing to 3Dauto
+        }
+        ESP_LOGD("mhi_ac_ctrl", "set vanes Left Right: %i", value);
     }
 
 protected:
@@ -491,16 +579,16 @@ protected:
             this->fan_mode = *call.get_fan_mode();
 
             switch (*this->fan_mode) {
-            case climate::CLIMATE_FAN_LOW:
+            case climate::CLIMATE_FAN_QUIET:
                 fan_ = 0;
                 break;
-            case climate::CLIMATE_FAN_MEDIUM:
+            case climate::CLIMATE_FAN_LOW:
                 fan_ = 1;
                 break;
-            case climate::CLIMATE_FAN_HIGH:
+            case climate::CLIMATE_FAN_MEDIUM:
                 fan_ = 2;
                 break;
-            case climate::CLIMATE_FAN_DIFFUSE:
+            case climate::CLIMATE_FAN_HIGH:
                 fan_ = 6;
                 break;
             case climate::CLIMATE_FAN_AUTO:
@@ -514,24 +602,29 @@ protected:
 
         if (call.get_swing_mode().has_value()) {
             this->swing_mode = *call.get_swing_mode();
+            int vanesLR_pos_old_value = vanesLR_pos_old_.has_state() ? vanesLR_pos_old_.state : 4;
+            int vanes_pos_old_value = vanes_pos_old_.has_state() ? vanes_pos_old_.state : 4;
+            vanesLR_ = static_cast<ACVanesLR>(vanesLR_pos_old_value);
+            vanes_ = static_cast<ACVanes>(vanes_pos_old_value);
 
             switch (this->swing_mode) {
-            case climate::CLIMATE_SWING_BOTH:
-                vanes_ = vanes_swing;
+            case climate::CLIMATE_SWING_OFF:
                 break;
             case climate::CLIMATE_SWING_VERTICAL:
-                vanes_ = vanes_4;
+                vanes_ = vanes_swing;
                 break;
             case climate::CLIMATE_SWING_HORIZONTAL:
-                vanes_ = vanes_1;
+                vanesLR_ = vanesLR_swing;
                 break;
             default:
-            case climate::CLIMATE_SWING_OFF:
-                vanes_ = vanes_3;
+            case climate::CLIMATE_SWING_BOTH:
+                // vanes_ = vanes_swing;
+                vanesLR_ = vanesLR_swing;
+                vanes_ = vanes_swing;
                 break;
             }
-            
-            mhi_ac_ctrl_core.set_vanes(vanes_);
+            mhi_ac_ctrl_core.set_vanesLR(vanesLR_); // Set vanesLR to swing
+            mhi_ac_ctrl_core.set_vanes(vanes_); // Set vanes to swing
         }
 
         this->publish_state();
@@ -547,7 +640,7 @@ protected:
         traits.set_visual_min_temperature(this->minimum_temperature_);
         traits.set_visual_max_temperature(this->maximum_temperature_);
         traits.set_visual_temperature_step(this->temperature_step_);
-        traits.set_supported_fan_modes({ CLIMATE_FAN_AUTO, CLIMATE_FAN_LOW, CLIMATE_FAN_MEDIUM, CLIMATE_FAN_HIGH, CLIMATE_FAN_DIFFUSE });
+        traits.set_supported_fan_modes({ CLIMATE_FAN_AUTO, CLIMATE_FAN_QUIET, CLIMATE_FAN_LOW, CLIMATE_FAN_MEDIUM, CLIMATE_FAN_HIGH });
         traits.set_supported_swing_modes({ CLIMATE_SWING_OFF, CLIMATE_SWING_BOTH, CLIMATE_SWING_VERTICAL, CLIMATE_SWING_HORIZONTAL });
         return traits;
     }
@@ -561,6 +654,7 @@ protected:
     float tsetpoint_;
     uint fan_;
     ACVanes vanes_;
+    ACVanesLR vanesLR_;
 
     MHI_AC_Ctrl_Core mhi_ac_ctrl_core;
 
@@ -575,6 +669,7 @@ protected:
     Sensor current_power_;
     BinarySensor defrost_;
     Sensor vanes_pos_;
+    Sensor vanes_pos_old_;
     Sensor energy_used_;
     Sensor indoor_unit_thi_r1_;
     Sensor indoor_unit_thi_r2_;
@@ -585,4 +680,7 @@ protected:
     Sensor outdoor_unit_discharge_pipe_super_heat_;
     Sensor protection_state_number_;
     TextSensor protection_state_;
+    Sensor vanesLR_pos_;
+    Sensor vanesLR_pos_old_;
+    Sensor Dauto_;
 };
