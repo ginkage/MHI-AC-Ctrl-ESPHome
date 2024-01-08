@@ -186,6 +186,6 @@ class MHI_AC_Ctrl_Core {
     void set_frame_size(byte framesize);  // set framesize to 20 or 33
     void set_3Dauto(AC3Dauto Dauto);      // set the requested 3D auto mode
     void set_vanesLR(uint vanesLR);       // set the vanes vertical position
-
+    void set_frame_size(int size);        // set the framesize
 
 };

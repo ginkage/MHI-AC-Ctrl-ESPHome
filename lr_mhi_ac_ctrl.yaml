@@ -67,6 +67,12 @@ api:
         - lambda: |-
             return ((MhiAcCtrl*)id(${deviceid}))->set_vanes(value);
 
+on_boot:
+  then:
+    - lambda: |-
+        auto core = static_cast<MHI_AC_Ctrl_Core*>(id(core));
+        core->set_frame_size(20);  # 20 for legacy, 33 for new
+
 sensor:
   - platform: uptime
     name: ${devicename} Uptime
