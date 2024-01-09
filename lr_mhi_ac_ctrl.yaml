@@ -32,6 +32,11 @@ globals:
     type: int
     restore_value: no
     initial_value: '120'
+# set the frame size to be used in the Core
+  - id: frame_size
+    type: byte
+    restore_value: no
+    initial_value: '33' # 20 for legacy, 33 for new
 
 ota:
 
@@ -66,12 +71,6 @@ api:
       then:
         - lambda: |-
             return ((MhiAcCtrl*)id(${deviceid}))->set_vanes(value);
-
-on_boot:
-  then:
-    - lambda: |-
-        auto core = static_cast<MHI_AC_Ctrl_Core*>(id(core));
-        core->set_frame_size(20);  # 20 for legacy, 33 for new
 
 sensor:
   - platform: uptime
