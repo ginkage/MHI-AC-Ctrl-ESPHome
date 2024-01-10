@@ -146,6 +146,9 @@ sensor:
                 }
       - name: ${devicename} 3D Auto
         id: Dauto_received
+        if:
+          condition:
+            lambda: return id(frame_size) != 20; # Disable if frame_size is 20
         on_value:
           then:
             - lambda: |-
