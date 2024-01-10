@@ -123,16 +123,6 @@ public:
 
         mhi_ac_ctrl_core.MHIAcCtrlStatus(this);
         mhi_ac_ctrl_core.init();
-        const byte DEFAULT_FRAME_SIZE = 33;  // Define the default value
-        if (!id(frame_size)) {
-            id(frame_size) = DEFAULT_FRAME_SIZE; 
-        } else {
-            byte size = id(frame_size);
-            if (size != 20 && size != 33) {
-                ESP_LOGE("MHI_AC_Ctrl_Core", "Invalid frame size! Only 20 or 33 allowed. Using default value.");
-                id(frame_size) = DEFAULT_FRAME_SIZE; 
-            }
-        }
         mhi_ac_ctrl_core.set_frame_size(id(frame_size)); // set framesize. Only 20 (legacy) or 33 (includes 3D auto and vertical vanes) possible
     }
 
