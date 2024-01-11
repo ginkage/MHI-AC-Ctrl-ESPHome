@@ -12,10 +12,10 @@ Just put all these files in your ESPHome folder, flash once, and you're good to 
 
 # Fan Modes Up/Down Left/Right
 Most newer MHI units (the ones supporting the WF-RAC WiFi module) support fine grained vane control for Left/Right and Up/Down.  
-When you encounter mhi_ac_ctrl_core.loop error: -2 errors after updating to the newer code, please change your yaml file to include the legacy file instead of the large_framesize.yaml.
-Currently the MHI code allows for more fine grained fan direction than esphome climate supports. for that, additional template parts are added.
-There are 7 modes for Left/Right: Left, Left/Center, Center, Center/Right, Right, Wide, Spot and Swing
-There are 5 modes for Up/Down: Up, Up/Center, Center/Down, Down and Swing
+When you encounter mhi_ac_ctrl_core.loop error: -2 errors after updating to the newer code, please change your yaml file to include the legacy file instead of the large_framesize.yaml.  
+Currently the MHI code allows for more fine grained fan direction than esphome climate supports. for that, additional template parts are added.  
+There are 8 modes for Left/Right: Left, Left/Center, Center, Center/Right, Right, Wide, Spot and Swing  
+There are 5 modes for Up/Down: Up, Up/Center, Center/Down, Down and Swing  
 Setting swing from the esphome climate now fully works. It will store the oldvanes mode, and configure swing. after disabling swing (either vertically, horizontally or off), the old settings will be restored. Manually changing modes for Left/Right or Up/Down will update the climate state as well.
 
 # Climate Quiet
