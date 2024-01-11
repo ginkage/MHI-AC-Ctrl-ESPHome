@@ -72,7 +72,7 @@ select:
       - "Swing"
     on_value:
       - lambda: |-
-          auto state = id(fan_control_lr).state.c_str();
+          auto state = id(fan_control_ud).state.c_str();
           ESP_LOGD("main", "Option of my select: %s", state);
           uint8_t vanesUD = 0;  // Initialize the vanesUD variable
           if (id(fan_control_ud).state == "Up") {
