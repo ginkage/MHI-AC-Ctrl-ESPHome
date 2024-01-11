@@ -1,0 +1,202 @@
+# Version 2.0
+globals:
+  - id: room_temp_api_timeout
+    type: int
+    restore_value: no
+    initial_value: '120'
+  - id: frame_size
+    type: byte
+    restore_value: no
+    initial_value: '33' # 20 for legacy, 33 for new
+
+sensor:
+  - platform: uptime
+    name: ${devicename} Uptime
+  - platform: wifi_signal
+    name: ${devicename} WiFi Signal
+    update_interval: 60s
+  - platform: custom
+    lambda: |-
+      return ((MhiAcCtrl*)id(${deviceid}))->get_sensors();
+
+    # Sensor names in HA, you can change these if you want
+    # Don't delete them or change their position in the list
+    sensors:
+      - name: ${devicename} error code
+      - name: ${devicename} outdoor temperature
+      - name: ${devicename} return air temperature
+      - name: ${devicename} outdoor unit fan speed
+      - name: ${devicename} indoor unit fan speed
+      - name: ${devicename} current power
+      - name: ${devicename} compressor frequency
+      - name: ${devicename} indoor unit total run time
+      - name: ${devicename} compressor total run time
+      - name: ${devicename} vanes
+        id: vanes_UD_received
+        on_value:
+          then:
+            - lambda: |-
+                float received_value = id(vanes_UD_received).state;
+                if (received_value == 1.0) {
+                  id(fan_control_ud).publish_state("Up");
+                } else if (received_value == 2.0) {
+                  id(fan_control_ud).publish_state("Up/Center");
+                } else if (received_value == 3.0) {
+                  id(fan_control_ud).publish_state("Center/Down");
+                } else if (received_value == 4.0) {
+                  id(fan_control_ud).publish_state("Down");
+                } else if (received_value == 5.0) {
+                  id(fan_control_ud).publish_state("Swing");
+                }
+
+      - name: ${devicename} energy used
+      - name: ${devicename} Indoor (U-bend) HE temp 1
+      - name: ${devicename} Indoor (capillary) HE temp 2
+      - name: ${devicename} Indoor (suction header) HE temp 3
+      - name: ${devicename} Outdoor HE temp
+      - name: ${devicename} Outdoor unit exp. valve
+      - name: ${devicename} Outdoor unit discharge pipe
+      - name: ${devicename} Outdoor unit discharge pipe super heat
+      - name: ${devicename} Protection error state
+      - name: ${devicename} Vanes Left Right
+        id: vanes_LR_received
+        on_value:
+          then:
+            - lambda: |-
+                float received_value = id(vanes_LR_received).state;
+                if (received_value == 1.0) {
+                  id(fan_control_lr).publish_state("Left");
+                } else if (received_value == 2.0) {
+                  id(fan_control_lr).publish_state("Left/Center");
+                } else if (received_value == 3.0) {
+                  id(fan_control_lr).publish_state("Center");
+                } else if (received_value == 4.0) {
+                  id(fan_control_lr).publish_state("Center/Right");
+                } else if (received_value == 5.0) {
+                  id(fan_control_lr).publish_state("Right");
+                } else if (received_value == 6.0) {
+                  id(fan_control_lr).publish_state("Wide");
+                } else if (received_value == 7.0) {
+                  id(fan_control_lr).publish_state("Spot");
+                } else if (received_value == 8.0) {
+                  id(fan_control_lr).publish_state("Swing");
+                }
+      - name: ${devicename} 3D Auto
+        id: Dauto_received
+        on_value:
+          then:
+            - lambda: |-
+                bool received_value = id(Dauto_received).state;
+                if (received_value) {
+                  ESP_LOGD("main", "received 3DAuto from AC");
+                  id(fan_control_3Dauto).publish_state(true);
+                }
+                else {
+                  ESP_LOGD("main", "received 3DAuto off from AC");
+                  id(fan_control_3Dauto).publish_state(false);
+                }
+
+select:
+  - platform: template
+    name: ${devicename} Fan Control Left Right
+    id: fan_control_lr
+    icon: mdi:arrow-left-right
+    optimistic: true
+    options:
+      # - "3D Auto"
+      - "Left"
+      - "Left/Center"
+      - "Center"
+      - "Center/Right"
+      - "Right"
+      - "Wide"
+      - "Spot"
+      - "Swing"
+    on_value:
+      - lambda: |-
+          auto state = id(fan_control_lr).state.c_str();
+          ESP_LOGD("main", "Option of my select: %s", state);
+          uint8_t vanesLR = 0;  // Initialize the vanesLR variable
+          if (id(fan_control_lr).state == "3D Auto") {
+            id(fan_control_3Dauto).publish_state(true);
+          } else if (id(fan_control_lr).state == "Left") {
+            vanesLR = 1;
+          } else if (id(fan_control_lr).state == "Left/Center") {
+            vanesLR = 2;
+          } else if (id(fan_control_lr).state == "Center") {
+            vanesLR = 3;
+          } else if (id(fan_control_lr).state == "Center/Right") {
+            vanesLR = 4;
+          } else if (id(fan_control_lr).state == "Right") {
+            vanesLR = 5;
+          } else if (id(fan_control_lr).state == "Wide") {
+            vanesLR = 6;
+          } else if (id(fan_control_lr).state == "Spot") {
+            vanesLR = 7;
+          } else if (id(fan_control_lr).state == "Swing") {
+            vanesLR = 8;
+          }
+          if ((vanesLR > 0) & (vanesLR < 9) & (vanesLR != id(vanes_LR_received).state)){
+            ESP_LOGD("main", "setting vanesLR to: %i", vanesLR);
+            return ((MhiAcCtrl*)id(${deviceid}))->set_vanesLR(vanesLR);
+          }
+          else {
+            ESP_LOGD("main", "Not setting vanesLR: %i", vanesLR);
+          }
+
+  - platform: template
+    name: ${devicename} Fan Control Up Down
+    id: fan_control_ud
+    icon: mdi:arrow-up-down
+    optimistic: true
+    options:
+      # - "3D Auto"
+      - "Up"
+      - "Up/Center"
+      - "Center/Down"
+      - "Down"
+      - "Swing"
+    on_value:
+      - lambda: |-
+          auto state = id(fan_control_ud).state.c_str();
+          ESP_LOGD("main", "Option of my select: %s", state);
+          uint8_t vanesUD = 0;  // Initialize the vanesUD variable
+          if (id(fan_control_ud).state == "3D Auto") {
+            id(fan_control_3Dauto).publish_state(true);
+          } else if (id(fan_control_ud).state == "Up") {
+            vanesUD = 1;
+          } else if (id(fan_control_ud).state == "Up/Center") {
+            vanesUD = 2;
+          } else if (id(fan_control_ud).state == "Center/Down") {
+            vanesUD = 3;
+          } else if (id(fan_control_ud).state == "Down") {
+            vanesUD = 4;
+          } else if (id(fan_control_ud).state == "Swing") {
+            vanesUD = 5;
+          }
+          if ((vanesUD > 0) & (vanesUD < 6) & (vanesUD != id(vanes_UD_received).state)){
+            ESP_LOGD("main", "setting vanesUD to: %i", vanesUD);
+            return ((MhiAcCtrl*)id(${deviceid}))->set_vanes(vanesUD);
+          }
+          else {
+            ESP_LOGD("main", "Not setting vanesUD: %i", vanesUD);
+          }
+
+switch:
+  - platform: template
+    name: ${devicename} 3D Auto
+    id: fan_control_3Dauto
+    icon: mdi:video-3d
+    optimistic: true
+    turn_on_action:
+      - lambda: |-
+          if (id(Dauto_received).state !=1){
+            ESP_LOGD("main", "Turn on 3DAuto");
+            return ((MhiAcCtrl*)id(${deviceid}))->set_3Dauto(1);
+          }
+    turn_off_action:
+      - lambda: |-
+          if (id(Dauto_received).state !=0){
+            ESP_LOGD("main", "Turn off 3DAuto");
+            return ((MhiAcCtrl*)id(${deviceid}))->set_3Dauto(0);
+          }
