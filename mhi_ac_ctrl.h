@@ -1,3 +1,5 @@
+// Version 2.0
+
 #include "MHI-AC-Ctrl-core.h"
 #define ROOM_TEMP_MQTT 1
 #include <vector>

@@ -11,6 +11,8 @@ MHI-AC-Ctrl-core.\* files were forked directly, with no modification, whereas yo
 Just put all these files in your ESPHome folder, flash once, and you're good to go!
 
 # Fan Modes Up/Down Left/Right
+Most newer MHI units (the ones supporting the WF-RAC WiFi module) support fine grained vane control for Left/Right and Up/Down.  
+When you encounter mhi_ac_ctrl_core.loop error: -2 errors after updating to the newer code, please change your yaml file to include the legacy file instead of the large_framesize.yaml.
 Currently the MHI code allows for more fine grained fan direction than esphome climate supports. for that, additional template parts are added.
 There are 7 modes for Left/Right: Left, Left/Center, Center, Center/Right, Right, Wide, Spot and Swing
 There are 5 modes for Up/Down: Up, Up/Center, Center/Down, Down and Swing
@@ -23,6 +25,12 @@ Added the solution for the auto mode from: https://github.com/ginkage/MHI-AC-Ctr
 CLIMATE_FAN_DIFFUSE in fan speed and status sections and reshuffle the numbers and add CLIMATE_FAN_DIFFUSE to the traits.set_supported_fan_modes
 
 Has now 5 different fan modes but I'm not sure if the auto mode works proper, keep testing.
+
+# Changelog:
+
+## Version 2.0
+ - Breaking change in YAML configuration (need to set frame_size in globals)
+ - Added legacy support configurable from YAML (removing 3d auto and vanes LR control)
 
 # License
 This project is licensed under the MIT License - see the LICENSE file for details.\

@@ -4,6 +4,7 @@ substitutions:
   # Unique device name in HA (sensor names will be prefixed by this name)
   devicename: "MHI-AC-Ctrl"
 
+# Version 2.0
 esphome:
   name: lr_mhi_ac_ctrl
   platform: ESP8266
