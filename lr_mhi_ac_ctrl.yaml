@@ -91,6 +91,6 @@ text_sensor:
       return ((MhiAcCtrl*)id(${deviceid}))->get_text_sensors();
 
     text_sensors:
-      - name: ${devicename} Protection error state
+      - name: ${devicename} compressor protection status
 
 
