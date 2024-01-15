@@ -57,7 +57,7 @@ sensor:
       - name: ${devicename} Outdoor unit exp. valve
       - name: ${devicename} Outdoor unit discharge pipe
       - name: ${devicename} Outdoor unit discharge pipe super heat
-      - name: ${devicename} Protection error state
+      - name: ${devicename} compressor protection code
       - name: ${devicename} Vanes Left Right
         id: vanes_LR_received
         on_value:
