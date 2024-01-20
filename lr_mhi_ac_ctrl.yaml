@@ -17,11 +17,11 @@ esphome:
     - MHI-AC-Ctrl-core.h
     - MHI-AC-Ctrl-core.cpp
 
-# Enable this for current units, supporting the larger framesize
-# Comment if you encounter mhi_ac_ctrl_core.loop error: -2 errors and uncomment the legacy_framesize file
-<<: !include conf/large_framesize.yaml
-# Uncomment this to allow for a working configuration on floor units or older units
-# <<: !include conf/legacy_framesize.yaml
+packages:
+  # Comment if you encounter mhi_ac_ctrl_core.loop error: -2 errors and uncomment the legacy_framesize file
+  mhi-ac-ctrl: !include conf/large_framesize.yaml
+  # Uncomment this to allow for a working configuration on floor units or older units
+  # mhi-ac-ctrl: !include conf/legacy_framesize.yaml
 
 wifi:
   ssid: "**SSID**"
@@ -36,16 +36,6 @@ logger:
 
 ota:
 
-climate:
-  - platform: custom
-    lambda: |-
-      auto mhi_ac_ctrl = new MhiAcCtrl();
-      App.register_component(mhi_ac_ctrl);
-      return {mhi_ac_ctrl};
-
-    climates:
-      - name: "${devicename}"
-        id: ${deviceid}
 
 api:
   reboot_timeout: 0s
@@ -68,13 +58,12 @@ api:
         - lambda: |-
             return ((MhiAcCtrl*)id(${deviceid}))->set_vanes(value);
 
-binary_sensor:
-  - platform: custom
-    lambda: |-
-      return ((MhiAcCtrl*)id(${deviceid}))->get_binary_sensors();
-
-    binary_sensors:
-      - name: ${devicename} defrost
+sensor:
+  - platform: uptime
+    name: ${devicename} Uptime
+  - platform: wifi_signal
+    name: ${devicename} WiFi Signal
+    update_interval: 60s
 
 text_sensor:
   - platform: version
@@ -86,11 +75,3 @@ text_sensor:
       name: ${devicename} SSID
     bssid:
       name: ${devicename} BSSID
-  - platform: custom
-    lambda: |-
-      return ((MhiAcCtrl*)id(${deviceid}))->get_text_sensors();
-
-    text_sensors:
-      - name: ${devicename} compressor protection status
-
-

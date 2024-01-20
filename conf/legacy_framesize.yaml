@@ -3,18 +3,32 @@ globals:
   - id: room_temp_api_timeout
     type: int
     restore_value: no
-    initial_value: '120'
+    initial_value: "120"
   - id: frame_size
     type: byte
     restore_value: no
-    initial_value: '20' # 20 for legacy, 33 for new
+    initial_value: "20" # 20 for legacy, 33 for new
+
+climate:
+  - platform: custom
+    lambda: |-
+      auto mhi_ac_ctrl = new MhiAcCtrl();
+      App.register_component(mhi_ac_ctrl);
+      return {mhi_ac_ctrl};
+
+    climates:
+      - name: "${devicename}"
+        id: ${deviceid}
+
+binary_sensor:
+  - platform: custom
+    lambda: |-
+      return ((MhiAcCtrl*)id(${deviceid}))->get_binary_sensors();
+
+    binary_sensors:
+      - name: ${devicename} defrost
 
 sensor:
-  - platform: uptime
-    name: ${devicename} Uptime
-  - platform: wifi_signal
-    name: ${devicename} WiFi Signal
-    update_interval: 60s
   - platform: custom
     lambda: |-
       return ((MhiAcCtrl*)id(${deviceid}))->get_sensors();
@@ -58,6 +72,14 @@ sensor:
       - name: ${devicename} Outdoor unit discharge pipe
       - name: ${devicename} Outdoor unit discharge pipe super heat
       - name: ${devicename} Protection error state
+
+text_sensor:
+  - platform: custom
+    lambda: |-
+      return ((MhiAcCtrl*)id(${deviceid}))->get_text_sensors();
+
+    text_sensors:
+      - name: ${devicename} compressor protection status
 
 select:
   - platform: template
