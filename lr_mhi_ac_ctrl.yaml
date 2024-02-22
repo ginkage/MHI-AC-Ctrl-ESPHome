@@ -4,9 +4,17 @@ substitutions:
   deviceid: "mhi_ac_ctrl"
   # Unique device name in HA (sensor names will be prefixed by this name)
   devicename: "MHI-AC-Ctrl"
+  # The WiFi network to connect to
+  wifi_ssid: !secret wifi_ssid
+  # The WiFi password
+  wifi_password: !secret wifi_password
+  # Web auth username
+  username: !secret username
+  # Web auth password
+  password: !secret password
 
 esphome:
-  name: lr_mhi_ac_ctrl
+  name: ${deviceid}
   platform: ESP8266
   board: d1_mini
   platformio_options:
@@ -24,9 +32,8 @@ esphome:
 # <<: !include conf/legacy_framesize.yaml
 
 wifi:
-  ssid: "**SSID**"
-  password: "**PASSWORD**"
-
+  ssid: ${wifi_ssid}
+  password: ${wifi_password}
   ap:
     ssid: ${devicename}
 
@@ -36,8 +43,8 @@ web_server:
   log: false
   port: 80
   auth:
-    username: admin
-    password: admin
+    username: ${username}
+    password: ${password}
 
 logger:
   level: DEBUG
