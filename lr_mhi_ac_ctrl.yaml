@@ -82,23 +82,23 @@ binary_sensor:
       return ((MhiAcCtrl*)id(${deviceid}))->get_binary_sensors();
 
     binary_sensors:
-      - name: ${devicename} defrost
+      - name: defrost
 
 text_sensor:
   - platform: version
-    name: ${devicename} ESPHome Version
+    name: ESPHome Version
   - platform: wifi_info
     ip_address:
-      name: ${devicename} IP
+      name: IP
     ssid:
-      name: ${devicename} SSID
+      name: SSID
     bssid:
-      name: ${devicename} BSSID
+      name: BSSID
   - platform: custom
     lambda: |-
       return ((MhiAcCtrl*)id(${deviceid}))->get_text_sensors();
 
     text_sensors:
-      - name: ${devicename} compressor protection status
+      - name: Compressor protection status
 
 
