@@ -30,11 +30,27 @@ wifi:
   ap:
     ssid: ${devicename}
 
+captive_portal:
+
+web_server:
+  log: false
+  port: 80
+  auth:
+    username: admin
+    password: admin
+
 logger:
   level: DEBUG
   baud_rate: 0
 
 ota:
+
+button:
+  - platform: safe_mode
+    name: Reboot to safe mode
+  - platform: restart
+    name: Reboot
+    entity_category: diagnostic
 
 climate:
   - platform: custom
@@ -50,14 +66,6 @@ climate:
 api:
   reboot_timeout: 0s
   services:
-    # Call the set_api_room_temperature service from HA to override the room temperature
-    # If a new value has not been received after room_temp_api_timeout seconds, it will fall back to internal sensor
-    - service: set_api_room_temperature
-      variables:
-        value: float
-      then:
-        - lambda: |-
-            return ((MhiAcCtrl*)id(${deviceid}))->set_room_temperature(value);
     # Call the set_vanes service from HA to set the vane position
     # Needed because the ESPHome Climate class does not support this natively
     # Possible values: 1-4: static positions, 5: swing, 0: unknown

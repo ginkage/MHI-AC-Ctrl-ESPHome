@@ -1,9 +1,5 @@
 # Version 2.0
 globals:
-  - id: room_temp_api_timeout
-    type: int
-    restore_value: no
-    initial_value: '120'
   - id: frame_size
     type: byte
     restore_value: no
