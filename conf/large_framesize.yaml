@@ -18,6 +18,8 @@ sensor:
     # Sensor names in HA, you can change these if you want
     # Don't delete them or change their position in the list
     sensors:
+      - name: Internal room temperature sensor
+      - name: Room temperature offset
       - name: Error code
       - name: Outdoor temperature
       - name: Return air temperature
@@ -196,3 +198,17 @@ switch:
             ESP_LOGD("main", "Turn off 3DAuto");
             return ((MhiAcCtrl*)id(${deviceid}))->set_3Dauto(0);
           }
+  - platform: template
+    name: Apply temperature offset
+    id: apply_temp_offset
+    icon: mdi:thermometer-chevron-up
+    turn_on_action:
+      - lambda: |-
+          ESP_LOGI("main", "Enabled temperature offset");
+          ((MhiAcCtrl*)id(${deviceid}))->set_enable_offset(1);
+          id(apply_temp_offset).publish_state(true);
+    turn_off_action:
+      - lambda: |-
+          ESP_LOGI("main", "Disabled temperature offset");
+          ((MhiAcCtrl*)id(${deviceid}))->set_enable_offset(0);
+          id(apply_temp_offset).publish_state(false);

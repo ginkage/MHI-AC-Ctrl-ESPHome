@@ -28,9 +28,6 @@ static const std::vector<std::string> protection_states = {
 
 static const char* TAG = "mhi_ac_ctrl";
 
-float internal_sensor_temperature_offset = 0.0f; // This is the offset we apply to the value from the internal temperature sensor and feed back in to the external temperature sensor.
-float last_internal_sensor_temperature = 18.0f; // This is the unmodified temperature from the internal temperature sensor.
-
 class MhiAcCtrl : public climate::Climate,
                   public Component,
                   public CallbackInterface_Status {
@@ -55,6 +52,14 @@ public:
         // Never send nan to HA
         if (isnan(this->target_temperature))
             this->target_temperature = 20;
+
+        internal_temperature_sensor_.set_icon("mdi:thermometer");
+        internal_temperature_sensor_.set_unit_of_measurement("°C");
+        internal_temperature_sensor_.set_accuracy_decimals(2);
+
+        room_temperature_offset_.set_icon("mdi:thermometer");
+        room_temperature_offset_.set_unit_of_measurement("°C");
+        room_temperature_offset_.set_accuracy_decimals(2);
 
         error_code_.set_icon("mdi:alert-circle");
 
@@ -131,10 +136,28 @@ public:
 
     void loop() override
     {
-        set_room_temperature(last_internal_sensor_temperature + internal_sensor_temperature_offset);
-        int ret = mhi_ac_ctrl_core.loop(100);
-        if (ret < 0)
-            ESP_LOGW("mhi_ac_ctrl", "mhi_ac_ctrl_core.loop error: %i", ret);
+        static float last_internal_sensor_temperature = 0.0f;
+        static uint32_t last_internal_sensor_timestamp = 0;
+
+        if(enable_troom_offset){
+            uint32_t now = millis();
+            if(now - last_internal_sensor_timestamp > 10000){
+                last_internal_sensor_timestamp = now;
+                mhi_ac_ctrl_core.set_troom(0xff);
+                int ret = mhi_ac_ctrl_core.loop(100);
+                if (ret < 0){
+                    ESP_LOGW("mhi_ac_ctrl", "mhi_ac_ctrl_core.loop error: %i", ret);
+                }
+                last_internal_sensor_temperature = this->current_temperature;
+                internal_temperature_sensor_.publish_state(last_internal_sensor_temperature);
+            }
+            set_room_temperature(last_internal_sensor_temperature + internal_sensor_temperature_offset);
+        }else{
+            int ret = mhi_ac_ctrl_core.loop(100);
+            if (ret < 0){
+                ESP_LOGW("mhi_ac_ctrl", "mhi_ac_ctrl_core.loop error: %i", ret);
+            }
+        }
     }
 
     void dump_config() override
@@ -142,9 +165,7 @@ public:
         LOG_CLIMATE("", "MHI-AC-Ctrl Climate", this);
         ESP_LOGCONFIG(TAG, "  Min. Temperature: %.1f°C", this->minimum_temperature_);
         ESP_LOGCONFIG(TAG, "  Max. Temperature: %.1f°C", this->maximum_temperature_);
-        ESP_LOGCONFIG(TAG, "  Visual Min. Temperature: %.1f°C", this->visual_minimum_temperature_);
-        ESP_LOGCONFIG(TAG, "  Supports HEAT: %s", YESNO(true));
-        ESP_LOGCONFIG(TAG, "  Supports COOL: %s", YESNO(true));
+        ESP_LOGCONFIG(TAG, "  Simulated min. Temperature: %.1f°C", this->adjusted_minimum_temperature_);
     }
 
     void cbiStatusFunction(ACStatus status, int value) override
@@ -323,7 +344,11 @@ public:
         case status_troom:
             // dtostrf((value - 61) / 4.0, 0, 2, strtmp);
             // output_P(status, PSTR(TOPIC_TROOM), strtmp);
+
             this->current_temperature = (value - 61) / 4.0;
+            if(!enable_troom_offset){
+                internal_temperature_sensor_.publish_state(current_temperature);
+            }
             this->publish_state();
             break;
         case status_tsetpoint:
@@ -331,6 +356,7 @@ public:
             // output_P(status, PSTR(TOPIC_TSETPOINT), strtmp);
             this->target_temperature = (value & 0x7f)/ 2.0;
             internal_sensor_temperature_offset = 0.0f;
+            room_temperature_offset_.publish_state(internal_sensor_temperature_offset);
             this->publish_state();
             break;
         case status_errorcode:
@@ -343,7 +369,6 @@ public:
         case erropdata_return_air:
             // dtostrf(value * 0.25f - 15, 0, 2, strtmp);
             // output_P(status, PSTR(TOPIC_RETURNAIR), strtmp);
-            last_internal_sensor_temperature = value * 0.25f - 15;
             return_air_temperature_.publish_state(value * 0.25f - 15);
             break;
         case opdata_thi_r1:
@@ -470,6 +495,8 @@ public:
 
     std::vector<Sensor *> get_sensors() {
         return {
+            &internal_temperature_sensor_,
+            &room_temperature_offset_,
             &error_code_,
             &outdoor_temperature_,
             &return_air_temperature_,
@@ -502,13 +529,6 @@ public:
         return { &defrost_ };
     }
 
-    void set_room_temperature(float value) {
-        if ((value > -10) & (value < 48)) {
-            byte tmp = value*4+61;
-            mhi_ac_ctrl_core.set_troom(value*4+61);
-        }
-    }
-
     void set_vanes(int value) {
         mhi_ac_ctrl_core.set_vanes(value);
         ESP_LOGD("mhi_ac_ctrl", "set vanes: %i", value);
@@ -532,6 +552,21 @@ public:
         ESP_LOGD("mhi_ac_ctrl", "set vanes Left Right: %i", value);
     }
 
+    void set_room_temperature(float value) {
+        if ((value > -10) && (value < 48)) {
+            byte tmp = value*4+61;
+            mhi_ac_ctrl_core.set_troom(value*4+61);
+        }
+    }
+
+    void set_enable_offset(bool value) {
+        enable_troom_offset = value;
+        if(!enable_troom_offset){
+            // We removed the offset, we allow the use of the internal temperature sensor.
+            mhi_ac_ctrl_core.set_troom(0xff);
+        }
+    }
+
 protected:
     /// Transmit the state of this climate controller.
     void control(const climate::ClimateCall& call) override
@@ -540,7 +575,6 @@ protected:
             this->mode = *call.get_mode();
 
             power_ = power_on;
-            internal_sensor_temperature_offset = 0.0f;
             switch (this->mode) {
             case climate::CLIMATE_MODE_OFF:
                 power_ = power_off;
@@ -549,7 +583,6 @@ protected:
                 mode_ = mode_cool;
                 break;
             case climate::CLIMATE_MODE_HEAT:
-                internal_sensor_temperature_offset = clamp(minimum_temperature_ - this->target_temperature, 0.0f, minimum_temperature_ - visual_minimum_temperature_);
                 mode_ = mode_heat;
                 break;
             case climate::CLIMATE_MODE_DRY:
@@ -570,15 +603,9 @@ protected:
 
         if (call.get_target_temperature().has_value()) {
             this->target_temperature = *call.get_target_temperature();
-
-            if(this->mode == climate::CLIMATE_MODE_HEAT){
-                // We clamp the offset to only positive values. This means we can not use this method for heating above 30°C, that's intentional.
-                internal_sensor_temperature_offset = clamp(minimum_temperature_ - this->target_temperature, 0.0f, minimum_temperature_ - visual_minimum_temperature_);
-            }else{
-                internal_sensor_temperature_offset = 0.0f;
-            }
             tsetpoint_ = clamp(this->target_temperature, minimum_temperature_, maximum_temperature_);
-
+            internal_sensor_temperature_offset = (this->target_temperature < minimum_temperature_ && enable_troom_offset) ? (minimum_temperature_ - this->target_temperature) : 0.0f;
+            room_temperature_offset_.publish_state(internal_sensor_temperature_offset);
             ESP_LOGD("mhi_ac_ctrl", "updated setpoint=%f offset=%f target=%f", tsetpoint_, internal_sensor_temperature_offset, this->target_temperature);
             mhi_ac_ctrl_core.set_tsetpoint((byte)(2 * tsetpoint_));
         }
@@ -645,7 +672,7 @@ protected:
         traits.set_supports_current_temperature(true);
         traits.set_supported_modes({ CLIMATE_MODE_OFF, CLIMATE_MODE_HEAT_COOL, CLIMATE_MODE_COOL, CLIMATE_MODE_HEAT, CLIMATE_MODE_DRY, CLIMATE_MODE_FAN_ONLY });
         traits.set_supports_two_point_target_temperature(false);
-        traits.set_visual_min_temperature(this->visual_minimum_temperature_);
+        traits.set_visual_min_temperature(this->adjusted_minimum_temperature_);
         traits.set_visual_max_temperature(this->maximum_temperature_);
         traits.set_visual_temperature_step(this->temperature_step_);
         traits.set_supported_fan_modes({ CLIMATE_FAN_AUTO, CLIMATE_FAN_QUIET, CLIMATE_FAN_LOW, CLIMATE_FAN_MEDIUM, CLIMATE_FAN_HIGH });
@@ -653,7 +680,9 @@ protected:
         return traits;
     }
 
-    float visual_minimum_temperature_ {10.0f};
+    bool enable_troom_offset = false;
+    float internal_sensor_temperature_offset {0.0f};
+    float adjusted_minimum_temperature_ {10.0f};
     float minimum_temperature_ { 18.0f };
     float maximum_temperature_ { 30.0f };
     float temperature_step_ { 0.5f };
@@ -667,6 +696,8 @@ protected:
 
     MHI_AC_Ctrl_Core mhi_ac_ctrl_core;
 
+    Sensor internal_temperature_sensor_;
+    Sensor room_temperature_offset_;
     Sensor error_code_;
     Sensor outdoor_temperature_;
     Sensor return_air_temperature_;

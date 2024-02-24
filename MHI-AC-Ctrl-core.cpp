@@ -137,10 +137,10 @@ int MHI_AC_Ctrl_Core::loop(uint max_time_ms) {
 
   static uint call_counter = 0;           // counts how often this loop was called
   static unsigned long lastTroomInternalMillis = 0; // remember when Troom internal has changed
+  
   if (frameSize == 33)
     MISO_frame[0] = 0xAA;
 
-   
   call_counter++;
   int SCKMillis = millis();               // time of last SCK low level
   while (millis() - SCKMillis < 5) {      // wait for 5ms stable high signal to detect a frame start
@@ -269,13 +269,13 @@ int MHI_AC_Ctrl_Core::loop(uint max_time_ms) {
 
   if (frameSize == 33) { // Only for framesize 33 (WF-RAC)
     checksum = calc_checksumFrame33(MOSI_frame);
-    if ( MOSI_frame[CBL2] != lowByte(checksum ) ) 
+    if (MOSI_frame[CBL2] != lowByte(checksum)) 
       return err_msg_invalid_checksum;
   }
 
   if (new_datapacket_received) {
 
-    if (frameSize == 33) { // Only for framesize 33 (WF-RAC)
+    if (frameSize == 33 ) { // Only for framesize 33 (WF-RAC)
       byte vanesLRtmp = (MOSI_frame[DB16] & 0x07) + ((MOSI_frame[DB17] & 0x01) << 4);
       if (vanesLRtmp != status_vanesLR_old) { // Vanes Left Right
         if ((vanesLRtmp & 0x10) != 0) // Vanes LR status swing
@@ -311,10 +311,9 @@ int MHI_AC_Ctrl_Core::loop(uint max_time_ms) {
     // Only updated when Vanes command via wired RC
     uint vanestmp = (MOSI_frame[DB0] & 0xc0) + ((MOSI_frame[DB1] & 0xB0) >> 4);
     if (vanestmp != status_vanes_old) {
-      // if ((vanestmp & 0x88) == 0) // last vanes update was via IR-RC, so status is not known
-      //   m_cbiStatus->cbiStatusFunction(status_vanes, vanes_unknown);
-      // else 
-      if ((vanestmp & 0x40) != 0) // Vanes status swing
+      if ((vanestmp & 0x88) == 0) // last vanes update was via IR-RC, so status is not known
+        m_cbiStatus->cbiStatusFunction(status_vanes, vanes_unknown);
+      else if ((vanestmp & 0x40) != 0) // Vanes status swing
         m_cbiStatus->cbiStatusFunction(status_vanes, vanes_swing);
       else {
         m_cbiStatus->cbiStatusFunction(status_vanes, (vanestmp & 0x03) + 1);
