@@ -2,7 +2,7 @@
 substitutions:
   # Unique device ID in HA
   deviceid: "mhi_ac_ctrl"
-  # Unique device name in HA (sensor names will be prefixed by this name)
+  # Unique device name in HA
   devicename: "MHI-AC-Ctrl"
   # The WiFi network to connect to
   wifi_ssid: !secret wifi_ssid
@@ -95,7 +95,8 @@ binary_sensor:
       return ((MhiAcCtrl*)id(${deviceid}))->get_binary_sensors();
 
     binary_sensors:
-      - name: defrost
+      - name: Defrost
+      - name: Simulating room temperature
 
 text_sensor:
   - platform: version

@@ -53,23 +53,23 @@ public:
         }
         // Never send nan to HA
         if (isnan(this->target_temperature))
-            this->target_temperature = 20;
+            this->target_temperature = 18.0f;
 
-        internal_temperature_sensor_.set_icon("mdi:thermometer");
-        internal_temperature_sensor_.set_unit_of_measurement("°C");
-        internal_temperature_sensor_.set_accuracy_decimals(2);
+        simulated_room_temperature_.set_icon("mdi:thermometer-lines");
+        simulated_room_temperature_.set_unit_of_measurement("°C");
+        simulated_room_temperature_.set_accuracy_decimals(2);
 
-        room_temperature_offset_.set_icon("mdi:thermometer");
+        room_temperature_offset_.set_icon("mdi:thermometer-chevron-up");
         room_temperature_offset_.set_unit_of_measurement("°C");
         room_temperature_offset_.set_accuracy_decimals(2);
 
         error_code_.set_icon("mdi:alert-circle");
 
-        outdoor_temperature_.set_icon("mdi:thermometer");
+        outdoor_temperature_.set_icon("mdi:home-thermometer-outline");
         outdoor_temperature_.set_unit_of_measurement("°C");
         outdoor_temperature_.set_accuracy_decimals(2);
 
-        return_air_temperature_.set_icon("mdi:thermometer");
+        return_air_temperature_.set_icon("mdi:hvac");
         return_air_temperature_.set_unit_of_measurement("°C");
         return_air_temperature_.set_accuracy_decimals(2);
 
@@ -92,6 +92,8 @@ public:
         current_power_.set_accuracy_decimals(2);
 
         defrost_.set_icon("mdi:snowflake-melt");
+
+        simulating_.set_icon("mdi:cached");
 
         vanes_pos_.set_icon("mdi:air-filter");
 
@@ -131,6 +133,7 @@ public:
         energy_used_.set_unit_of_measurement("kWh");
         energy_used_.set_accuracy_decimals(2);
 
+        this->set_enable_offset(false, true, true);
         mhi_ac_ctrl_core.MHIAcCtrlStatus(this);
         mhi_ac_ctrl_core.init();
         mhi_ac_ctrl_core.set_frame_size(id(frame_size)); // set framesize. Only 20 (legacy) or 33 (includes 3D auto and vertical vanes) possible
@@ -143,7 +146,7 @@ public:
             uint32_t now = millis();
             if(now - last_internal_sensor_timestamp > ROOM_TEMP_SAMPLE_INTERVAL_MS){
                 last_internal_sensor_timestamp = now;
-                set_enable_offset(false, false); //Sets troom to 0xff
+                set_enable_offset(false, false, false); //Sets troom to 0xff
                 // Sends troom
                 int ret = mhi_ac_ctrl_core.loop(100);
                 if (ret < 0){
@@ -154,7 +157,7 @@ public:
                 if (ret < 0){
                     ESP_LOGW("mhi_ac_ctrl", "mhi_ac_ctrl_core.loop error: %i", ret);
                 }
-                set_enable_offset(true, false);
+                set_enable_offset(true, false, false);
                 internal_sensor_averages[sample_count] = this->current_temperature_status;
                 sample_count++;
                 if(sample_count == ROOM_TEMP_SAMPLE_COUNT){
@@ -164,18 +167,19 @@ public:
                         sum += internal_sensor_averages[i];
                     }
                     last_internal_sensor_temperature = sum / static_cast<float>(ROOM_TEMP_SAMPLE_COUNT);
-                    internal_temperature_sensor_.publish_state(last_internal_sensor_temperature);
+                    this->current_temperature = last_internal_sensor_temperature;
+                    this->publish_state();
                 }
 
                 // In case the AC also uses averages to calculate the room temperature, we're sending
                 // back the temperature with twice the offset to nullify the sample we've just gotten.
-                set_room_temperature(last_internal_sensor_temperature + (internal_sensor_temperature_offset * 2.0f));
+                set_room_temperature(last_internal_sensor_temperature + (internal_sensor_temperature_offset * 2.0f), false);
                 ret = mhi_ac_ctrl_core.loop(100);
                 if (ret < 0){
                     ESP_LOGW("mhi_ac_ctrl", "mhi_ac_ctrl_core.loop error: %i", ret);
                 }
             }else{
-                set_room_temperature(last_internal_sensor_temperature + internal_sensor_temperature_offset);
+                set_room_temperature(last_internal_sensor_temperature + internal_sensor_temperature_offset, true);
                 int ret = mhi_ac_ctrl_core.loop(100);
                 if (ret < 0){
                     ESP_LOGW("mhi_ac_ctrl", "mhi_ac_ctrl_core.loop error: %i", ret);
@@ -186,6 +190,7 @@ public:
             if (ret < 0){
                 ESP_LOGW("mhi_ac_ctrl", "mhi_ac_ctrl_core.loop error: %i", ret);
             }
+            simulated_room_temperature_.publish_state(this->current_temperature);
         }
     }
 
@@ -377,7 +382,6 @@ public:
                 this->publish_state();
             }else if(enable_troom_processing){
                 this->current_temperature = current_temperature_status;
-                internal_temperature_sensor_.publish_state(this->current_temperature);
                 this->publish_state();
             }
             break;
@@ -386,7 +390,7 @@ public:
             // output_P(status, PSTR(TOPIC_TSETPOINT), strtmp);
             this->target_temperature = (value & 0x7f)/ 2.0;
             internal_sensor_temperature_offset = 0.0f;
-            set_enable_offset(false, true);
+            set_enable_offset(false, true, true);
             room_temperature_offset_.publish_state(internal_sensor_temperature_offset);
             this->publish_state();
             break;
@@ -526,7 +530,7 @@ public:
 
     std::vector<Sensor *> get_sensors() {
         return {
-            &internal_temperature_sensor_,
+            &simulated_room_temperature_,
             &room_temperature_offset_,
             &error_code_,
             &outdoor_temperature_,
@@ -557,7 +561,7 @@ public:
     }
 
     std::vector<BinarySensor *> get_binary_sensors() {
-        return { &defrost_ };
+        return { &defrost_, &simulating_ };
     }
 
     void set_vanes(int value) {
@@ -583,15 +587,21 @@ public:
         ESP_LOGD("mhi_ac_ctrl", "set vanes Left Right: %i", value);
     }
 
-    void set_room_temperature(float value) {
+    void set_room_temperature(float value, bool publish) {
         if ((value > -10) && (value < 48)) {
             byte tmp = value*4+61;
             mhi_ac_ctrl_core.set_troom(value*4+61);
+            if(publish && (simulated_room_temperature_.state != value)){
+                simulated_room_temperature_.publish_state(value);
+            }
         }
     }
 
-    void set_enable_offset(bool enabled, bool allow_processing) {
+    void set_enable_offset(bool enabled, bool allow_processing, bool publish) {
         enable_troom_offset = enabled;
+        if(publish && (simulating_.state != enable_troom_offset)){
+            simulating_.publish_state(enable_troom_offset);
+        }
         enable_troom_processing = allow_processing;
         if(!enable_troom_offset){
             // We removed the offset, we allow the use of the internal temperature sensor.
@@ -636,7 +646,7 @@ protected:
         if (call.get_target_temperature().has_value()) {
             this->target_temperature = *call.get_target_temperature();
             tsetpoint_ = clamp(this->target_temperature, minimum_temperature_, maximum_temperature_);
-            set_enable_offset(this->target_temperature < minimum_temperature_, this->target_temperature < minimum_temperature_);
+            set_enable_offset(this->target_temperature < minimum_temperature_, this->target_temperature < minimum_temperature_, true);
             internal_sensor_temperature_offset = enable_troom_offset ? (minimum_temperature_ - this->target_temperature) : 0.0f;
             room_temperature_offset_.publish_state(internal_sensor_temperature_offset);
             ESP_LOGD("mhi_ac_ctrl", "updated setpoint=%f offset=%f target=%f", tsetpoint_, internal_sensor_temperature_offset, this->target_temperature);
@@ -737,7 +747,7 @@ protected:
 
     MHI_AC_Ctrl_Core mhi_ac_ctrl_core;
 
-    Sensor internal_temperature_sensor_;
+    Sensor simulated_room_temperature_;
     Sensor room_temperature_offset_;
     Sensor error_code_;
     Sensor outdoor_temperature_;
@@ -749,6 +759,7 @@ protected:
     Sensor compressor_total_run_time_;
     Sensor current_power_;
     BinarySensor defrost_;
+    BinarySensor simulating_;
     Sensor vanes_pos_;
     Sensor vanes_pos_old_;
     Sensor energy_used_;

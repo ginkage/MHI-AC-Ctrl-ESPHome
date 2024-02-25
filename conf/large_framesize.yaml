@@ -18,7 +18,7 @@ sensor:
     # Sensor names in HA, you can change these if you want
     # Don't delete them or change their position in the list
     sensors:
-      - name: Internal room temperature sensor
+      - name: Simulated room temperature
       - name: Room temperature offset
       - name: Error code
       - name: Outdoor temperature
