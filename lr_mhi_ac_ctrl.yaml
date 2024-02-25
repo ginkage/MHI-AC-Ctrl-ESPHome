@@ -49,6 +49,12 @@ web_server:
 logger:
   level: DEBUG
   baud_rate: 0
+  logs:
+    climate: INFO
+    sensor: INFO
+    binary_sensor: INFO
+    text_sensor: INFO
+    component: ERROR #Component time limit warning supression
 
 ota:
 

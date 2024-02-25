@@ -2,6 +2,8 @@
 
 #include "MHI-AC-Ctrl-core.h"
 #define ROOM_TEMP_MQTT 1
+#define ROOM_TEMP_SAMPLE_COUNT 1 //My AC reliably sends the temperature every time. If you experience fluctuations, change this setting.
+#define ROOM_TEMP_SAMPLE_INTERVAL_MS 2500
 #include <vector>
 #include <string>
 
@@ -136,22 +138,49 @@ public:
 
     void loop() override
     {
-        static float last_internal_sensor_temperature = 0.0f;
-        static uint32_t last_internal_sensor_timestamp = 0;
 
         if(enable_troom_offset){
             uint32_t now = millis();
-            if(now - last_internal_sensor_timestamp > 10000){
+            if(now - last_internal_sensor_timestamp > ROOM_TEMP_SAMPLE_INTERVAL_MS){
                 last_internal_sensor_timestamp = now;
-                mhi_ac_ctrl_core.set_troom(0xff);
+                set_enable_offset(false, false); //Sets troom to 0xff
+                // Sends troom
                 int ret = mhi_ac_ctrl_core.loop(100);
                 if (ret < 0){
                     ESP_LOGW("mhi_ac_ctrl", "mhi_ac_ctrl_core.loop error: %i", ret);
                 }
-                last_internal_sensor_temperature = this->current_temperature;
-                internal_temperature_sensor_.publish_state(last_internal_sensor_temperature);
+                // Retrieves the internal sensor value
+                ret = mhi_ac_ctrl_core.loop(100);
+                if (ret < 0){
+                    ESP_LOGW("mhi_ac_ctrl", "mhi_ac_ctrl_core.loop error: %i", ret);
+                }
+                set_enable_offset(true, false);
+                internal_sensor_averages[sample_count] = this->current_temperature_status;
+                sample_count++;
+                if(sample_count == ROOM_TEMP_SAMPLE_COUNT){
+                    sample_count = 0;
+                    float sum = 0.0f;
+                    for(int i = 0; i<ROOM_TEMP_SAMPLE_COUNT; i++){
+                        sum += internal_sensor_averages[i];
+                    }
+                    last_internal_sensor_temperature = sum / static_cast<float>(ROOM_TEMP_SAMPLE_COUNT);
+                    internal_temperature_sensor_.publish_state(last_internal_sensor_temperature);
+                }
+
+                // In case the AC also uses averages to calculate the room temperature, we're sending
+                // back the temperature with twice the offset to nullify the sample we've just gotten.
+                set_room_temperature(last_internal_sensor_temperature + (internal_sensor_temperature_offset * 2.0f));
+                ret = mhi_ac_ctrl_core.loop(100);
+                if (ret < 0){
+                    ESP_LOGW("mhi_ac_ctrl", "mhi_ac_ctrl_core.loop error: %i", ret);
+                }
+            }else{
+                set_room_temperature(last_internal_sensor_temperature + internal_sensor_temperature_offset);
+                int ret = mhi_ac_ctrl_core.loop(100);
+                if (ret < 0){
+                    ESP_LOGW("mhi_ac_ctrl", "mhi_ac_ctrl_core.loop error: %i", ret);
+                }
             }
-            set_room_temperature(last_internal_sensor_temperature + internal_sensor_temperature_offset);
         }else{
             int ret = mhi_ac_ctrl_core.loop(100);
             if (ret < 0){
@@ -171,8 +200,6 @@ public:
     void cbiStatusFunction(ACStatus status, int value) override
     {
         static int mode_tmp = 0xff;
-        ESP_LOGD("mhi_ac_ctrl", "received status=%i value=%i power=%i", status, value, this->power_);
-
         if (this->power_ == power_off) {
             // Workaround for status after reboot
             this->mode = climate::CLIMATE_MODE_OFF;
@@ -344,18 +371,22 @@ public:
         case status_troom:
             // dtostrf((value - 61) / 4.0, 0, 2, strtmp);
             // output_P(status, PSTR(TOPIC_TROOM), strtmp);
-
-            this->current_temperature = (value - 61) / 4.0;
-            if(!enable_troom_offset){
-                internal_temperature_sensor_.publish_state(current_temperature);
+            current_temperature_status = (value - 61) / 4.0;
+            if(enable_troom_offset){
+                this->current_temperature = last_internal_sensor_temperature;
+                this->publish_state();
+            }else if(enable_troom_processing){
+                this->current_temperature = current_temperature_status;
+                internal_temperature_sensor_.publish_state(this->current_temperature);
+                this->publish_state();
             }
-            this->publish_state();
             break;
         case status_tsetpoint:
             // itoa(value, strtmp, 10);
             // output_P(status, PSTR(TOPIC_TSETPOINT), strtmp);
             this->target_temperature = (value & 0x7f)/ 2.0;
             internal_sensor_temperature_offset = 0.0f;
+            set_enable_offset(false, true);
             room_temperature_offset_.publish_state(internal_sensor_temperature_offset);
             this->publish_state();
             break;
@@ -559,8 +590,9 @@ public:
         }
     }
 
-    void set_enable_offset(bool value) {
-        enable_troom_offset = value;
+    void set_enable_offset(bool enabled, bool allow_processing) {
+        enable_troom_offset = enabled;
+        enable_troom_processing = allow_processing;
         if(!enable_troom_offset){
             // We removed the offset, we allow the use of the internal temperature sensor.
             mhi_ac_ctrl_core.set_troom(0xff);
@@ -604,7 +636,8 @@ protected:
         if (call.get_target_temperature().has_value()) {
             this->target_temperature = *call.get_target_temperature();
             tsetpoint_ = clamp(this->target_temperature, minimum_temperature_, maximum_temperature_);
-            internal_sensor_temperature_offset = (this->target_temperature < minimum_temperature_ && enable_troom_offset) ? (minimum_temperature_ - this->target_temperature) : 0.0f;
+            set_enable_offset(this->target_temperature < minimum_temperature_, this->target_temperature < minimum_temperature_);
+            internal_sensor_temperature_offset = enable_troom_offset ? (minimum_temperature_ - this->target_temperature) : 0.0f;
             room_temperature_offset_.publish_state(internal_sensor_temperature_offset);
             ESP_LOGD("mhi_ac_ctrl", "updated setpoint=%f offset=%f target=%f", tsetpoint_, internal_sensor_temperature_offset, this->target_temperature);
             mhi_ac_ctrl_core.set_tsetpoint((byte)(2 * tsetpoint_));
@@ -680,7 +713,15 @@ protected:
         return traits;
     }
 
+    float last_internal_sensor_temperature = 18.0f;
+    uint32_t last_internal_sensor_timestamp = 0;
+    float internal_sensor_averages[ROOM_TEMP_SAMPLE_COUNT] = {};
+    int sample_count = 0;
+
     bool enable_troom_offset = false;
+    bool enable_troom_processing = true;
+
+    float current_temperature_status {18.0f};
     float internal_sensor_temperature_offset {0.0f};
     float adjusted_minimum_temperature_ {10.0f};
     float minimum_temperature_ { 18.0f };

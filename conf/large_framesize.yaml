@@ -198,17 +198,3 @@ switch:
             ESP_LOGD("main", "Turn off 3DAuto");
             return ((MhiAcCtrl*)id(${deviceid}))->set_3Dauto(0);
           }
-  - platform: template
-    name: Apply temperature offset
-    id: apply_temp_offset
-    icon: mdi:thermometer-chevron-up
-    turn_on_action:
-      - lambda: |-
-          ESP_LOGI("main", "Enabled temperature offset");
-          ((MhiAcCtrl*)id(${deviceid}))->set_enable_offset(1);
-          id(apply_temp_offset).publish_state(true);
-    turn_off_action:
-      - lambda: |-
-          ESP_LOGI("main", "Disabled temperature offset");
-          ((MhiAcCtrl*)id(${deviceid}))->set_enable_offset(0);
-          id(apply_temp_offset).publish_state(false);
