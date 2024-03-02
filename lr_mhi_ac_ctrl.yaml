@@ -37,6 +37,11 @@ logger:
 
 ota:
 
+button:
+  - platform: restart
+    name: Restart
+    entity_category: diagnostic
+
 climate:
   - platform: custom
     lambda: |-
@@ -93,5 +98,3 @@ text_sensor:
 
     text_sensors:
       - name: Compressor protection status
-
-
