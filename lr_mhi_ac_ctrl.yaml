@@ -18,11 +18,11 @@ esphome:
     - MHI-AC-Ctrl-core.h
     - MHI-AC-Ctrl-core.cpp
 
-# Enable this for current units, supporting the larger framesize
-# Comment if you encounter mhi_ac_ctrl_core.loop error: -2 errors and uncomment the legacy_framesize file
-<<: !include conf/large_framesize.yaml
-# Uncomment this to allow for a working configuration on floor units or older units
-# <<: !include conf/legacy_framesize.yaml
+packages:
+  # Comment if you encounter mhi_ac_ctrl_core.loop error: -2 errors and uncomment the legacy_framesize file
+  mhi-ac-ctrl: !include conf/large_framesize.yaml
+  # Uncomment this to allow for a working configuration on floor units or older units
+  # mhi-ac-ctrl: !include conf/legacy_framesize.yaml
 
 wifi:
   ssid: "**SSID**"
@@ -74,6 +74,14 @@ api:
         - lambda: |-
             return ((MhiAcCtrl*)id(${deviceid}))->set_vanes(value);
 
+
+sensor:
+  - platform: uptime
+    name: Uptime
+  - platform: wifi_signal
+    name: WiFi Signal
+    update_interval: 60s
+
 binary_sensor:
   - platform: custom
     lambda: |-
@@ -98,3 +106,4 @@ text_sensor:
 
     text_sensors:
       - name: Compressor protection status
+
