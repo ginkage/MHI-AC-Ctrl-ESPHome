@@ -1,20 +1,34 @@
-# Version 2.0
+# Version 2.1
 globals:
   - id: room_temp_api_timeout
     type: int
     restore_value: no
-    initial_value: '120'
+    initial_value: "120"
   - id: frame_size
     type: byte
     restore_value: no
-    initial_value: '33' # 20 for legacy, 33 for new
+    initial_value: "33" # 20 for legacy, 33 for new
+
+climate:
+  - platform: custom
+    lambda: |-
+      auto mhi_ac_ctrl = new MhiAcCtrl();
+      App.register_component(mhi_ac_ctrl);
+      return {mhi_ac_ctrl};
+
+    climates:
+      - name: "${devicename}"
+        id: ${deviceid}
+
+binary_sensor:
+  - platform: custom
+    lambda: |-
+      return ((MhiAcCtrl*)id(${deviceid}))->get_binary_sensors();
+
+    binary_sensors:
+      - name: Defrost
 
 sensor:
-  - platform: uptime
-    name: Uptime
-  - platform: wifi_signal
-    name: WiFi Signal
-    update_interval: 60s
   - platform: custom
     lambda: |-
       return ((MhiAcCtrl*)id(${deviceid}))->get_sensors();
@@ -95,6 +109,14 @@ sensor:
                   ESP_LOGD("main", "received 3DAuto off from AC");
                   id(fan_control_3Dauto).publish_state(false);
                 }
+
+text_sensor:
+  - platform: custom
+    lambda: |-
+      return ((MhiAcCtrl*)id(${deviceid}))->get_text_sensors();
+
+    text_sensors:
+      - name: Compressor protection status
 
 select:
   - platform: template
