@@ -2,11 +2,12 @@
 substitutions:
   # Unique device ID in HA
   deviceid: "mhi_ac_ctrl"
-  # Unique device name in HA (sensor names will be prefixed by this name)
+  # Unique device name in HA
   devicename: "MHI-AC-Ctrl"
 
 esphome:
-  name: lr_mhi_ac_ctrl
+  name: ${deviceid}
+  friendly_name: ${devicename}
   platform: ESP8266
   board: d1_mini
   platformio_options:
@@ -36,6 +37,21 @@ logger:
 
 ota:
 
+button:
+  - platform: restart
+    name: Restart
+    entity_category: diagnostic
+
+climate:
+  - platform: custom
+    lambda: |-
+      auto mhi_ac_ctrl = new MhiAcCtrl();
+      App.register_component(mhi_ac_ctrl);
+      return {mhi_ac_ctrl};
+
+    climates:
+      - name: none  # HA will use the devicename -> climate.devicename
+        id: ${deviceid}
 
 api:
   reboot_timeout: 0s
@@ -58,20 +74,36 @@ api:
         - lambda: |-
             return ((MhiAcCtrl*)id(${deviceid}))->set_vanes(value);
 
+
 sensor:
   - platform: uptime
-    name: ${devicename} Uptime
+    name: Uptime
   - platform: wifi_signal
-    name: ${devicename} WiFi Signal
+    name: WiFi Signal
     update_interval: 60s
+
+binary_sensor:
+  - platform: custom
+    lambda: |-
+      return ((MhiAcCtrl*)id(${deviceid}))->get_binary_sensors();
+
+    binary_sensors:
+      - name: Defrost
 
 text_sensor:
   - platform: version
-    name: ${devicename} ESPHome Version
+    name: ESPHome Version
   - platform: wifi_info
     ip_address:
-      name: ${devicename} IP
+      name: IP
     ssid:
-      name: ${devicename} SSID
+      name: SSID
     bssid:
-      name: ${devicename} BSSID
+      name: BSSID
+  - platform: custom
+    lambda: |-
+      return ((MhiAcCtrl*)id(${deviceid}))->get_text_sensors();
+
+    text_sensors:
+      - name: Compressor protection status
+

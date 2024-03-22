@@ -36,16 +36,16 @@ sensor:
     # Sensor names in HA, you can change these if you want
     # Don't delete them or change their position in the list
     sensors:
-      - name: ${devicename} error code
-      - name: ${devicename} outdoor temperature
-      - name: ${devicename} return air temperature
-      - name: ${devicename} outdoor unit fan speed
-      - name: ${devicename} indoor unit fan speed
-      - name: ${devicename} current power
-      - name: ${devicename} compressor frequency
-      - name: ${devicename} indoor unit total run time
-      - name: ${devicename} compressor total run time
-      - name: ${devicename} vanes
+      - name: Error code
+      - name: Outdoor temperature
+      - name: Return air temperature
+      - name: Outdoor unit fan speed
+      - name: Indoor unit fan speed
+      - name: Current power
+      - name: Compressor frequency
+      - name: Indoor unit total run time
+      - name: Compressor total run time
+      - name: Vanes
         id: vanes_UD_received
         on_value:
           then:
@@ -63,15 +63,15 @@ sensor:
                   id(fan_control_ud).publish_state("Swing");
                 }
 
-      - name: ${devicename} energy used
-      - name: ${devicename} Indoor (U-bend) HE temp 1
-      - name: ${devicename} Indoor (capillary) HE temp 2
-      - name: ${devicename} Indoor (suction header) HE temp 3
-      - name: ${devicename} Outdoor HE temp
-      - name: ${devicename} Outdoor unit exp. valve
-      - name: ${devicename} Outdoor unit discharge pipe
-      - name: ${devicename} Outdoor unit discharge pipe super heat
-      - name: ${devicename} Protection error state
+      - name: Energy used
+      - name: Indoor (U-bend) HE temp 1
+      - name: Indoor (capillary) HE temp 2
+      - name: Indoor (suction header) HE temp 3
+      - name: Outdoor HE temp
+      - name: Outdoor unit exp. valve
+      - name: Outdoor unit discharge pipe
+      - name: Outdoor unit discharge pipe super heat
+      - name: Protection error state
 
 text_sensor:
   - platform: custom
@@ -83,7 +83,7 @@ text_sensor:
 
 select:
   - platform: template
-    name: ${devicename} Fan Control Up Down
+    name: Fan Control Up Down
     id: fan_control_ud
     icon: mdi:arrow-up-down
     optimistic: true
