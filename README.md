@@ -25,6 +25,12 @@ Has now 5 different fan modes but I'm not sure if the auto mode works proper, ke
 
 # Changelog:
 
+**v2.1** (2024-03)
+ - Breaking change: Cleaned up conf files
+ - Add restart button
+ - Update Home Assistant naming convention
+ - Enable energy dashboard usage 
+
 **v2.0** (2024-01)
  - Based on absalom-muc v2.8 (September 2023)
  - Breaking change in YAML configuration (need to set frame_size in globals)
