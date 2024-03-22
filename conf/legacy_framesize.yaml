@@ -26,7 +26,7 @@ binary_sensor:
       return ((MhiAcCtrl*)id(${deviceid}))->get_binary_sensors();
 
     binary_sensors:
-      - name: ${devicename} defrost
+      - name: Defrost
 
 sensor:
   - platform: custom
@@ -79,7 +79,7 @@ text_sensor:
       return ((MhiAcCtrl*)id(${deviceid}))->get_text_sensors();
 
     text_sensors:
-      - name: ${devicename} compressor protection status
+      - name: Compressor protection status
 
 select:
   - platform: template
