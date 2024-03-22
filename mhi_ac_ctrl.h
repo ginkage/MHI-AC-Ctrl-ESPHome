@@ -122,6 +122,8 @@ public:
         energy_used_.set_icon("mdi:lightning-bolt");
         energy_used_.set_unit_of_measurement("kWh");
         energy_used_.set_accuracy_decimals(2);
+        energy_used_.set_device_class("energy");
+        energy_used_.set_state_class(STATE_CLASS_TOTAL_INCREASING);
 
         mhi_ac_ctrl_core.MHIAcCtrlStatus(this);
         mhi_ac_ctrl_core.init();
