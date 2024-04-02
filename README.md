@@ -25,6 +25,13 @@ Has now 5 different fan modes but I'm not sure if the auto mode works proper, ke
 
 # Changelog:
 
+**v2.2** (2024-04)
+ - Add low temp heating from @Terminator-NL
+ - Add temp offset from @Terminator-NL
+ - Add webserver with authentication
+ - Made wifi credentials more nice
+ - Add defrost binary sensor
+
 **v2.1** (2024-03)
  - Breaking change: Cleaned up conf files
  - Add restart button

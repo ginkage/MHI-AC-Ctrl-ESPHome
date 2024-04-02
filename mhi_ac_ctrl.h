@@ -1,4 +1,4 @@
-// Version 2.0
+// Version 2.2
 
 #include "MHI-AC-Ctrl-core.h"
 #define ROOM_TEMP_MQTT 1
