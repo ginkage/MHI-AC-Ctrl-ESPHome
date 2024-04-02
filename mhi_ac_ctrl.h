@@ -563,7 +563,10 @@ public:
     }
 
     std::vector<BinarySensor *> get_binary_sensors() {
-        return { &defrost_, &simulating_ };
+        return { 
+            &defrost_,
+            &simulating_,
+            };
     }
 
     void set_vanes(int value) {
