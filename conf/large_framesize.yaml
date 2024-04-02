@@ -27,6 +27,7 @@ binary_sensor:
 
     binary_sensors:
       - name: Defrost
+      - name: Simulating room temperature
 
 sensor:
   - platform: custom
