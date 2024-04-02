@@ -532,8 +532,6 @@ public:
 
     std::vector<Sensor *> get_sensors() {
         return {
-            &simulated_room_temperature_,
-            &room_temperature_offset_,
             &error_code_,
             &outdoor_temperature_,
             &return_air_temperature_,
@@ -555,6 +553,8 @@ public:
             &protection_state_number_,
             &vanesLR_pos_,
             &Dauto_,
+            &simulated_room_temperature_,
+            &room_temperature_offset_,
         };
     }
 

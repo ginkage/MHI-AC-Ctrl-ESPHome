@@ -36,8 +36,6 @@ sensor:
     # Sensor names in HA, you can change these if you want
     # Don't delete them or change their position in the list
     sensors:
-      - name: Simulated room temperature
-      - name: Room temperature offset
       - name: Error code
       - name: Outdoor temperature
       - name: Return air temperature
@@ -111,6 +109,8 @@ sensor:
                   ESP_LOGD("main", "received 3DAuto off from AC");
                   id(fan_control_3Dauto).publish_state(false);
                 }
+      - name: Simulated room temperature
+      - name: Room temperature offset
 
 text_sensor:
   - platform: custom
