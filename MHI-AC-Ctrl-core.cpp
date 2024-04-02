@@ -311,9 +311,10 @@ int MHI_AC_Ctrl_Core::loop(uint max_time_ms) {
     // Only updated when Vanes command via wired RC
     uint vanestmp = (MOSI_frame[DB0] & 0xc0) + ((MOSI_frame[DB1] & 0xB0) >> 4);
     if (vanestmp != status_vanes_old) {
-      if ((vanestmp & 0x88) == 0) // last vanes update was via IR-RC, so status is not known
-        m_cbiStatus->cbiStatusFunction(status_vanes, vanes_unknown);
-      else if ((vanestmp & 0x40) != 0) // Vanes status swing
+      // if ((vanestmp & 0x88) == 0) // last vanes update was via IR-RC, so status is not known
+      //   m_cbiStatus->cbiStatusFunction(status_vanes, vanes_unknown);
+      // else 
+      if ((vanestmp & 0x40) != 0) // Vanes status swing
         m_cbiStatus->cbiStatusFunction(status_vanes, vanes_swing);
       else {
         m_cbiStatus->cbiStatusFunction(status_vanes, (vanestmp & 0x03) + 1);
