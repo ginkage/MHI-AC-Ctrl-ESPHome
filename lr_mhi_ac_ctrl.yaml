@@ -4,6 +4,14 @@ substitutions:
   deviceid: "mhi_ac_ctrl"
   # Unique device name in HA
   devicename: "MHI-AC-Ctrl"
+  # The WiFi network to connect to
+  wifi_ssid: !secret wifi_ssid
+  # The WiFi password
+  wifi_password: !secret wifi_password
+  # Web auth username
+  username: !secret username
+  # Web auth password
+  password: !secret password
 
 esphome:
   name: ${deviceid}
@@ -25,11 +33,19 @@ packages:
   # mhi-ac-ctrl: !include conf/legacy_framesize.yaml
 
 wifi:
-  ssid: "**SSID**"
-  password: "**PASSWORD**"
-
+  ssid: ${wifi_ssid}
+  password: ${wifi_password}
   ap:
     ssid: ${devicename}
+
+captive_portal:
+
+web_server:
+  log: false
+  port: 80
+  auth:
+    username: ${username}
+    password: ${password}
 
 logger:
   level: DEBUG
@@ -38,6 +54,8 @@ logger:
 ota:
 
 button:
+  - platform: safe_mode
+    name: Reboot to safe mode
   - platform: restart
     name: Restart
     entity_category: diagnostic
@@ -64,6 +82,7 @@ api:
       then:
         - lambda: |-
             return ((MhiAcCtrl*)id(${deviceid}))->set_room_temperature(value);
+
     # Call the set_vanes service from HA to set the vane position
     # Needed because the ESPHome Climate class does not support this natively
     # Possible values: 1-4: static positions, 5: swing, 0: unknown
@@ -80,6 +99,15 @@ sensor:
   - platform: wifi_signal
     name: WiFi Signal
     update_interval: 60s
+
+binary_sensor:
+  - platform: custom
+    lambda: |-
+      return ((MhiAcCtrl*)id(${deviceid}))->get_binary_sensors();
+
+    binary_sensors:
+      - name: Defrost
+      - name: Simulating room temperature
 
 text_sensor:
   - platform: version
