@@ -30,6 +30,8 @@ static const std::vector<std::string> protection_states = {
 
 static const char* TAG = "mhi_ac_ctrl";
 
+unsigned long room_temp_api_timeout_ms = millis();
+
 class MhiAcCtrl : public climate::Climate,
                   public Component,
                   public CallbackInterface_Status {
@@ -175,19 +177,25 @@ public:
 
                 // In case the AC also uses averages to calculate the room temperature, we're sending
                 // back the temperature with twice the offset to nullify the sample we've just gotten.
-                set_room_temperature(last_internal_sensor_temperature + (internal_sensor_temperature_offset * 2.0f), false);
+                set_room_internal_temperature(last_internal_sensor_temperature + (internal_sensor_temperature_offset * 2.0f), false);
                 ret = mhi_ac_ctrl_core.loop(100);
                 if (ret < 0){
                     ESP_LOGW("mhi_ac_ctrl", "mhi_ac_ctrl_core.loop error: %i", ret);
                 }
             }else{
-                set_room_temperature(last_internal_sensor_temperature + internal_sensor_temperature_offset, true);
+                set_room_internal_temperature(last_internal_sensor_temperature + internal_sensor_temperature_offset, true);
                 int ret = mhi_ac_ctrl_core.loop(100);
                 if (ret < 0){
                     ESP_LOGW("mhi_ac_ctrl", "mhi_ac_ctrl_core.loop error: %i", ret);
                 }
             }
         }else{
+            if(millis() - room_temp_api_timeout_ms >= id(room_temp_api_timeout)*1000) {
+                mhi_ac_ctrl_core.set_troom(0xff);  // use IU temperature sensor
+                room_temp_api_timeout_ms = millis();
+                ESP_LOGD("mhi_ac_ctrl", "did not receive a room_temp_api value, using IU temperature sensor");
+            }
+
             int ret = mhi_ac_ctrl_core.loop(100);
             if (ret < 0){
                 ESP_LOGW("mhi_ac_ctrl", "mhi_ac_ctrl_core.loop error: %i", ret);
@@ -207,6 +215,8 @@ public:
     void cbiStatusFunction(ACStatus status, int value) override
     {
         static int mode_tmp = 0xff;
+        ESP_LOGD("mhi_ac_ctrl", "received status=%i value=%i power=%i", status, value, this->power_);
+
         if (this->power_ == power_off) {
             // Workaround for status after reboot
             this->mode = climate::CLIMATE_MODE_OFF;
@@ -569,6 +579,15 @@ public:
             };
     }
 
+    void set_room_temperature(float value) {
+        if ((value > -10) & (value < 48)) {
+            room_temp_api_timeout_ms = millis();  // reset timeout
+            byte tmp = value*4+61;
+            mhi_ac_ctrl_core.set_troom(value*4+61);
+            ESP_LOGD("mhi_ac_ctrl", "set room_temp_api: %f %i %i", value, (byte)(value*4+61), (byte)tmp);
+        }
+    }
+
     void set_vanes(int value) {
         mhi_ac_ctrl_core.set_vanes(value);
         ESP_LOGD("mhi_ac_ctrl", "set vanes: %i", value);
@@ -592,7 +611,7 @@ public:
         ESP_LOGD("mhi_ac_ctrl", "set vanes Left Right: %i", value);
     }
 
-    void set_room_temperature(float value, bool publish) {
+    void set_room_internal_temperature(float value, bool publish) {
         if ((value > -10) && (value < 48)) {
             byte tmp = value*4+61;
             mhi_ac_ctrl_core.set_troom(value*4+61);
