@@ -195,12 +195,13 @@ public:
                 room_temp_api_timeout_ms = millis();
                 ESP_LOGD("mhi_ac_ctrl", "did not receive a room_temp_api value, using IU temperature sensor");
             }
-
+            else {
             int ret = mhi_ac_ctrl_core.loop(100);
             if (ret < 0){
                 ESP_LOGW("mhi_ac_ctrl", "mhi_ac_ctrl_core.loop error: %i", ret);
             }
-            simulated_room_temperature_.publish_state(this->current_temperature);
+                // simulated_room_temperature_.publish_state(this->current_temperature);
+            }
         }
     }
 
