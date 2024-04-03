@@ -100,15 +100,6 @@ sensor:
     name: WiFi Signal
     update_interval: 60s
 
-binary_sensor:
-  - platform: custom
-    lambda: |-
-      return ((MhiAcCtrl*)id(${deviceid}))->get_binary_sensors();
-
-    binary_sensors:
-      - name: Defrost
-      - name: Simulating room temperature
-
 text_sensor:
   - platform: version
     name: ESPHome Version
