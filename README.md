@@ -4,8 +4,23 @@
 # MHI-AC-Ctrl-ESPHome
 This project is a simple integration of the amazing work [absalom-muc](https://github.com/absalom-muc) has done with his project [MHI-AC-Ctrl](https://github.com/absalom-muc/MHI-AC-Ctrl).\
 It's supposed to simplify the [Home Assistant](https://www.home-assistant.io/) setup, while giving you OTA and auto-discovery with virtually zero effort and no MQTT needed, powered by [ESPHome](https://esphome.io/).\
-MHI-AC-Ctrl-core.\* files were forked directly, with no modification, whereas your WiFi credentials should go into the \*.yaml file, and mhi_ac_ctrl.h is the core of the integration.\
-Just put all these files in your ESPHome folder, flash once, and you're good to go!
+MHI-AC-Ctrl-core.\* files were forked directly, with no modification, whereas your WiFi credentials should go into the \*.yaml file, and mhi_ac_ctrl.h is the core of the integration.
+
+# Installation
+## Prerequisites:
+ - Home Assistant installed  
+ - ESPHome plugin installed (https://esphome.io/guides/getting_started_hassio.html)  
+ - ssh plugin (preferred) or file editor installed in Home Assistant  
+
+SSH to your Home Assistant system, navigate to /config/esphome and clone the git repo:
+```bash
+cd /config/esphome
+git clone https://github.com/ginkage/MHI-AC-Ctrl-ESPHome.git .
+cp lr_mhi_ac_ctrl.yaml first_ac.yaml
+```
+
+After that, you should have a first_ac.yaml. Verify the file (wifi credentials, and name of the unit for example) Login to the Home Assistant web interface and install the yaml file on your esp with esphome.
+
 
 # Fan Modes Up/Down Left/Right
 Most newer MHI units (the ones supporting the WF-RAC WiFi module) support fine grained vane control for Left/Right and Up/Down.  
