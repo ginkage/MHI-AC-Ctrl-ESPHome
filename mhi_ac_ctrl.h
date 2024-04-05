@@ -677,6 +677,12 @@ protected:
                 set_enable_offset(true, true, true);
                 internal_sensor_temperature_offset = enable_troom_offset ? (minimum_temperature_ - this->target_temperature) : 0.0f;
             }
+            // Check if target_temperature is bigger than maximum_temperature
+            else if (this->target_temperature > maximum_temperature_) {
+                set_enable_offset(true, true, true);
+                internal_sensor_temperature_offset = enable_troom_offset ? (this->target_temperature - maximum_temperature_) : 0.0f;
+            }
+
             else {
                 set_enable_offset(false, true, true);
                 internal_sensor_temperature_offset = 0.0f;
