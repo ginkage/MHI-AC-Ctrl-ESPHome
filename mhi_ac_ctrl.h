@@ -589,6 +589,17 @@ public:
         }
     }
 
+    void set_room_internal_temperature(float value, bool publish) {
+        if ((value > -10) && (value < 48)) {
+            last_internal_sensor_timestamp = millis();
+            byte tmp = value*4+61;
+            mhi_ac_ctrl_core.set_troom(value*4+61);
+            if(publish && (simulated_room_temperature_.state != value)){
+                simulated_room_temperature_.publish_state(value);
+            }
+        }
+    }
+
     void set_vanes(int value) {
         mhi_ac_ctrl_core.set_vanes(value);
         ESP_LOGD("mhi_ac_ctrl", "set vanes: %i", value);
@@ -610,16 +621,6 @@ public:
             mhi_ac_ctrl_core.set_3Dauto(AC3Dauto::Dauto_off); // Set swing to 3Dauto
         }
         ESP_LOGD("mhi_ac_ctrl", "set vanes Left Right: %i", value);
-    }
-
-    void set_room_internal_temperature(float value, bool publish) {
-        if ((value > -10) && (value < 48)) {
-            byte tmp = value*4+61;
-            mhi_ac_ctrl_core.set_troom(value*4+61);
-            if(publish && (simulated_room_temperature_.state != value)){
-                simulated_room_temperature_.publish_state(value);
-            }
-        }
     }
 
     void set_enable_offset(bool enabled, bool allow_processing, bool publish) {
