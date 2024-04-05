@@ -672,8 +672,15 @@ protected:
         if (call.get_target_temperature().has_value()) {
             this->target_temperature = *call.get_target_temperature();
             tsetpoint_ = clamp(this->target_temperature, minimum_temperature_, maximum_temperature_);
-            set_enable_offset(this->target_temperature < minimum_temperature_, this->target_temperature < minimum_temperature_, true);
-            internal_sensor_temperature_offset = enable_troom_offset ? (minimum_temperature_ - this->target_temperature) : 0.0f;
+            // Check if target_temperature is smaller than minimum_temperature
+            if (this->target_temperature < minimum_temperature_ ) {
+                set_enable_offset(true, true, true);
+                internal_sensor_temperature_offset = enable_troom_offset ? (minimum_temperature_ - this->target_temperature) : 0.0f;
+            }
+            else {
+                set_enable_offset(false, true, true);
+                internal_sensor_temperature_offset = 0.0f;
+            }
             room_temperature_offset_.publish_state(internal_sensor_temperature_offset);
             ESP_LOGD("mhi_ac_ctrl", "updated setpoint=%f offset=%f target=%f", tsetpoint_, internal_sensor_temperature_offset, this->target_temperature);
             mhi_ac_ctrl_core.set_tsetpoint((byte)(2 * tsetpoint_));
