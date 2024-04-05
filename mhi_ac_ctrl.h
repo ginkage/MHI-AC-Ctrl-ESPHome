@@ -683,6 +683,13 @@ protected:
                 internal_sensor_temperature_offset = enable_troom_offset ? (this->target_temperature - maximum_temperature_) : 0.0f;
             }
 
+            // Check if target temperature is not a rounded value
+            else if (this->target_temperature != round(this->target_temperature)) {
+                tsetpoint_ = clamp(round(this->target_temperature), minimum_temperature_, maximum_temperature_);
+                ESP_LOGD("mhi_ac_ctrl", "Target temperature is not a rounded value: %f", this->target_temperature);
+                set_enable_offset(true, true, true);
+                internal_sensor_temperature_offset = round(this->target_temperature) - this->target_temperature;  // Calculate offset when setpoint is changed
+            }
             else {
                 set_enable_offset(false, true, true);
                 internal_sensor_temperature_offset = 0.0f;
