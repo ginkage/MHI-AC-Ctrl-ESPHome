@@ -46,6 +46,7 @@ Has now 5 different fan modes but I'm not sure if the auto mode works proper, ke
  - Add webserver with authentication
  - Made wifi credentials more nice
  - Add defrost binary sensor
+ - Add high precision temperature setting
 
 **v2.1** (2024-03)
  - Breaking change: Cleaned up conf files
