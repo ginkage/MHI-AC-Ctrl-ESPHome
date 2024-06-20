@@ -1,4 +1,4 @@
-# Version 2.1
+# Version 2.2
 globals:
   - id: room_temp_api_timeout
     type: int
@@ -27,6 +27,7 @@ binary_sensor:
 
     binary_sensors:
       - name: Defrost
+      - name: Simulating room temperature
 
 sensor:
   - platform: custom
@@ -109,6 +110,8 @@ sensor:
                   ESP_LOGD("main", "received 3DAuto off from AC");
                   id(fan_control_3Dauto).publish_state(false);
                 }
+      - name: Simulated room temperature
+      - name: Room temperature offset
 
 text_sensor:
   - platform: custom

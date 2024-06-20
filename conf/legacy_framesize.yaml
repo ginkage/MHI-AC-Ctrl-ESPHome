@@ -1,4 +1,4 @@
-# Version 2.1
+# Version 2.2
 globals:
   - id: room_temp_api_timeout
     type: int
@@ -27,6 +27,7 @@ binary_sensor:
 
     binary_sensors:
       - name: Defrost
+      - name: Simulating room temperature
 
 sensor:
   - platform: custom
@@ -72,6 +73,8 @@ sensor:
       - name: Outdoor unit discharge pipe
       - name: Outdoor unit discharge pipe super heat
       - name: Protection error state
+      - name: Simulated room temperature
+      - name: Room temperature offset
 
 text_sensor:
   - platform: custom
