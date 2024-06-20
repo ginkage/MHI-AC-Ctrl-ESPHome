@@ -36,6 +36,7 @@ logger:
   baud_rate: 0
 
 ota:
+  platform: esphome
 
 button:
   - platform: restart
