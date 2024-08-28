@@ -136,7 +136,7 @@ public:
 
         mhi_ac_ctrl_core.MHIAcCtrlStatus(this);
         mhi_ac_ctrl_core.init();
-        mhi_ac_ctrl_core.set_frame_size(frame_size); // set framesize. Only 20 (legacy) or 33 (includes 3D auto and vertical vanes) possible
+        mhi_ac_ctrl_core.set_frame_size(id(frame_size)); // set framesize. Only 20 (legacy) or 33 (includes 3D auto and vertical vanes) possible
 
         void set_frame_size(int framesize) {
             frame_size = framesize;
