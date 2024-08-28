@@ -13,7 +13,7 @@ using namespace esphome::climate;
 using namespace esphome::sensor;
 using namespace esphome::text_sensor;
 using namespace esphome::binary_sensor;
-using namespace esphome::time;
+static time_t _defaultTimeCB(void) { return ::time(NULL); }
 
 static const std::vector<std::string> protection_states = {
     "Normal",
