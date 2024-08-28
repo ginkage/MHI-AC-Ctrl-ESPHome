@@ -559,6 +559,11 @@ public:
         ESP_LOGD("mhi_ac_ctrl", "set vanes Left Right: %i", value);
     }
 
+private:
+    int frame_size_;
+    unsigned long room_temp_api_timeout_ms = millis(); // Timestamp in milliseconds
+    unsigned long room_temp_api_timeout; // Timeout duration in seconds
+
 protected:
     /// Transmit the state of this climate controller.
     void control(const climate::ClimateCall& call) override
