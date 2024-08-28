@@ -1,10 +1,12 @@
 // Version 2.0
 
 #include "MHI-AC-Ctrl-core.h"
+#include "esphome.h"
 #include "esphome/components/climate/climate.h"
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/binary_sensor/binary_sensor.h"
+#include "esphome/components/time/real_time_clock.h"
 #define ROOM_TEMP_MQTT 1
 #include <vector>
 #include <string>
@@ -13,7 +15,6 @@ using namespace esphome::climate;
 using namespace esphome::sensor;
 using namespace esphome::text_sensor;
 using namespace esphome::binary_sensor;
-static time_t _defaultTimeCB(void) { return ::time(NULL); }
 
 static const std::vector<std::string> protection_states = {
     "Normal",
@@ -163,6 +164,10 @@ public:
         int ret = mhi_ac_ctrl_core.loop(100);
         if (ret < 0)
             ESP_LOGW("mhi_ac_ctrl", "mhi_ac_ctrl_core.loop error: %i", ret);
+    }
+    static time_t _defaultTimeCB(void) {
+        // Use the synchronized time from Home Assistant
+        return App.get_time("homeassistant_time")->now().timestamp;
     }
 
     void dump_config() override
