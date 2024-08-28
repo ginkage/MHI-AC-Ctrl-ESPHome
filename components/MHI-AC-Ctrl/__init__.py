@@ -3,7 +3,7 @@ import esphome.config_validation as cv
 from esphome.const import CONF_ID
 
 mhiacctrl = cg.esphome_ns.namespace('mhiacctrl')
-MHI-AC-Ctrl = empty_component_ns.class_('MHI-AC-Ctrl', cg.Component)
+MHIACCtrl = empty_component_ns.class_('MHI-AC-Ctrl', cg.Component)
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(MHI-Ac-Ctrl)
