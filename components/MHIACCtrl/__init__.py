@@ -6,7 +6,7 @@ mhiacctrl = cg.esphome_ns.namespace('mhiacctrl')
 MHIACCtrl = cg.global_ns.class_('MHIACCtrl', cg.Component)
 
 CONFIG_SCHEMA = cv.Schema({
-    cv.GenerateID(): cv.declare_id(MHI-Ac-Ctrl)
+    cv.GenerateID(): cv.declare_id(MHIACCtrl)
 }).extend(cv.COMPONENT_SCHEMA)
 
 def to_code(config):
