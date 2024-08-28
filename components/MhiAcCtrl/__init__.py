@@ -25,5 +25,5 @@ async def to_code(config):
     await cg.register_component(var, config)
     cg.add(var.set_frame_size(config[CONF_FRAME_SIZE]))
     cg.add(var.set_room_temp_api_timeout(config[CONF_ROOM_TEMP_TIMEOUT]))
-    cg.add(var.set_vanes_ud(config[CONF_VANES_UD]))
-    cg.add(var.set_vanes_lr(config[CONF_VANES_LR]))
+    cg.add(var.set_vanes(config[CONF_VANES_UD]))
+    cg.add(var.set_vanesLR(config[CONF_VANES_LR]))
