@@ -11,7 +11,7 @@ MhiAcCtrl = cg.global_ns.class_('MhiAcCtrl', cg.Component, climate.Climate)
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(MhiAcCtrl),
-    cv.Optional(CONF_FRAME_SIZE): cv.declare_id(MhiAcCtrl),
+    cv.Optional(CONF_FRAME_SIZE, default=20): cv.int_range(min=20, max=33),
 }).extend(cv.COMPONENT_SCHEMA)
 
 async def to_code(config):
