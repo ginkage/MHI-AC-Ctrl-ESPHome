@@ -36,22 +36,12 @@ logger:
   baud_rate: 0
 
 ota:
+  platform: esphome
 
 button:
   - platform: restart
     name: Restart
     entity_category: diagnostic
-
-climate:
-  - platform: custom
-    lambda: |-
-      auto mhi_ac_ctrl = new MhiAcCtrl();
-      App.register_component(mhi_ac_ctrl);
-      return {mhi_ac_ctrl};
-
-    climates:
-      - name: none  # HA will use the devicename -> climate.devicename
-        id: ${deviceid}
 
 api:
   reboot_timeout: 0s

@@ -1,4 +1,8 @@
 # Version 2.1
+external_components:
+  - source: github://ginkage/MHI-AC-Ctrl-ESPHome@master
+    components: [ MHI-AC-Ctrl ]
+
 globals:
   - id: room_temp_api_timeout
     type: int
