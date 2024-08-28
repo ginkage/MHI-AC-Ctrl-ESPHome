@@ -140,7 +140,7 @@ public:
 
         }
     void set_frame_size(int framesize) {
-        frame_size = framesize;
+        frame_size_ = framesize;
 
         }
     private:
