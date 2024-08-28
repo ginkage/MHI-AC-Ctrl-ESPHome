@@ -10,7 +10,7 @@ mhiacctrl = cg.esphome_ns.namespace('mhiacctrl')
 MhiAcCtrl = cg.global_ns.class_('MhiAcCtrl', cg.Component, climate.Climate)
 
 CONFIG_SCHEMA = cv.Schema({
-    cv.GenerateID(): cv.declare_id(MhiAcCtrl)
+    cv.GenerateID(): cv.declare_id(MhiAcCtrl),
     cv.Optional(CONF_FRAME_SIZE): cv.declare_id(MhiAcCtrl),
 }).extend(cv.COMPONENT_SCHEMA)
 
