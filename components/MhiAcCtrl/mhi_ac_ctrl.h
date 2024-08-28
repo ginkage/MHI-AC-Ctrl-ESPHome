@@ -6,7 +6,7 @@
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/binary_sensor/binary_sensor.h"
-#include "esphome/components/time/real_time_clock.h"
+#include "esphome/core/time.h"
 #define ROOM_TEMP_MQTT 1
 #include <vector>
 #include <string>
@@ -165,10 +165,10 @@ public:
         if (ret < 0)
             ESP_LOGW("mhi_ac_ctrl", "mhi_ac_ctrl_core.loop error: %i", ret);
     }
-    static time_t _defaultTimeCB(void) {
-        // Use the synchronized time from Home Assistant
-        return App.get_time("homeassistant_time")->now().timestamp;
-    }
+    // static time_t _defaultTimeCB(void) {
+    //     // Use the synchronized time from Home Assistant
+    //     return App.get_time("homeassistant_time")->now().timestamp;
+    // }
 
     void dump_config() override
     {
