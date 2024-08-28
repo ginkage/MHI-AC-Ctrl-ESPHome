@@ -3,7 +3,7 @@ import esphome.config_validation as cv
 from esphome.const import CONF_ID
 from esphome.components import climate
 
-AUTO_LOAD = ["sensor", "climate"]
+AUTO_LOAD = ["sensor", "climate", "text_sensor", "binary_sensor"]
 
 mhiacctrl = cg.esphome_ns.namespace('mhiacctrl')
 MhiAcCtrl = cg.global_ns.class_('MhiAcCtrl', cg.Component, climate.Climate)

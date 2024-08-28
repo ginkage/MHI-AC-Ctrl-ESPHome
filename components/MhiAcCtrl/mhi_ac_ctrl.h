@@ -3,6 +3,8 @@
 #include "MHI-AC-Ctrl-core.h"
 #include "esphome/components/climate/climate.h"
 #include "esphome/components/sensor/sensor.h"
+#include "esphome/components/sensor/text_sensor.h"
+#include "esphome/components/sensor/binary_sensor.h"
 #define ROOM_TEMP_MQTT 1
 #include <vector>
 #include <string>
