@@ -11,6 +11,8 @@
 using namespace esphome;
 using namespace esphome::climate;
 using namespace esphome::sensor;
+using namespace esphome::text_sensor;
+using namespace esphome::binary_sensor;
 
 static const std::vector<std::string> protection_states = {
     "Normal",
