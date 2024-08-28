@@ -143,12 +143,17 @@ public:
         frame_size_ = framesize;
 
         }
+    void set_room_temp_api_timeout(int time_in_seconds) {
+        room_temp_api_timeout = time_in_seconds;
+    }
     private:
         int frame_size_;
+        unsigned long room_temp_api_timeout_ms = millis(); // Timestamp in milliseconds
+        unsigned long room_temp_api_timeout; // Timeout duration in seconds
 
     void loop() override
     {
-        if(millis() - room_temp_api_timeout_ms >= id(room_temp_api_timeout)*1000) {
+        if(millis() - room_temp_api_timeout_ms >= room_temp_api_timeout*1000) {
             mhi_ac_ctrl_core.set_troom(0xff);  // use IU temperature sensor
             room_temp_api_timeout_ms = millis();
             ESP_LOGD("mhi_ac_ctrl", "did not receive a room_temp_api value, using IU temperature sensor");
