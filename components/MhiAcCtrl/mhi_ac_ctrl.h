@@ -1,6 +1,10 @@
 // Version 2.0
 
 #include "MHI-AC-Ctrl-core.h"
+#include "esphome/components/climate/climate.h"
+#include "esphome/components/sensor/sensor.h"
+#ifdef USE_SWITCH
+#include "esphome/components/switch/switch.h"
 #define ROOM_TEMP_MQTT 1
 #include <vector>
 #include <string>
