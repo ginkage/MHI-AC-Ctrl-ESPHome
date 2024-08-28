@@ -3,10 +3,10 @@ import esphome.config_validation as cv
 from esphome.const import CONF_ID
 
 mhiacctrl = cg.esphome_ns.namespace('mhiacctrl')
-MHIACCtrl = cg.global_ns.class_('MHIACCtrl', cg.Component)
+MhiAcCtrl = cg.global_ns.class_('MhiAcCtrl', cg.Component)
 
 CONFIG_SCHEMA = cv.Schema({
-    cv.GenerateID(): cv.declare_id(MHIACCtrl)
+    cv.GenerateID(): cv.declare_id(MhiAcCtrl)
 }).extend(cv.COMPONENT_SCHEMA)
 
 def to_code(config):
