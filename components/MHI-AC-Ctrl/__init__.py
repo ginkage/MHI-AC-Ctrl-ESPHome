@@ -1,12 +1,13 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
+from esphome.components import climate
 from esphome.const import CONF_ID
 
-mhiacctrl = cg.esphome_ns.namespace('mhiacctrl')
-MHI-AC-Ctrl = empty_component_ns.class_('MHI-AC-Ctrl', cg.Component)
+mhiacctrl_ns = cg.esphome_ns.namespace('mhiacctrl')
+MHIAcCtrl = empty_component_ns.class_('MHIAcCtrl', cg.Component)
 
 CONFIG_SCHEMA = cv.Schema({
-    cv.GenerateID(): cv.declare_id(MHI-Ac-Ctrl)
+    cv.GenerateID(): cv.declare_id(MHIAcCtrl)
 }).extend(cv.COMPONENT_SCHEMA)
 
 def to_code(config):
