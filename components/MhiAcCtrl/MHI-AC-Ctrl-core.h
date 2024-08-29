@@ -2,6 +2,11 @@
 
 #include <Arduino.h>
 
+extern "C" {
+    uint16_t calc_checksum(byte* frame);
+    uint16_t calc_checksumFrame33(byte* frame);
+}
+
 // comment out the data you are not interested, but at least leave one row !
 const byte opdata[][2] PROGMEM = {
   { 0xc0, 0x02},  //  1 "MODE"
