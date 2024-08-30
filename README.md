@@ -42,10 +42,10 @@ Has now 5 different fan modes but I'm not sure if the auto mode works proper, ke
  - Added legacy support configurable from YAML (removing 3d auto and vanes LR control)
 
 # FAQ
-
-1. I am getting the following logline in the console of my device: 
-[W][component:237]: Component MhiAcCtrl took a long time for an operation (52 ms).
-[W][component:238]: Components should block for at most 30 ms.
+  
+1. I am getting the following logline in the console of my device:   
+[W][component:237]: Component MhiAcCtrl took a long time for an operation (52 ms).  
+[W][component:238]: Components should block for at most 30 ms.  
 
 This is because esphome now alerts for slow components, to ignore this warning you can configure logging for components to ERROR, this will suppress the WARNING
 ```yaml
@@ -57,12 +57,13 @@ logger:
         component: ERROR
 ```
 
-See https://github.com/ginkage/MHI-AC-Ctrl-ESPHome/issues/61 for more information
-2. I am getting mhi_ac_ctrl_core.loop error: -2 errors and nothing works!
-You probably have an older version of the Airco unit which doesn't support the newer, larger framesize. 
-You can to change the frame_size in the yaml to 20 to disable newer functionality.
-when framsize is set to 20, 3D auto, and vane Left / Right doesn't work, vane Up / Down works limited.
-All other features should work fine.
+See https://github.com/ginkage/MHI-AC-Ctrl-ESPHome/issues/61 for more information  
+
+2. I am getting mhi_ac_ctrl_core.loop error: -2 errors and nothing works!  
+You probably have an older version of the Airco unit which doesn't support the newer, larger framesize.   
+You can to change the frame_size in the yaml to 20 to disable newer functionality.  
+when framsize is set to 20, 3D auto, and vane Left / Right doesn't work, vane Up / Down works limited.  
+All other features should work fine.  
 
 
 # License
