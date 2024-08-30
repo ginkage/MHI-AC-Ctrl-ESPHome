@@ -26,8 +26,8 @@ Has now 5 different fan modes but I'm not sure if the auto mode works proper, ke
 # Changelog:
 
 **v3.0** (2024-08)
- - Breaking change: moved all files to components
- - Manually downloading the files to your Home Assistant setup is no longerneeded
+ - Breaking change: moved all files to component and allow for easy install, thanks to @XMaarten and https://github.com/hberntsen/mhi-ac-ctrl-esp32-c3
+ - Manually downloading the files to your Home Assistant setup is no longer needed
  - Legacy or Large framesize files are merged again
 
 **v2.1** (2024-03)
