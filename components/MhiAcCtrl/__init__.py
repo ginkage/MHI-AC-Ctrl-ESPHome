@@ -4,6 +4,7 @@ from esphome.const import CONF_ID
 from esphome.components import climate
 
 AUTO_LOAD = ["sensor", "climate", "text_sensor", "binary_sensor"]
+CONF_MHI_AC_CTRL_ID = "mhi_ac_ctrl_id"
 CONF_FRAME_SIZE = 'frame_size'
 CONF_ROOM_TEMP_TIMEOUT = 'room_temp_timeout'
 CONF_VANES_UD = 'vanes_ud'
