@@ -5,7 +5,7 @@
 This project is a simple integration of the amazing work [absalom-muc](https://github.com/absalom-muc) has done with his project [MHI-AC-Ctrl](https://github.com/absalom-muc/MHI-AC-Ctrl).\
 It's supposed to simplify the [Home Assistant](https://www.home-assistant.io/) setup, while giving you OTA and auto-discovery with virtually zero effort and no MQTT needed, powered by [ESPHome](https://esphome.io/).\
 MHI-AC-Ctrl-core.\* files were forked directly, with no modification, whereas your WiFi credentials should go into the \*.yaml file, and mhi_ac_ctrl.h is the core of the integration.\
-Just put all these files in your ESPHome folder, flash once, and you're good to go!
+Create a new device within ESPHome and combine the yaml with example.yaml, rename example_ac and example-ac and install!
 
 # Fan Modes Up/Down Left/Right
 Most newer MHI units (the ones supporting the WF-RAC WiFi module) support fine grained vane control for Left/Right and Up/Down.  
@@ -25,6 +25,11 @@ Has now 5 different fan modes but I'm not sure if the auto mode works proper, ke
 
 # Changelog:
 
+**v3.0** (2024-08)
+ - Breaking change: moved all files to components
+ - Manually downloading the files to your Home Assistant setup is no longerneeded
+ - Legacy or Large framesize files are merged again
+
 **v2.1** (2024-03)
  - Breaking change: Cleaned up conf files
  - Add restart button
@@ -35,6 +40,30 @@ Has now 5 different fan modes but I'm not sure if the auto mode works proper, ke
  - Based on absalom-muc v2.8 (September 2023)
  - Breaking change in YAML configuration (need to set frame_size in globals)
  - Added legacy support configurable from YAML (removing 3d auto and vanes LR control)
+
+# FAQ
+
+1. I am getting the following logline in the console of my device: 
+[W][component:237]: Component MhiAcCtrl took a long time for an operation (52 ms).
+[W][component:238]: Components should block for at most 30 ms.
+
+This is because esphome now alerts for slow components, to ignore this warning you can configure logging for components to ERROR, this will suppress the WARNING
+```yaml
+# Enable logging
+logger:
+    level: INFO
+    baud_rate: 0
+    logs:
+        component: ERROR
+```
+
+See https://github.com/ginkage/MHI-AC-Ctrl-ESPHome/issues/61 for more information
+2. I am getting mhi_ac_ctrl_core.loop error: -2 errors and nothing works!
+You probably have an older version of the Airco unit which doesn't support the newer, larger framesize. 
+You can to change the frame_size in the yaml to 20 to disable newer functionality.
+when framsize is set to 20, 3D auto, and vane Left / Right doesn't work, vane Up / Down works limited.
+All other features should work fine.
+
 
 # License
 This project is licensed under the MIT License - see the LICENSE file for details.\
