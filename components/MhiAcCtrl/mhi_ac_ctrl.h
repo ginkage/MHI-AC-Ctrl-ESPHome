@@ -1,4 +1,4 @@
-// Version 2.0
+// Version 3.0
 
 #include "MHI-AC-Ctrl-core.h"
 #include "esphome.h"
