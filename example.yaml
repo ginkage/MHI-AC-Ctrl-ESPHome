@@ -1,4 +1,84 @@
-# Version 2.1
+esphome:
+  name: example-ac
+  friendly_name: ${devicename}
+  platform: ESP8266
+  board: d1_mini
+  platformio_options:
+    # Run CPU at 160Mhz to fix mhi_ac_ctrl_core.loop error: -2
+    board_build.f_cpu: 160000000L
+
+# Enable logging
+logger:
+  level: INFO
+  baud_rate: 0
+  # logs:
+  #   component: ERROR
+
+ota:
+  password: <PLEASE SUPPLY PASSWORD>
+  platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: ${devicename}
+    password: "iTM7a3slpwsL"
+
+captive_portal:
+    
+# Version 3.0
+
+substitutions:
+  # Unique device ID in HA
+  deviceid: "example_ac"
+  # Unique MHI device ID used for climate class
+  mhi_device_id: "mhi_${deviceid}"
+  # Unique device name in HA (sensor names will be prefixed by this name)
+  devicename: ${deviceid}
+  # If you encounter mhi_ac_ctrl_core.loop error: -2 errors, change the frame_size to 20
+  frame_size: "33"
+
+# Optionally enables the ESP web server
+# web_server:
+#   port: 80
+
+external_components:
+  - source: github://ginkage/MHI-AC-Ctrl-ESPHome@master
+    components: [ MhiAcCtrl ]
+
+MhiAcCtrl:
+  id: ${mhi_device_id}
+  frame_size: ${frame_size}
+
+button:
+  - platform: restart
+    name: Restart
+    entity_category: diagnostic
+
+api:
+  reboot_timeout: 0s
+  services:
+    # Call the set_api_room_temperature service from HA to override the room temperature
+    # If a new value has not been received after room_temp_api_timeout seconds, it will fall back to internal sensor
+    - service: set_api_room_temperature
+      variables:
+        value: float
+      then:
+        - lambda: |-
+            return ((MhiAcCtrl*)id(${deviceid}))->set_room_temperature(value);
+    # Call the set_vanes service from HA to set the vane position
+    # Needed because the ESPHome Climate class does not support this natively
+    # Possible values: 1-4: static positions, 5: swing, 0: unknown
+    - service: set_vanes
+      variables:
+        value: int
+      then:
+        - lambda: |-
+            return ((MhiAcCtrl*)id(${deviceid}))->set_vanes(value);
+
 globals:
   - id: room_temp_api_timeout
     type: int
@@ -7,18 +87,13 @@ globals:
   - id: frame_size
     type: byte
     restore_value: no
-    initial_value: "33" # 20 for legacy, 33 for new
+    initial_value: ${frame_size}
 
 climate:
-  - platform: custom
-    lambda: |-
-      auto mhi_ac_ctrl = new MhiAcCtrl();
-      App.register_component(mhi_ac_ctrl);
-      return {mhi_ac_ctrl};
-
-    climates:
-      - name: "${devicename}"
-        id: ${deviceid}
+  - platform: MhiAcCtrl
+    mhi_ac_ctrl_id: ${mhi_device_id}
+    id: ${deviceid}
+    name: "${devicename}"
 
 binary_sensor:
   - platform: custom
@@ -29,6 +104,16 @@ binary_sensor:
       - name: Defrost
 
 sensor:
+  - platform: template
+    name: "Frame Size"
+    id: frame_size_sensor
+    lambda: |-
+      return ${frame_size};
+  - platform: uptime
+    name: Uptime
+  - platform: wifi_signal
+    name: WiFi Signal
+    update_interval: 60s
   - platform: custom
     lambda: |-
       return ((MhiAcCtrl*)id(${deviceid}))->get_sensors();
@@ -77,6 +162,9 @@ sensor:
         on_value:
           then:
             - lambda: |-
+                if (id(frame_size_sensor).state != 33) {
+                  return;
+                }
                 float received_value = id(vanes_LR_received).state;
                 if (received_value == 1.0) {
                   id(fan_control_lr).publish_state("Left");
@@ -100,6 +188,9 @@ sensor:
         on_value:
           then:
             - lambda: |-
+                if (id(frame_size_sensor).state != 33) {
+                  return;
+                }
                 bool received_value = id(Dauto_received).state;
                 if (received_value) {
                   ESP_LOGD("main", "received 3DAuto from AC");
@@ -111,10 +202,18 @@ sensor:
                 }
 
 text_sensor:
+  - platform: version
+    name: ESPHome Version
+  - platform: wifi_info
+    ip_address:
+      name: IP
+    ssid:
+      name: SSID
+    bssid:
+      name: BSSID
   - platform: custom
     lambda: |-
       return ((MhiAcCtrl*)id(${deviceid}))->get_text_sensors();
-
     text_sensors:
       - name: Compressor protection status
 
@@ -136,34 +235,36 @@ select:
       - "Swing"
     on_value:
       - lambda: |-
-          auto state = id(fan_control_lr).state.c_str();
-          ESP_LOGD("main", "Option of my select: %s", state);
-          uint8_t vanesLR = 0;  // Initialize the vanesLR variable
-          if (id(fan_control_lr).state == "3D Auto") {
-            id(fan_control_3Dauto).publish_state(true);
-          } else if (id(fan_control_lr).state == "Left") {
-            vanesLR = 1;
-          } else if (id(fan_control_lr).state == "Left/Center") {
-            vanesLR = 2;
-          } else if (id(fan_control_lr).state == "Center") {
-            vanesLR = 3;
-          } else if (id(fan_control_lr).state == "Center/Right") {
-            vanesLR = 4;
-          } else if (id(fan_control_lr).state == "Right") {
-            vanesLR = 5;
-          } else if (id(fan_control_lr).state == "Wide") {
-            vanesLR = 6;
-          } else if (id(fan_control_lr).state == "Spot") {
-            vanesLR = 7;
-          } else if (id(fan_control_lr).state == "Swing") {
-            vanesLR = 8;
-          }
-          if ((vanesLR > 0) & (vanesLR < 9) & (vanesLR != id(vanes_LR_received).state)){
-            ESP_LOGD("main", "setting vanesLR to: %i", vanesLR);
-            return ((MhiAcCtrl*)id(${deviceid}))->set_vanesLR(vanesLR);
-          }
-          else {
-            ESP_LOGD("main", "Not setting vanesLR: %i", vanesLR);
+          if (id(frame_size_sensor).state == 33) {
+            auto state = id(fan_control_lr).state.c_str();
+            ESP_LOGD("main", "Option of my select: %s", state);
+            uint8_t vanesLR = 0;  // Initialize the vanesLR variable
+            if (id(fan_control_lr).state == "3D Auto") {
+              id(fan_control_3Dauto).publish_state(true);
+            } else if (id(fan_control_lr).state == "Left") {
+              vanesLR = 1;
+            } else if (id(fan_control_lr).state == "Left/Center") {
+              vanesLR = 2;
+            } else if (id(fan_control_lr).state == "Center") {
+              vanesLR = 3;
+            } else if (id(fan_control_lr).state == "Center/Right") {
+              vanesLR = 4;
+            } else if (id(fan_control_lr).state == "Right") {
+              vanesLR = 5;
+            } else if (id(fan_control_lr).state == "Wide") {
+              vanesLR = 6;
+            } else if (id(fan_control_lr).state == "Spot") {
+              vanesLR = 7;
+            } else if (id(fan_control_lr).state == "Swing") {
+              vanesLR = 8;
+            }
+            if ((vanesLR > 0) & (vanesLR < 9) & (vanesLR != id(vanes_LR_received).state)){
+              ESP_LOGD("main", "setting vanesLR to: %i", vanesLR);
+              return ((MhiAcCtrl*)id(${deviceid}))->set_vanesLR(vanesLR);
+            }
+            else {
+              ESP_LOGD("main", "Not setting vanesLR: %i", vanesLR);
+            }
           }
 
   - platform: template
@@ -212,13 +313,21 @@ switch:
     optimistic: true
     turn_on_action:
       - lambda: |-
-          if (id(Dauto_received).state !=1){
-            ESP_LOGD("main", "Turn on 3DAuto");
-            return ((MhiAcCtrl*)id(${deviceid}))->set_3Dauto(1);
+          if (id(frame_size_sensor).state == 33) {
+            if (id(Dauto_received).state != 1) {
+              ESP_LOGD("main", "Turn on 3DAuto");
+              return ((MhiAcCtrl*)id(${deviceid}))->set_3Dauto(1);
+            }
+          } else {
+            ESP_LOGD("main", "Frame size is not 33, cannot turn on 3DAuto");
           }
     turn_off_action:
       - lambda: |-
-          if (id(Dauto_received).state !=0){
-            ESP_LOGD("main", "Turn off 3DAuto");
-            return ((MhiAcCtrl*)id(${deviceid}))->set_3Dauto(0);
+          if (id(frame_size_sensor).state == 33) {
+            if (id(Dauto_received).state != 0) {
+              ESP_LOGD("main", "Turn off 3DAuto");
+              return ((MhiAcCtrl*)id(${deviceid}))->set_3Dauto(0);
+            }
+          } else {
+            ESP_LOGD("main", "Frame size is not 33, cannot turn off 3DAuto");
           }

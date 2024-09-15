@@ -1,9 +1,20 @@
-// Version 2.0
+// Version 3.0
 
 #include "MHI-AC-Ctrl-core.h"
+#include "esphome.h"
+#include "esphome/components/climate/climate.h"
+#include "esphome/components/sensor/sensor.h"
+#include "esphome/components/text_sensor/text_sensor.h"
+#include "esphome/components/binary_sensor/binary_sensor.h"
+#include "esphome/core/time.h"
 #define ROOM_TEMP_MQTT 1
 #include <vector>
 #include <string>
+using namespace esphome;
+using namespace esphome::climate;
+using namespace esphome::sensor;
+using namespace esphome::text_sensor;
+using namespace esphome::binary_sensor;
 
 static const std::vector<std::string> protection_states = {
     "Normal",
@@ -127,12 +138,19 @@ public:
 
         mhi_ac_ctrl_core.MHIAcCtrlStatus(this);
         mhi_ac_ctrl_core.init();
-        mhi_ac_ctrl_core.set_frame_size(id(frame_size)); // set framesize. Only 20 (legacy) or 33 (includes 3D auto and vertical vanes) possible
-    }
+        mhi_ac_ctrl_core.set_frame_size(frame_size_); // set framesize. Only 20 (legacy) or 33 (includes 3D auto and vertical vanes) possible
 
+        }
+    void set_frame_size(int framesize) {
+        frame_size_ = framesize;
+
+        }
+    void set_room_temp_api_timeout(int time_in_seconds) {
+        room_temp_api_timeout = time_in_seconds;
+    }
     void loop() override
     {
-        if(millis() - room_temp_api_timeout_ms >= id(room_temp_api_timeout)*1000) {
+        if(millis() - room_temp_api_timeout_ms >= room_temp_api_timeout*1000) {
             mhi_ac_ctrl_core.set_troom(0xff);  // use IU temperature sensor
             room_temp_api_timeout_ms = millis();
             ESP_LOGD("mhi_ac_ctrl", "did not receive a room_temp_api value, using IU temperature sensor");
@@ -142,6 +160,10 @@ public:
         if (ret < 0)
             ESP_LOGW("mhi_ac_ctrl", "mhi_ac_ctrl_core.loop error: %i", ret);
     }
+    // static time_t _defaultTimeCB(void) {
+    //     // Use the synchronized time from Home Assistant
+    //     return App.get_time("homeassistant_time")->now().timestamp;
+    // }
 
     void dump_config() override
     {
@@ -536,6 +558,11 @@ public:
         }
         ESP_LOGD("mhi_ac_ctrl", "set vanes Left Right: %i", value);
     }
+
+private:
+    int frame_size_;
+    unsigned long room_temp_api_timeout_ms = millis(); // Timestamp in milliseconds
+    unsigned long room_temp_api_timeout; // Timeout duration in seconds
 
 protected:
     /// Transmit the state of this climate controller.
