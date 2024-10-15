@@ -1,6 +1,7 @@
 esphome:
   name: example-ac
   friendly_name: ${devicename}
+  min_version: 2024.6.0
   platformio_options:
     # Run CPU at 160Mhz to fix mhi_ac_ctrl_core.loop error: -2
     board_build.f_cpu: 160000000L
