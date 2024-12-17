@@ -42,8 +42,7 @@ substitutions:
   devicename: ${deviceid}
   # If you encounter mhi_ac_ctrl_core.loop error: -2 errors, change the frame_size to 20
   frame_size: "33"
-  # Update the following to change the default room temp timeout
-  # room_temp_timeout: "60"
+
 
 # Optionally enables the ESP web server
 # web_server:
@@ -56,6 +55,8 @@ external_components:
 MhiAcCtrl:
   id: ${mhi_device_id}
   frame_size: ${frame_size}
+  # Update the following to change the default room temp timeout
+  # room_temp_timeout: "60"
 
 button:
   - platform: restart
