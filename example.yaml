@@ -56,7 +56,7 @@ MhiAcCtrl:
   id: ${mhi_device_id}
   frame_size: ${frame_size}
   # Update the following to change the default room temp timeout
-  # room_temp_timeout: "60"
+  # room_temp_timeout: 60
 
 button:
   - platform: restart
