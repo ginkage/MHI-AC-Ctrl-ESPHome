@@ -150,8 +150,8 @@ sensor:
                 } else if (received_value == 6.0) {
                   id(fan_speed).publish_state("Auto");
                 }
-      - name: Compressor amperage
-        id: compressor_amperage
+      - name: Compressor current
+        id: compressor_current
       - name: Compressor frequency
       - name: Indoor unit total run time
       - name: Compressor total run time
@@ -233,7 +233,7 @@ sensor:
     device_class: power
     state_class: measurement 
     accuracy_decimals: 0
-    lambda: return id(compressor_amperage).state * 230;
+    lambda: return id(compressor_current).state * 230;
 
 
 text_sensor:
