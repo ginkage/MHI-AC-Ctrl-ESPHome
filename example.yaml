@@ -140,15 +140,15 @@ sensor:
             - lambda: |-
                 float received_value = id(indoor_unit_fan_speed).state;
                 if (received_value == 2.0) {
-                  id(fan_speed).publish_state("quiet");
+                  id(fan_speed).publish_state("Quiet");
                 } else if (received_value == 3.0) {
-                  id(fan_speed).publish_state("low");
+                  id(fan_speed).publish_state("Low");
                 } else if (received_value == 4.0) {
-                  id(fan_speed).publish_state("medium");
+                  id(fan_speed).publish_state("Medium");
                 } else if (received_value == 5.0) {
-                  id(fan_speed).publish_state("high");
+                  id(fan_speed).publish_state("High");
                 } else if (received_value == 6.0) {
-                  id(fan_speed).publish_state("auto");
+                  id(fan_speed).publish_state("Auto");
                 }
       - name: Compressor amperage
         id: compressor_amperage
@@ -350,26 +350,26 @@ select:
     optimistic: true
     internal: false  
     options:
-     - "quiet"
-     - "low"
-     - "medium"
-     - "high"
-     - "auto"
+     - "Quiet"
+     - "Low"
+     - "Medium"
+     - "High"
+     - "Auto"
 #    initial_option: "${auto}"
     on_value:
       - lambda: |-
           auto state = id(fan_speed).state.c_str();
           ESP_LOGD("main", "Option of my select: %s", state);
-          uint8_t fan_ = 0;  // Initialize the vanesUD variable
-          if (id(fan_speed).state == "quiet") {
+          uint8_t fan_ = 0;  // Initialize the fan_ variable
+          if (id(fan_speed).state == "Quiet") {
             fan_ = 0;
-          } else if (id(fan_speed).state == "low") {
+          } else if (id(fan_speed).state == "Low") {
             fan_ = 1;
-          } else if (id(fan_speed).state == "medium") {
+          } else if (id(fan_speed).state == "Medium") {
             fan_ = 2;
-          } else if (id(fan_speed).state == "high") {
+          } else if (id(fan_speed).state == "High") {
             fan_ = 6;
-          } else if (id(fan_speed).state == "auto") {
+          } else if (id(fan_speed).state == "Auto") {
             fan_ = 7;
           }
           if ((fan_ >= 0) & (fan_ < 8)){
