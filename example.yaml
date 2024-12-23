@@ -28,6 +28,7 @@ wifi:
   ap:
     ssid: ${devicename}
     password: "iTM7a3slpwsL"
+    ap_timeout: 15s
 
 captive_portal:
     
@@ -343,7 +344,7 @@ select:
 
   - platform: template
     id: fan_speed
-    name: ${fan_speed}
+    name: Fan speed
     icon: mdi:fan
     entity_category: config
     optimistic: true
