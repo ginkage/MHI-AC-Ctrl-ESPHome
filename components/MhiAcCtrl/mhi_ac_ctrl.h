@@ -96,7 +96,10 @@ public:
 
         defrost_.set_icon("mdi:snowflake-melt");
 
-        vanes_pos_.set_icon("mdi:air-filter");
+        vanes_pos_.set_icon("mdi:arrow-up-down");
+        vanesLR_pos_.set_icon("mdi:arrow-left-right");
+
+        Dauto_.set_icon("mdi:video-3d");
 
         indoor_unit_thi_r1_.set_icon("mdi:thermometer");
         indoor_unit_thi_r1_.set_unit_of_measurement("°C");
@@ -544,6 +547,11 @@ public:
     void set_vanesLR(int value) {
         mhi_ac_ctrl_core.set_vanesLR(value);
         ESP_LOGD("mhi_ac_ctrl", "set vanes Left Right: %i", value);
+    }
+
+    void set_fan(int value) {
+        mhi_ac_ctrl_core.set_fan(value);
+        ESP_LOGD("mhi_ac_ctrl", "set fan: %i", value);
     }
 
     void set_3Dauto(bool value) {
