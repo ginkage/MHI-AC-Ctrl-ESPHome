@@ -135,21 +135,6 @@ sensor:
       - name: Outdoor unit fan speed
       - name: Indoor unit fan speed
         id: indoor_unit_fan_speed
-        on_value:
-          then:
-            - lambda: |-
-                float received_value = id(indoor_unit_fan_speed).state;
-                if (received_value == 2.0) {
-                  id(fan_speed).publish_state("Quiet");
-                } else if (received_value == 3.0) {
-                  id(fan_speed).publish_state("Low");
-                } else if (received_value == 4.0) {
-                  id(fan_speed).publish_state("Medium");
-                } else if (received_value == 5.0) {
-                  id(fan_speed).publish_state("High");
-                } else if (received_value == 6.0) {
-                  id(fan_speed).publish_state("Auto");
-                }
       - name: Compressor current
         id: compressor_current
       - name: Compressor frequency
@@ -235,7 +220,32 @@ sensor:
     accuracy_decimals: 0
     lambda: return id(compressor_current).state * 230;
 
-
+  - platform: template
+    name: "Fan mode value"
+    id: fan_mode_value
+    entity_category: DIAGNOSTIC
+    internal: true
+    lambda: |-
+      auto new_value = id(${deviceid}).fan_mode.value();
+      if (id(fan_mode_value).state == new_value) {
+          return {};  // No state change needed
+      } else {
+          ESP_LOGD("main", "NEW value do something");
+          if (new_value == 9.0) {
+            id(fan_speed).publish_state("${quiet}");
+          } else if (new_value == 3.0) {
+            id(fan_speed).publish_state("${low}");
+          } else if (new_value == 4.0) {
+            id(fan_speed).publish_state("${medium}");
+          } else if (new_value == 5.0) {
+            id(fan_speed).publish_state("${high}");
+          } else if (new_value == 2.0) {
+            id(fan_speed).publish_state("${auto}");
+          }
+          return new_value;  // Update the state with the new value
+      }      
+    update_interval: 30s
+    
 text_sensor:
   - platform: version
     name: ESPHome Version
@@ -344,41 +354,33 @@ select:
 
   - platform: template
     id: fan_speed
-    name: Fan speed
+    name: ${fan_speed}
     icon: mdi:fan
     entity_category: config
     optimistic: true
     internal: false  
     options:
-     - "Quiet"
-     - "Low"
-     - "Medium"
-     - "High"
-     - "Auto"
-#    initial_option: "${auto}"
+     - "${quiet}"
+     - "${low}"
+     - "${medium}"
+     - "${high}"
+     - "${auto}"
     on_value:
-      - lambda: |-
-          auto state = id(fan_speed).state.c_str();
-          ESP_LOGD("main", "Option of my select: %s", state);
-          uint8_t fan_ = 0;  // Initialize the fan_ variable
-          if (id(fan_speed).state == "Quiet") {
-            fan_ = 0;
-          } else if (id(fan_speed).state == "Low") {
-            fan_ = 1;
-          } else if (id(fan_speed).state == "Medium") {
-            fan_ = 2;
-          } else if (id(fan_speed).state == "High") {
-            fan_ = 6;
-          } else if (id(fan_speed).state == "Auto") {
-            fan_ = 7;
-          }
-          if ((fan_ >= 0) & (fan_ < 8)){
-            ESP_LOGD("main", "setting fan_speed to: %i", fan_);
-            return ((MhiAcCtrl*)id(${deviceid}))->set_fan(fan_);
-          }
-          else {
-            ESP_LOGD("main", "Not setting fan_speed: %i", fan_);
-          }
+      then:
+        - climate.control:
+            id: ${deviceid}
+            fan_mode: !lambda |-
+                if (i == 0) {
+                  return CLIMATE_FAN_QUIET;
+                } else if (i == 1) {
+                  return CLIMATE_FAN_LOW;
+                } else if (i == 2) {
+                  return CLIMATE_FAN_MEDIUM;
+                } else if (i == 3) {
+                  return CLIMATE_FAN_HIGH;
+                } else {
+                  return CLIMATE_FAN_AUTO;
+                }
 
 switch:
   - platform: template
