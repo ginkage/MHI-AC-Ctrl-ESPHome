@@ -125,7 +125,7 @@ void MHI_AC_Ctrl_Core::set_frame_size(byte framesize) {
 int MHI_AC_Ctrl_Core::loop(uint max_time_ms) {
   const byte opdataCnt = sizeof(opdata) / sizeof(byte) / 2;
   static byte opdataNo = 0;               //
-  long startMillis = millis();             // start time of this loop run
+  long startMillis = esphome::millis();             // start time of this loop run
   byte MOSI_byte;                         // received MOSI byte
   bool new_datapacket_received = false;   // indicated that a new frame was received
   static byte erropdataCnt = 0;           // number of expected error operating data
@@ -142,11 +142,11 @@ static byte MOSI_frame[33];
 
    
   call_counter++;
-  int SCKMillis = millis();               // time of last SCK low level
-  while (millis() - SCKMillis < 5) {      // wait for 5ms stable high signal to detect a frame start
+  int SCKMillis = esphome::millis();               // time of last SCK low level
+  while (esphome::millis() - SCKMillis < 5) {      // wait for 5ms stable high signal to detect a frame start
     if (!digitalRead(SCK_PIN))
-      SCKMillis = millis();
-    if (millis() - startMillis > max_time_ms)
+      SCKMillis = esphome::millis();
+    if (esphome::millis() - startMillis > max_time_ms)
       return err_msg_timeout_SCK_low;       // SCK stuck@ low error detection
   }
   // build the next MISO frame
@@ -241,9 +241,9 @@ static byte MOSI_frame[33];
     MOSI_byte = 0;
     byte bit_mask = 1;
     for (uint8_t bit_cnt = 0; bit_cnt < 8; bit_cnt++) { // read and write 1 byte
-      SCKMillis = millis();
+      SCKMillis = esphome::millis();
       while (digitalRead(SCK_PIN)) { // wait for falling edge
-        if (millis() - startMillis > max_time_ms)
+        if (esphome::millis() - startMillis > max_time_ms)
           return err_msg_timeout_SCK_high;       // SCK stuck@ high error detection
       } 
       if ((MISO_frame[byte_cnt] & bit_mask) > 0)
@@ -331,8 +331,8 @@ static byte MOSI_frame[33];
         lastTroomInternalMillis = 0;
       }
       else                                                               //  internal sensor used
-        if ((unsigned long)(millis() - lastTroomInternalMillis) > minTimeInternalTroom) { // Only publish when last change was more then minTimeInternalTroom ago
-          lastTroomInternalMillis = millis();
+        if ((unsigned long)(esphome::millis() - lastTroomInternalMillis) > minTimeInternalTroom) { // Only publish when last change was more then minTimeInternalTroom ago
+          lastTroomInternalMillis = esphome::millis();
           status_troom_old = MOSI_frame[DB3];
           m_cbiStatus->cbiStatusFunction(status_troom, status_troom_old);
         }
