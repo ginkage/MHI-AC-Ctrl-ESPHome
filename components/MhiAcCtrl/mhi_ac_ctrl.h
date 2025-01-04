@@ -39,7 +39,7 @@ static const std::vector<std::string> protection_states = {
 
 static const char* TAG = "mhi_ac_ctrl";
 
-unsigned long room_temp_api_timeout_ms = millis();
+unsigned long room_temp_api_timeout_ms = esphome::millis();
 
 class MhiAcCtrl : public climate::Climate,
                   public Component,
@@ -150,9 +150,9 @@ public:
     }
     void loop() override
     {
-        if(millis() - room_temp_api_timeout_ms >= room_temp_api_timeout*1000) {
+        if(esphome::millis() - room_temp_api_timeout_ms >= room_temp_api_timeout*1000) {
             mhi_ac_ctrl_core.set_troom(0xff);  // use IU temperature sensor
-            room_temp_api_timeout_ms = millis();
+            room_temp_api_timeout_ms = esphome::millis();
             ESP_LOGD("mhi_ac_ctrl", "did not receive a room_temp_api value, using IU temperature sensor");
         }
 
@@ -529,7 +529,7 @@ public:
 
     void set_room_temperature(float value) {
         if ((value > -10) & (value < 48)) {
-            room_temp_api_timeout_ms = millis();  // reset timeout
+            room_temp_api_timeout_ms = esphome::millis();  // reset timeout
             byte tmp = value*4+61;
             mhi_ac_ctrl_core.set_troom(value*4+61);
             ESP_LOGD("mhi_ac_ctrl", "set room_temp_api: %f %i %i", value, (byte)(value*4+61), (byte)tmp);
@@ -561,7 +561,7 @@ public:
 
 private:
     int frame_size_;
-    unsigned long room_temp_api_timeout_ms = millis(); // Timestamp in milliseconds
+    unsigned long room_temp_api_timeout_ms = esphome::millis(); // Timestamp in milliseconds
     unsigned long room_temp_api_timeout; // Timeout duration in seconds
 
 protected:
