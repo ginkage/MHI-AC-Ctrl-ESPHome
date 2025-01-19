@@ -1,7 +1,7 @@
 ## Optional: DS18B20 for extra room sensor
 one_wire:
   - platform: gpio
-    pin: GPIO5
+    pin: D2
 
 sensor:
   ## optional: DS18B20 room sensor on PCB
