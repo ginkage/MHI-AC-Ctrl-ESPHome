@@ -45,7 +45,7 @@ wifi:
 captive_portal:
     
 # Optionally enables the ESP web server
-webserver:
+web_server:
   port: 80
   version: 3
   include_internal: true
