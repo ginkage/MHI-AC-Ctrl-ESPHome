@@ -1,5 +1,17 @@
+# Version 3.2 Wemos d1 mini
+substitutions:
+  # Unique device ID in HA
+  deviceid: "ac_example" #deviceid: "example_ac" 14 char. is maximum
+  # Unique MHI device ID used for climate class
+  mhi_device_id: "mhi_${deviceid}"
+  # Unique device name in HA (sensor names will be prefixed by this name)
+  devicename: "AC Example" #devicename: ${deviceid}
+  # If you encounter mhi_ac_ctrl_core.loop error: -2 errors, change the frame_size from 33 to 20
+  # Remark: with frame_size 20 3D Auto and vanes left/right dont work anymore
+  frame_size: "33"
+
 esphome:
-  name: example-ac
+  name: ac-example #name: example-ac
   friendly_name: ${devicename}
   min_version: 2024.6.0
   platformio_options:
@@ -11,14 +23,14 @@ esp8266:
 
 # Enable logging
 logger:
-  level: INFO
-  baud_rate: 0
-  # logs:
-  #   component: ERROR
+  level: DEBUG  ## or choose INFO for less logging messages
+  logs:
+    component: ERROR    ## to remove component MhiAcCtrl took long time - warnings
+    #mhi_ac_ctrl: ERROR  ## to remove mhi_ac_ctrl_core.loop error: -2 - warnings
 
 ota:
-  password: <PLEASE SUPPLY PASSWORD>
   platform: esphome
+  #password: !secret ota_password
 
 wifi:
   ssid: !secret wifi_ssid
@@ -27,31 +39,46 @@ wifi:
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: ${devicename}
-    password: "iTM7a3slpwsL"
+    password: "configesp"
     ap_timeout: 30s
 
 captive_portal:
     
-# Version 3.0
-
-substitutions:
-  # Unique device ID in HA
-  deviceid: "example_ac"
-  # Unique MHI device ID used for climate class
-  mhi_device_id: "mhi_${deviceid}"
-  # Unique device name in HA (sensor names will be prefixed by this name)
-  devicename: ${deviceid}
-  # If you encounter mhi_ac_ctrl_core.loop error: -2 errors, change the frame_size to 20
-  frame_size: "33"
-
-
 # Optionally enables the ESP web server
-# web_server:
-#   port: 80
+webserver:
+  port: 80
+  version: 3
+  include_internal: true
+  ota: false
+  local: true
+  sorting_groups:
+    - id: Control
+      name: "${control}"
+      sorting_weight: -30
+    - id: Operation
+      name: "${operation}"
+      sorting_weight: -20
+    - id: Status
+      name: "${status}"
+      sorting_weight: -10
 
 external_components:
-  - source: github://ginkage/MHI-AC-Ctrl-ESPHome@master
+  - source: github://fonske/MHI-AC-Ctrl-ESPHome@master
     components: [ MhiAcCtrl ]
+
+## remote options
+packages:
+  remote_package:
+    url: https://github.com/fonske/MHI-AC-Ctrl-ESPHome/
+    ref: master
+    refresh: always
+    files: [ 
+            #confs/onewire.yml,
+            #confs/debug.yml,
+            confs/wifi-info.yml,
+            confs/labels-en.yml,
+            #confs/labels-nl.yml,
+           ]
 
 MhiAcCtrl:
   id: ${mhi_device_id}
@@ -61,24 +88,28 @@ MhiAcCtrl:
 
 button:
   - platform: restart
-    name: Restart
+    name: ${restart}
     entity_category: diagnostic
+    icon: mdi:button-pointer
 
+# Enable Home Assistant API
 api:
   reboot_timeout: 0s
-  services:
-    # Call the set_api_room_temperature service from HA to override the room temperature
-    # If a new value has not been received after room_temp_api_timeout seconds, it will fall back to internal sensor
-    - service: set_api_room_temperature
+  #encryption:
+    #key: !secret api_encryption_key
+  actions:
+    ## Call the set_api_room_temperature action from HA to override the room temperature
+    ## If a new value has not been received after room_temp_api_timeout seconds, it will fall back to internal sensor
+    - action: set_api_room_temperature
       variables:
         value: float
       then:
         - lambda: |-
             return ((MhiAcCtrl*)id(${deviceid}))->set_room_temperature(value);
-    # Call the set_vanes service from HA to set the vane position
-    # Needed because the ESPHome Climate class does not support this natively
-    # Possible values: 1-4: static positions, 5: swing, 0: unknown
-    - service: set_vanes
+    ## Call the set_vanes action from HA to set the vane position
+    ## Needed because the ESPHome Climate class does not support this natively
+    ## Possible values: 1-4: static positions, 5: swing, 0: unknown
+    - action: set_vanes
       variables:
         value: int
       then:
@@ -100,6 +131,12 @@ climate:
     mhi_ac_ctrl_id: ${mhi_device_id}
     id: ${deviceid}
     name: "${devicename}"
+    entity_category: config
+    icon: mdi:thermostat
+    ## Sorting grouping code only activate when package webserver is activated above
+    web_server:
+      sorting_group_id: Control
+      sorting_weight: 1
 
 binary_sensor:
   - platform: custom
@@ -107,21 +144,27 @@ binary_sensor:
       return ((MhiAcCtrl*)id(${deviceid}))->get_binary_sensors();
 
     binary_sensors:
-      - name: Defrost
+      - name: ${defrost}
+        icon: mdi:snowflake-melt
+        web_server:
+          sorting_group_id: Operation
+          sorting_weight: 13
+
+  - platform: status
+    name: ${status}
+    icon: mdi:state-machine
+    entity_category: diagnostic
 
 sensor:
   - platform: template
-    name: "Frame Size"
+    name: ${framesize}
     id: frame_size_sensor
     icon: mdi:arrow-expand-horizontal
     lambda: |-
       return ${frame_size};
     entity_category: diagnostic
-  - platform: uptime
-    name: Uptime
-  - platform: wifi_signal
-    name: WiFi Signal
-    update_interval: 60s
+    update_interval: never
+
   - platform: custom
     lambda: |-
       return ((MhiAcCtrl*)id(${deviceid}))->get_sensors();
@@ -129,44 +172,98 @@ sensor:
     # Sensor names in HA, you can change these if you want
     # Don't delete them or change their position in the list
     sensors:
-      - name: Error code
-      - name: Outdoor temperature
-      - name: Return air temperature
-      - name: Outdoor unit fan speed
-      - name: Indoor unit fan speed
-      - name: Compressor current
+      - name: ${error_code}
+        web_server:
+          sorting_group_id: Status
+          sorting_weight: 8
+      - name: ${outdoor_temperature}
+        web_server:
+          sorting_group_id: Operation
+          sorting_weight: 5
+      - name: ${return_air_temperature}
+        web_server:
+          sorting_group_id: Operation
+          sorting_weight: 1
+      - name: ${outdoor_unit_fan_speed}
+        web_server:
+          sorting_group_id: Status
+          sorting_weight: 2
+      - name: ${indoor_unit_fan_speed}
+        web_server:
+          sorting_group_id: Status
+          sorting_weight: 1
+      - name: ${compressor_current}
         id: compressor_current
-      - name: Compressor frequency
-      - name: Indoor unit total run time
-      - name: Compressor total run time
-      - name: Vanes
+        web_server:
+          sorting_group_id: Operation
+          sorting_weight: 9
+      - name: ${compressor_frequency}
+        web_server:
+          sorting_group_id: Operation
+          sorting_weight: 8
+      - name: ${indoor_unit_total_run_time}
+        web_server:
+          sorting_group_id: Status
+          sorting_weight: 3
+      - name: ${outdoor_unit_total_run_time}
+        web_server:
+          sorting_group_id: Status
+          sorting_weight: 4
+      - name: ${vanes_up_down}
         id: vanes_UD_received
         on_value:
           then:
             - lambda: |-
                 float received_value = id(vanes_UD_received).state;
                 if (received_value == 1.0) {
-                  id(fan_control_ud).publish_state("Up");
+                  id(vanes_control_ud).publish_state("${up}");
                 } else if (received_value == 2.0) {
-                  id(fan_control_ud).publish_state("Up/Center");
+                  id(vanes_control_ud).publish_state("${up_center}");
                 } else if (received_value == 3.0) {
-                  id(fan_control_ud).publish_state("Center/Down");
+                  id(vanes_control_ud).publish_state("${center_down}");
                 } else if (received_value == 4.0) {
-                  id(fan_control_ud).publish_state("Down");
+                  id(vanes_control_ud).publish_state("${down}");
                 } else if (received_value == 5.0) {
-                  id(fan_control_ud).publish_state("Swing");
+                  id(vanes_control_ud).publish_state("${swing}");
                 }
 
-      - name: Energy used
-      - name: Indoor (U-bend) HE temp 1
-      - name: Indoor (capillary) HE temp 2
-      - name: Indoor (suction header) HE temp 3
-      - name: Outdoor HE temp
-      - name: Outdoor unit exp. valve
-      - name: Outdoor unit discharge pipe
-      - name: Outdoor unit discharge pipe super heat
-      - name: Compressor protection code
-      - name: Vanes Left Right
+      - name: ${energy_used}
+        web_server:
+          sorting_group_id: Operation
+          sorting_weight: 12
+      - name: ${indoor_unit_u_bend_he_temp_1}
+        web_server:
+          sorting_group_id: Operation
+          sorting_weight: 2
+      - name: ${indoor_unit_capillary_he_temp_2}
+        web_server:
+          sorting_group_id: Operation
+          sorting_weight: 3
+      - name: ${indoor_unit_suction_header_he_temp_3}
+        web_server:
+          sorting_group_id: Operation
+          sorting_weight: 4
+      - name: ${outdoor_unit_he_temp}
+        web_server:
+          sorting_group_id: Operation
+          sorting_weight: 6
+      - name: ${outdoor_unit_exp_valve}
+        web_server:
+          sorting_group_id: Status
+          sorting_weight: 5
+      - name: ${outdoor_unit_discharge_pipe}
+        web_server:
+          sorting_group_id: Operation
+          sorting_weight: 7
+      - name: ${outdoor_unit_discharge_pipe_super_heat}
+        web_server:
+          sorting_group_id: Operation
+          sorting_weight: 8
+      - name: ${compressor_protection_code}
+        web_server:
+          sorting_group_id: Status
+          sorting_weight: 6
+      - name: ${vanes_left_right}
         id: vanes_LR_received
         on_value:
           then:
@@ -176,23 +273,23 @@ sensor:
                 }
                 float received_value = id(vanes_LR_received).state;
                 if (received_value == 1.0) {
-                  id(fan_control_lr).publish_state("Left");
+                  id(vanes_control_lr).publish_state("${left}");
                 } else if (received_value == 2.0) {
-                  id(fan_control_lr).publish_state("Left/Center");
+                  id(vanes_control_lr).publish_state("${left_center}");
                 } else if (received_value == 3.0) {
-                  id(fan_control_lr).publish_state("Center");
+                  id(vanes_control_lr).publish_state("${center}");
                 } else if (received_value == 4.0) {
-                  id(fan_control_lr).publish_state("Center/Right");
+                  id(vanes_control_lr).publish_state("${center_right}");
                 } else if (received_value == 5.0) {
-                  id(fan_control_lr).publish_state("Right");
+                  id(vanes_control_lr).publish_state("${right}");
                 } else if (received_value == 6.0) {
-                  id(fan_control_lr).publish_state("Wide");
+                  id(vanes_control_lr).publish_state("${wide}");
                 } else if (received_value == 7.0) {
-                  id(fan_control_lr).publish_state("Spot");
+                  id(vanes_control_lr).publish_state("${spot}");
                 } else if (received_value == 8.0) {
-                  id(fan_control_lr).publish_state("Swing");
+                  id(vanes_control_lr).publish_state("${swing}");
                 }
-      - name: 3D Auto
+      - name: ${d_auto}
         id: Dauto_received
         on_value:
           then:
@@ -209,8 +306,10 @@ sensor:
                   ESP_LOGD("main", "received 3DAuto off from AC");
                   id(fan_control_3Dauto).publish_state(false);
                 }
+
+
   - platform: template
-    name: Compressor power
+    name: ${compressor_power}
     id: power
     icon: mdi:flash
     unit_of_measurement: W
@@ -218,6 +317,9 @@ sensor:
     state_class: measurement 
     accuracy_decimals: 0
     lambda: return id(compressor_current).state * 230;
+    web_server:
+      sorting_group_id: Operation
+      sorting_weight: 10
 
   - platform: template
     id: fan_mode_value
@@ -230,76 +332,70 @@ sensor:
       } else {
           ESP_LOGD("main", "NEW value do something");
           if (new_value == 9.0) {
-            id(fan_speed).publish_state("Quiet");
+            id(fan_speed).publish_state("${quiet}");
           } else if (new_value == 3.0) {
-            id(fan_speed).publish_state("Low");
+            id(fan_speed).publish_state("${low}");
           } else if (new_value == 4.0) {
-            id(fan_speed).publish_state("Medium");
+            id(fan_speed).publish_state("${medium}");
           } else if (new_value == 5.0) {
-            id(fan_speed).publish_state("High");
+            id(fan_speed).publish_state("${high}");
           } else if (new_value == 2.0) {
-            id(fan_speed).publish_state("Auto");
+            id(fan_speed).publish_state("${auto}");
           }
           return new_value;  // Update the state with the new value
       }      
     update_interval: 30s
 
 text_sensor:
-  - platform: version
-    name: ESPHome Version
-  - platform: wifi_info
-    ip_address:
-      name: IP
-    ssid:
-      name: SSID
-    bssid:
-      name: BSSID
   - platform: custom
     lambda: |-
       return ((MhiAcCtrl*)id(${deviceid}))->get_text_sensors();
     text_sensors:
-      - name: Compressor protection status
+      - name: ${compressor_protection_status}
+        web_server:
+          sorting_group_id: Status
+          sorting_weight: 7
 
 select:
   - platform: template
-    name: Fan Control Left Right
-    id: fan_control_lr
+    name: ${vanes_control_left_right}
+    id: vanes_control_lr
     icon: mdi:arrow-left-right
     entity_category: config
     optimistic: true
     options:
       # - "3D Auto"
-      - "Left"
-      - "Left/Center"
-      - "Center"
-      - "Center/Right"
-      - "Right"
-      - "Wide"
-      - "Spot"
-      - "Swing"
+      - "${left}"
+      - "${left_center}"
+      - "${center}"
+      - "${center_right}"
+      - "${right}"
+      - "${wide}"
+      - "${spot}"
+      - "${swing}"
     on_value:
       - lambda: |-
           if (id(frame_size_sensor).state == 33) {
-            auto state = id(fan_control_lr).state.c_str();
+            auto state = id(vanes_control_lr).state.c_str();
             ESP_LOGD("main", "Option of my select: %s", state);
             uint8_t vanesLR = 0;  // Initialize the vanesLR variable
-            if (id(fan_control_lr).state == "3D Auto") {
+            if (id(vanes_control_lr).state == "3D Auto") {
               id(fan_control_3Dauto).publish_state(true);
-            } else if (id(fan_control_lr).state == "Left") {
+            } else if (id(vanes_control_lr).state == "${left}") {
               vanesLR = 1;
-            } else if (id(fan_control_lr).state == "Left/Center") {
+            } else if (id(vanes_control_lr).state == "${left_center}") {
               vanesLR = 2;
-            } else if (id(fan_control_lr).state == "Center") {
+            } else if (id(vanes_control_lr).state == "${center}") {
               vanesLR = 3;
-            } else if (id(fan_control_lr).state == "Center/Right") {
+            } else if (id(vanes_control_lr).state == "${center_right}") {
               vanesLR = 4;
-            } else if (id(fan_control_lr).state == "Right") {
+            } else if (id(vanes_control_lr).state == "${right}") {
               vanesLR = 5;
-            } else if (id(fan_control_lr).state == "Wide") {
+            } else if (id(vanes_control_lr).state == "${wide}") {
               vanesLR = 6;
-            } else if (id(fan_control_lr).state == "Spot") {
+            } else if (id(vanes_control_lr).state == "${spot}") {
               vanesLR = 7;
-            } else if (id(fan_control_lr).state == "Swing") {
+            } else if (id(vanes_control_lr).state == "${swing}") {
               vanesLR = 8;
             }
             if ((vanesLR > 0) & (vanesLR < 9) & (vanesLR != id(vanes_LR_received).state)){
@@ -310,36 +406,40 @@ select:
               ESP_LOGD("main", "Not setting vanesLR: %i", vanesLR);
             }
           }
+    web_server:
+      sorting_group_id: Control
+      sorting_weight: 3
+
 
   - platform: template
-    name: Fan Control Up Down
-    id: fan_control_ud
+    name: ${vanes_control_up_down}
+    id: vanes_control_ud
     icon: mdi:arrow-up-down
     entity_category: config
     optimistic: true
     options:
-      # - "3D Auto"
-      - "Up"
-      - "Up/Center"
-      - "Center/Down"
-      - "Down"
-      - "Swing"
+      # - "${d_auto}"
+      - "${up}"
+      - "${up_center}"
+      - "${center_down}"
+      - "${down}"
+      - "${swing}"
     on_value:
       - lambda: |-
-          auto state = id(fan_control_ud).state.c_str();
+          auto state = id(vanes_control_ud).state.c_str();
           ESP_LOGD("main", "Option of my select: %s", state);
           uint8_t vanesUD = 0;  // Initialize the vanesUD variable
-          if (id(fan_control_ud).state == "3D Auto") {
+          if (id(vanes_control_ud).state == "3D Auto") {
             id(fan_control_3Dauto).publish_state(true);
-          } else if (id(fan_control_ud).state == "Up") {
+          } else if (id(vanes_control_ud).state == "${up}") {
             vanesUD = 1;
-          } else if (id(fan_control_ud).state == "Up/Center") {
+          } else if (id(vanes_control_ud).state == "${up_center}") {
             vanesUD = 2;
-          } else if (id(fan_control_ud).state == "Center/Down") {
+          } else if (id(vanes_control_ud).state == "${center_down}") {
             vanesUD = 3;
-          } else if (id(fan_control_ud).state == "Down") {
+          } else if (id(vanes_control_ud).state == "${down}") {
             vanesUD = 4;
-          } else if (id(fan_control_ud).state == "Swing") {
+          } else if (id(vanes_control_ud).state == "${swing}") {
             vanesUD = 5;
           }
           if ((vanesUD > 0) & (vanesUD < 6) & (vanesUD != id(vanes_UD_received).state)){
@@ -349,20 +449,23 @@ select:
           else {
             ESP_LOGD("main", "Not setting vanesUD: %i", vanesUD);
           }
+    web_server:
+      sorting_group_id: Control
+      sorting_weight: 4
 
   - platform: template
     id: fan_speed
-    name: Fan speed
+    name: ${fan_speed}
     icon: mdi:fan
     entity_category: config
     optimistic: true
     internal: false  
     options:
-     - "Quiet"
-     - "Low"
-     - "Medium"
-     - "High"
-     - "Auto"
+     - "${quiet}"
+     - "${low}"
+     - "${medium}"
+     - "${high}"
+     - "${auto}"
     on_value:
       then:
         - climate.control:
@@ -379,13 +482,17 @@ select:
                 } else {
                   return CLIMATE_FAN_AUTO;
                 }
+    web_server:
+      sorting_group_id: Control
+      sorting_weight: 2
 
 switch:
   - platform: template
-    name: 3D Auto
+    name: ${d_auto}
     id: fan_control_3Dauto
     icon: mdi:video-3d
     optimistic: true
+    entity_category: config
     turn_on_action:
       - lambda: |-
           if (id(frame_size_sensor).state == 33) {
@@ -406,3 +513,6 @@ switch:
           } else {
             ESP_LOGD("main", "Frame size is not 33, cannot turn off 3DAuto");
           }
+    web_server:
+      sorting_group_id: Control
+      sorting_weight: 5
