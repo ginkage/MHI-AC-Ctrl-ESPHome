@@ -43,6 +43,10 @@ Has now 5 different fan modes but I'm not sure if the auto mode works proper, ke
  - Added legacy support configurable from YAML (removing 3d auto and vanes LR control)
 
 # FAQ
+
+### I have no clue where to start, what can i do?
+Step 1: learn dutch to understand the blogpost (or use some translation service :) 
+Step 2: go to this extensive blogpost: https://www.twoenter.nl/blog/smarthome/mitsubishi-airco-voorzien-van-wifi-besturing/ 
   
 ### I am getting the following logline in the console of my device:   
 [W][component:237]: Component MhiAcCtrl took a long time for an operation (52 ms).  
