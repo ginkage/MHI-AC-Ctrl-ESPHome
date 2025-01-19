@@ -1,0 +1,25 @@
+# Example configuration entry
+debug:
+  update_interval: 5s
+
+text_sensor:
+  - platform: debug
+    reset_reason:
+      name: "Reset Reason"
+      entity_category: diagnostic
+    device:
+      name: "Device Info"
+      entity_category: diagnostic
+
+sensor:
+  - platform: debug
+    loop_time:
+      name: "Loop Time"
+      entity_category: diagnostic
+    free:
+      name: "Heap Free"
+      entity_category: diagnostic
+
+# Logger must be at least debug (default)
+logger:
+  level: debug

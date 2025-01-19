@@ -1,0 +1,39 @@
+## Optional: DS18B20 for extra room sensor
+one_wire:
+  - platform: gpio
+    pin: GPIO5
+
+sensor:
+  ## optional: DS18B20 room sensor on PCB
+  - platform: dallas_temp
+    name: ${ext_temperature}
+    id: room_temperature
+    icon: mdi:thermometer
+    update_interval: 30s
+    device_class: temperature
+    state_class: measurement 
+
+## Override the room temperature from AC with external value from sensor connected to I2C grove port
+select:
+  - id: update_temp_i2c
+    name: ${ext_temperature_control}
+    icon: mdi:chart-bell-curve-cumulative
+    platform: template
+    options:
+      - "${ext_mhi}"
+      - "${ext_external}"
+    initial_option: "${ext_mhi}"
+    optimistic: true
+    restore_value: true
+    entity_category: config
+    update_interval: never
+
+interval:
+  - interval: 30s
+    then:
+      - if:
+          condition:
+            - lambda: 'return id(update_temp_i2c).state == "${ext_external}";'
+          then:
+            - lambda: |-
+                return ((MhiAcCtrl*)id(${deviceid}))->set_room_temperature(id(room_temperature).state);

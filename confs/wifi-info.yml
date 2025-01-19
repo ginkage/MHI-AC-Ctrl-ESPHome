@@ -1,0 +1,47 @@
+sensor:
+## Diagnostics wifi and uptime
+  - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
+    id: wifi_signal_db
+    name: WiFi Signal db
+    update_interval: 60s
+    device_class: signal_strength
+    entity_category: diagnostic
+    internal: true
+    icon: mdi:wifi
+
+  - platform: copy # Reports the WiFi signal strength in %
+    source_id: wifi_signal_db
+    id: wifi_signal_db_percent
+    name: WiFi Signal
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: " %"
+    entity_category: diagnostic
+    device_class: ""
+    icon: mdi:wifi
+
+  - platform: uptime
+    id: mhi_uptime
+    name: Uptime
+    unit_of_measurement: days
+    update_interval: 3600s
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.000011574
+    entity_category: diagnostic
+
+text_sensor:
+  - platform: version
+    name: ESPHome Version
+    entity_category: diagnostic
+    hide_timestamp: true
+
+  - platform: wifi_info
+    ip_address:
+      name: IP
+      icon: mdi:ip
+      entity_category: diagnostic
+    ssid:
+      name: SIDD
+      icon: mdi:wifi
+      entity_category: diagnostic

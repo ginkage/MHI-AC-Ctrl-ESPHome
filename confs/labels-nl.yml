@@ -1,0 +1,54 @@
+substitutions:
+  restart: ESP Herstart
+  defrost: Ontdooien
+  status: Status
+  framesize: Frame grootte
+  error_code: Fout code
+  outdoor_temperature: Buiten temperatuur
+  return_air_temperature: Binnenunit retour temperatuur
+  outdoor_unit_fan_speed: Buitenunit fansnelheid
+  indoor_unit_fan_speed: Binnenunit fansnelheid
+  compressor_current: Compressor stroom
+  compressor_power: Compressor vermogen
+  compressor_frequency: Compressor frequentie
+  indoor_unit_total_run_time: Binnenunit draaiuren
+  outdoor_unit_total_run_time: Buitenunit draaiuren
+  vanes_up_down: Lamellen b/o
+  up: Boven
+  up_center: Boven midden
+  center_down: Midden onder
+  down: Onder
+  swing: Bewegen
+  energy_used: Energie verbruikt
+  indoor_unit_u_bend_he_temp_1: Binnenunit U-bocht HE temp 1
+  indoor_unit_capillary_he_temp_2: Binnenunit Capilair HE temp 2
+  indoor_unit_suction_header_he_temp_3: Binnenunit zuigheader HE temp 3
+  outdoor_unit_he_temp: Buitenunit HE temp
+  outdoor_unit_exp_valve: Buitenunit exp klep
+  outdoor_unit_discharge_pipe: Buitenunit afvoerleiding
+  outdoor_unit_discharge_pipe_super_heat: Buitenunit afvoerleiding oververh.
+  compressor_protection_code: Compressor beschermings code
+  vanes_left_right: Lamellen l/r
+  left: Links
+  left_center: Midden links
+  center: Midden
+  center_right: Midden rechts
+  right: Rechts
+  wide: Breed
+  spot: Spot
+  d_auto: 3D Auto
+  fan_speed: Fan
+  quiet: Stil
+  low: Laag
+  medium: Gemiddeld
+  high: Hoog
+  auto: Auto
+  compressor_protection_status: Compressor beschermings status
+  vanes_control_left_right: Lamellen l/r 
+  vanes_control_up_down: Lamellen b/o
+  operation: Meetgegevens
+  control: Bediening
+  ext_temperature: Temperatuur
+  ext_temperature_control: Temperatuur controle
+  ext_mhi: Mhi
+  ext_external: Extern
