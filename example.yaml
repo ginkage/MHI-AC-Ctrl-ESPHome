@@ -18,6 +18,24 @@ esphome:
     # Run CPU at 160Mhz to fix mhi_ac_ctrl_core.loop error: -2
     board_build.f_cpu: 160000000L
 
+external_components:
+  - source: github://fonske/MHI-AC-Ctrl-ESPHome@master
+    components: [ MhiAcCtrl ]
+
+## remote options
+packages:
+  remote_package:
+    url: https://github.com/fonske/MHI-AC-Ctrl-ESPHome/
+    ref: master
+    refresh: always
+    files: [ 
+            #confs/onewire.yml,
+            #confs/debug.yml,
+            confs/wifi-info.yml,
+            confs/labels-en.yml,
+            #confs/labels-nl.yml,
+           ]
+           
 esp8266:
   board: d1_mini
 
@@ -61,24 +79,6 @@ web_server:
     - id: Status
       name: "${status}"
       sorting_weight: -10
-
-external_components:
-  - source: github://fonske/MHI-AC-Ctrl-ESPHome@master
-    components: [ MhiAcCtrl ]
-
-## remote options
-packages:
-  remote_package:
-    url: https://github.com/fonske/MHI-AC-Ctrl-ESPHome/
-    ref: master
-    refresh: always
-    files: [ 
-            #confs/onewire.yml,
-            #confs/debug.yml,
-            confs/wifi-info.yml,
-            confs/labels-en.yml,
-            #confs/labels-nl.yml,
-           ]
 
 MhiAcCtrl:
   id: ${mhi_device_id}
