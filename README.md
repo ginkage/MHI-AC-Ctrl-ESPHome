@@ -16,7 +16,8 @@ There are 5 modes for Up/Down: Up, Up/Center, Center/Down, Down and Swing
 Setting swing from the esphome climate now fully works. It will store the oldvanes mode, and configure swing. after disabling swing (either vertically, horizontally or off), the old settings will be restored. Manually changing modes for Left/Right or Up/Down will update the climate state as well.
 
 > [!TIP]
-> Hardware designed by fonske (can be ordered at JLCPCB) can be found [here](JLCPCB/Hardware.md) Include Gerber file, bom and pick and place files.
+> Hardware designed by [fonske](https://github.com/fonske) can be found [here](JLCPCB/Hardware.md)
+> Include Gerber file, bom and pick and place files and can by ordered at JLCPCB.
 
 
 # Climate Quiet
