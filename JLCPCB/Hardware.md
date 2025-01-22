@@ -37,8 +37,7 @@ The following photos show the assembled PCB (without R1 and X1, which are used i
 You can place an order at JLCPCB
 
 ## Connector
-The AC provides the signals via the CNS connector. It has 5 pins with a pitch of 2.5 mm. It is out of the [XH series from JST](https://nl.mouser.com/ProductDetail/JST-Commercial/05JQ-BTP
-).
+The AC provides the signals via the CNS connector. It has 5 pins with a pitch of 2.5 mm. It is out of the [XH series from JST]([https://nl.mouser.com/ProductDetail/JST-Commercial/05JQ-BTP](https://eu.mouser.com/ProductDetail/JST-Commercial/05JQ-BTP?qs=QpmGXVUTftFtpuyGEgLQzw%3D%3D).
 I use [this](https://domoticx.net/webshop/connector-jst-xh-5p-254mm-pitch-male-female-lipo-4s-balance-22awg-20cm-silicone-welded/) 20 cm silicone cable with connectors to place the PCB to the front of the aircon for easy acces.
 
 > [!WARNING]
@@ -47,7 +46,7 @@ I use [this](https://domoticx.net/webshop/connector-jst-xh-5p-254mm-pitch-male-f
 > Making a connection under power could cause the Wemos D1 Mini to be damaged!
 
 ## Power Supply
-The JST connector provides +12V. The DC-DC converter [TSR 1-2450E](https://nl.mouser.com/ProductDetail/TRACO-Power/TSR-1-2450E) converts the +12V to +5V.
+The JST connector provides +12V. The DC-DC converter [TSR 1-2450E](https://eu.mouser.com/ProductDetail/TRACO-Power/TSR-1-2450E?qs=vmHwEFxEFR%2FlQnbAtEoeVA%3D%3D)) converts the +12V to +5V.
 
 ## Signal Connection
 The ESP8266 SPI signals SCL (SPI clock), MOSI (Master Out Slave In) and MISO (Master In Slave Out) are connected via a voltage level shifter 5V <-> 3.3V with the AC. Direct connection of the signals without a level shifter could damage your ESP8266!
