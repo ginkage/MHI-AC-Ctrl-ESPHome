@@ -5,7 +5,6 @@
 
 ## PCB (Eagle)
 ![Front PCB](front.png)
-![Back PCB](back.png)
 
 You find the Gerber data and the BOM list and Pick and place list in the [PCB_order folder](PCB_order). The Gerber data is in [Gerber_MHI_AC_CTRL_WEMOS_SMD.zip](PCB_order/Gerber_MHI_AC_CTRL_WEMOS_SMD.zip). I used this Gerber data for the PCB order at [JLCPCB](https://jlcpcb.com).
 
