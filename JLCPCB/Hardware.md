@@ -21,7 +21,7 @@ U$1  |WEMOS-D1-MINI    |WEMOS-D1-MINI              |Order yourself
 U1   |TSR_1-2450E       |TSR-1                      |Order yourself
 CN1   |JST 05JQ-BT      |JST-XH-05-PACKAGE-LONG-PAD                     |Order yourself
 
-Option for DS18B20:
+Option for DS18x20:
 
 Part |Value            |Package                    |comment
 ---- | ----            |----                       |-----
