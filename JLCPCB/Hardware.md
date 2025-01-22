@@ -28,10 +28,8 @@ Part |Value            |Package                    |comment
 X3   |JST-XH-03        |JST-XH-03-PACKAGE-LONG-PAD |Order yourself
 
 ## Assembled PCB
-The following photos show the assembled PCB (without R1 and X1, which are used in context of DS18x20 only).
-<img src="images/Assembled-Board-top1.jpg" width=300/>
-<img src="images/Assembled-Board-top2.jpg" width=300/>
-<img src="images/Assembled-Board-bottom.jpg" width=300/>
+The following photos show the assembled PCB (without X3, which are used in context of DS18x20 only).
+<img src="pcb.png" width=300/>
 
 # PCB (JLCPCB)
 You can place an order at JLCPCB
@@ -57,7 +55,7 @@ An external temperature sensor DS18x20 (e.g. DS18S20, DS18B20) is supported. If 
 ## Hints for Assembly
 If you prefer to assemble X1 on the top of the PCB because e.g. you want to place the MHI-AC-Ctrl outside of the AC, you have to consider the direction of CN1 as shown on the following photo.
 
-<img src="images/Assembled-Board-HQ-top.jpg" width=400 align="center"/>
+<img src="pcb_assembled.png" width=400 align="center"/>
 
 ## Order
 If you want to order directly a SMD PCB assembly without: wemos d1 mini, TSR_1-2450E and JST 05JQ-BT connector, contact me at
