@@ -15,8 +15,8 @@ There are 8 modes for Left/Right: Left, Left/Center, Center, Center/Right, Right
 There are 5 modes for Up/Down: Up, Up/Center, Center/Down, Down and Swing  
 Setting swing from the esphome climate now fully works. It will store the oldvanes mode, and configure swing. after disabling swing (either vertically, horizontally or off), the old settings will be restored. Manually changing modes for Left/Right or Up/Down will update the climate state as well.
 
-# Hardware
-Hardware design to be ordered at JLCPCb can be found [here](JLCPCB/Hardware.md) Include Gerber file, bom and pick and place files.
+> [!TIP]
+> Hardware designed by fonske (can be ordered at JLCPCB) can be found [here](JLCPCB/Hardware.md) Include Gerber file, bom and pick and place files.
 
 
 # Climate Quiet
