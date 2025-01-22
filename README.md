@@ -27,6 +27,7 @@ Has now 5 different fan modes but I'm not sure if the auto mode works proper, ke
 # Hardware
 > [!TIP]
 > Hardware designed by [fonske](https://github.com/fonske) can be found [here](JLCPCB/Hardware.md)
+
 > Include Gerber file, bom and pick and place files and can by ordered at JLCPCB.
 
 
