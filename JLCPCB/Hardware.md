@@ -58,5 +58,5 @@ If you prefer to assemble X1 on the top of the PCB because e.g. you want to plac
 <img src="pcb_assembled.png" width=400 align="center"/>
 
 ## Order
-If you want to order directly a SMD PCB assembly without: wemos d1 mini, TSR_1-2450E and JST 05JQ-BT connector, contact me at
+If you want to order directly a SMD PCB assembly without: wemos d1 mini, TSR_1-2450E and JST 05JQ-BT connector, contact fonske at
 alphonsuijtdehaag at gmail dot com
