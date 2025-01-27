@@ -23,6 +23,11 @@ CLIMATE_FAN_DIFFUSE in fan speed and status sections and reshuffle the numbers a
 
 Has now 5 different fan modes but I'm not sure if the auto mode works proper, keep testing.
 
+
+# Hardware
+ - Hardware designed by [fonske](https://github.com/fonske) can be found [here](JLCPCB/Hardware.md)
+
+
 # Changelog:
 
 **v3.0** (2024-08)
