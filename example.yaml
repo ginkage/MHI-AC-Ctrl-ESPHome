@@ -57,6 +57,7 @@ MhiAcCtrl:
   frame_size: ${frame_size}
   # Update the following to change the default room temp timeout
   # room_temp_timeout: 60
+  # troom_offset: -2
 
 button:
   - platform: restart
