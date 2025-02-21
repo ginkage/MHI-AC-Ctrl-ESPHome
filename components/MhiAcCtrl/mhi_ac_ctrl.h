@@ -149,7 +149,7 @@ public:
         room_temp_api_timeout = time_in_seconds;
     }
 	
-	void set_troom_offset(int troom_offset) {
+	void set_troom_offset(float troom_offset) {
         troom_offset_ = troom_offset;
     }
 	
@@ -566,7 +566,7 @@ public:
 
 private:
     int frame_size_;
-	int troom_offset_;
+    float troom_offset_;
     unsigned long room_temp_api_timeout_ms = millis(); // Timestamp in milliseconds
     unsigned long room_temp_api_timeout; // Timeout duration in seconds
 
