@@ -148,6 +148,11 @@ public:
     void set_room_temp_api_timeout(int time_in_seconds) {
         room_temp_api_timeout = time_in_seconds;
     }
+	
+	void set_troom_offset(float troom_offset) {
+        troom_offset_ = troom_offset;
+    }
+	
     void loop() override
     {
         if(millis() - room_temp_api_timeout_ms >= room_temp_api_timeout*1000) {
@@ -350,7 +355,7 @@ public:
         case status_troom:
             // dtostrf((value - 61) / 4.0, 0, 2, strtmp);
             // output_P(status, PSTR(TOPIC_TROOM), strtmp);
-            this->current_temperature = (value - 61) / 4.0;
+            this->current_temperature = ((value - 61) / 4.0) + troom_offset_;
             this->publish_state();
             break;
         case status_tsetpoint:
@@ -369,7 +374,7 @@ public:
         case erropdata_return_air:
             // dtostrf(value * 0.25f - 15, 0, 2, strtmp);
             // output_P(status, PSTR(TOPIC_RETURNAIR), strtmp);
-            return_air_temperature_.publish_state(value * 0.25f - 15);
+            return_air_temperature_.publish_state((value * 0.25f - 15) + troom_offset_);
             break;
         case opdata_thi_r1:
             // Indoor Heat exchanger temperature 1 (U-bend)
@@ -561,6 +566,7 @@ public:
 
 private:
     int frame_size_;
+    float troom_offset_;
     unsigned long room_temp_api_timeout_ms = millis(); // Timestamp in milliseconds
     unsigned long room_temp_api_timeout; // Timeout duration in seconds
 
