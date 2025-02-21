@@ -18,7 +18,7 @@ CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(MhiAcCtrl),
     cv.Optional(CONF_FRAME_SIZE, default=20): cv.int_range(min=20, max=33),
     cv.Optional(CONF_ROOM_TEMP_TIMEOUT, default=60): cv.int_range(min=0, max=3600),
-    cv.Optional(CONF_TROOM_OFFSET, default=0): cv.int_range(min=-10, max=10),
+    cv.Optional(CONF_TROOM_OFFSET, default=0): cv.float_range(min=-10, max=10),
     cv.Optional(CONF_VANES_UD, default=0): cv.int_range(min=0, max=5),
     cv.Optional(CONF_VANES_LR, default=0): cv.int_range(min=0, max=8),
 }).extend(cv.COMPONENT_SCHEMA)
