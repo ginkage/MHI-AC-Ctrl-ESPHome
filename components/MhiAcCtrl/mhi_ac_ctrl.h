@@ -670,7 +670,8 @@ protected:
         traits.set_supports_two_point_target_temperature(false);
         traits.set_visual_min_temperature(this->minimum_temperature_);
         traits.set_visual_max_temperature(this->maximum_temperature_);
-        traits.set_visual_temperature_step(this->temperature_step_);
+        traits.set_visual_target_temperature_step(this->target_temperature_step_);
+        traits.set_visual_current_temperature_step(this->current_temperature_step_);
         traits.set_supported_fan_modes({ CLIMATE_FAN_AUTO, CLIMATE_FAN_QUIET, CLIMATE_FAN_LOW, CLIMATE_FAN_MEDIUM, CLIMATE_FAN_HIGH });
         traits.set_supported_swing_modes({ CLIMATE_SWING_OFF, CLIMATE_SWING_BOTH, CLIMATE_SWING_VERTICAL, CLIMATE_SWING_HORIZONTAL });
         return traits;
@@ -678,7 +679,8 @@ protected:
 
     float minimum_temperature_ { 18.0f };
     float maximum_temperature_ { 30.0f };
-    float temperature_step_ { 0.5f };
+    float target_temperature_step_ { 0.5f };
+    float current_temperature_step_ { 0.25f };
 
     ACPower power_;
     ACMode mode_;
