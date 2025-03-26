@@ -2,28 +2,18 @@
 #pragma once
 
 #include "MHI-AC-Ctrl-core.h"
-#include "esphome/components/climate/climate.h"
 #include "esphome/components/sensor/sensor.h"
-#include "esphome/components/switch/switch.h"
-#include "esphome/components/text_sensor/text_sensor.h"
-#include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/core/time.h"
 #include <vector>
 #include <string>
 #include "mhi_status_listener.h"
 
-#define ROOM_TEMP_MQTT 1
-
-using namespace esphome;
-using namespace esphome::climate;
-using namespace esphome::sensor;
-using namespace esphome::text_sensor;
-using namespace esphome::binary_sensor;
-
 namespace esphome {
 namespace mhi {
 
-class MhiPlatform : public Component, public CallbackInterface_Status {
+class MhiPlatform : 
+    public Component, 
+    public CallbackInterface_Status {
 
 public:
 
@@ -43,7 +33,7 @@ public:
     void set_vanes(int value);
     void set_vanesLR(int value);
     void set_3Dauto(bool value);
-    void set_external_room_temperature_sensor(Sensor* sensor);
+    void set_external_room_temperature_sensor(sensor::Sensor* sensor);
     void add_listener(MhiStatusListener* listener);
 
 
@@ -56,7 +46,7 @@ private:
 
     MHI_AC_Ctrl_Core mhi_ac_ctrl_core_;
 
-    Sensor* external_temperature_sensor_;
+    sensor::Sensor* external_temperature_sensor_;
 
     std::vector<MhiStatusListener*> listeners_;
 };

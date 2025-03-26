@@ -4,9 +4,6 @@
 #include "esphome/components/switch/switch.h"
 #include "../mhi_platform.h"
 
-using namespace esphome;
-using namespace esphome::mhi;
-
 namespace esphome {
 namespace mhi {
 
@@ -17,11 +14,11 @@ class Mhi3dAutoSwitch :
     protected MhiStatusListener {
 public:
   void write_state(bool state);
-  void setup() override;
-  void dump_config() override;
   
 protected:
-  void update_status(ACStatus status, int value) override;
+    void setup() override;
+    void dump_config() override;
+    void update_status(ACStatus status, int value) override;
 };
 
 } //namespace mhi

@@ -2,7 +2,6 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.const import CONF_ID
 from esphome.components import select
-from esphome.const import ENTITY_CATEGORY_CONFIG
 from .. import MhiAcCtrl, CONF_MHI_AC_CTRL_ID
 
 CONF_VERTICAL = "vertical_vanes"

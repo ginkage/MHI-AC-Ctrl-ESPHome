@@ -3,10 +3,15 @@
 #include "esphome/components/sensor/sensor.h"
 #include "../mhi_platform.h"
 
+using namespace esphome::sensor;
+
 namespace esphome {
 namespace mhi {
 
-class MhiSensors : public Component, public Parented<MhiPlatform>, protected MhiStatusListener {
+class MhiSensors : 
+    public Component, 
+    public Parented<MhiPlatform>, 
+    protected MhiStatusListener {
 
 public:
     void set_error_code(Sensor* sensor);
@@ -18,7 +23,6 @@ public:
     void set_indoor_unit_total_run_time(Sensor* sensor);
     void set_compressor_total_run_time(Sensor* sensor);
     void set_current_power(Sensor* sensor);
-    void set_defrost(BinarySensor* sensor);
     void set_vanes_pos(Sensor* sensor);
     void set_energy_used(Sensor* sensor);
     void set_indoor_unit_thi_r1(Sensor* sensor);
@@ -31,9 +35,9 @@ public:
     void set_protection_state_number(Sensor* sensor);
     void set_vanesLR_pos(Sensor* sensor);
 
+protected:
     void setup() override;
     void dump_config() override;
-protected:
     void update_status(ACStatus status, int value) override;
 private:
 
@@ -46,7 +50,6 @@ private:
     Sensor* indoor_unit_total_run_time_;
     Sensor* compressor_total_run_time_;
     Sensor* current_power_;
-    BinarySensor* defrost_;
     Sensor* vanes_pos_;
     Sensor* energy_used_;
     Sensor* indoor_unit_thi_r1_;

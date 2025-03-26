@@ -26,7 +26,7 @@ static const std::vector<std::string> protection_states = {
 
 static const char* TAG = "mhi.text_sensor";
 
-void MhiTextSensors::set_protection_state (TextSensor* sensor) { protection_state_ = sensor; }
+void MhiTextSensors::set_protection_state(text_sensor::TextSensor* sensor) { protection_state_ = sensor; }
 
 
 void MhiTextSensors::setup() {
@@ -35,14 +35,17 @@ void MhiTextSensors::setup() {
 
 void MhiTextSensors::dump_config() {
 
-    //LOG_CLIMATE(TAG, "MHI-AC-Ctrl Text Sensors", this);
+    ESP_LOGCONFIG(TAG, "MHI Text Sensors");
+    if (protection_state_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  protection_state: %s", this->protection_state_->state);
+    }
 }
 
-void MhiTextSensors:: update_status(ACStatus status, int value) {
-    ESP_LOGE(TAG, "received status=%i value=%i", status, value);
+void MhiTextSensors::update_status(ACStatus status, int value) {
+    ESP_LOGD(TAG, "received status=%i value=%i", status, value);
     if (status == opdata_protection_no && value < protection_states.size() && this->protection_state_ != NULL) {
         this->protection_state_ -> publish_state(protection_states[value]); 
-        ESP_LOGE(TAG, "Protection status updated");
+        ESP_LOGD(TAG, "Protection status updated");
     }
 }
 

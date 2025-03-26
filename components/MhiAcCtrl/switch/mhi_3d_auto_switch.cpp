@@ -17,6 +17,7 @@ void Mhi3dAutoSwitch::write_state(bool state) {
 
 void Mhi3dAutoSwitch::dump_config(){
     ESP_LOGCONFIG(TAG, "3d Auto switch");
+    ESP_LOGCONFIG(TAG, "  state: %d", this->state);
 }
 
 void Mhi3dAutoSwitch::update_status(ACStatus status, int value) {
@@ -32,7 +33,6 @@ void Mhi3dAutoSwitch::update_status(ACStatus status, int value) {
             ESP_LOGD(TAG, "3d auto status updated: enabled");
             break;
         }
-
     }
 }
 

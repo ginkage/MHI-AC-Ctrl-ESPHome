@@ -33,7 +33,67 @@ void MhiSensors::setup() {
 
 void MhiSensors::dump_config() {
 
-    //LOG_CLIMATE(TAG, "MHI-AC-Ctrl Sensors", this);
+    ESP_LOGCONFIG(TAG, "MHI Sensors");
+    if (error_code_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  error_code: %f", this->error_code_->state);
+    }
+    if (outdoor_temperature_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  outdoor_temperature: %f", this->outdoor_temperature_->state);
+    }
+    if (return_air_temperature_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  return_air_temperature: %f", this->return_air_temperature_->state);
+    }
+    if (outdoor_unit_fan_speed_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  outdoor_unit_fan_speed: %f", this->outdoor_unit_fan_speed_->state);
+    }
+    if (indoor_unit_fan_speed_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  indoor_unit_fan_speed: %f", this->indoor_unit_fan_speed_->state);
+    }
+    if (compressor_frequency_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  compressor_frequency: %f", this->compressor_frequency_->state);
+    }
+    if (indoor_unit_total_run_time_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  indoor_unit_total_run_time: %f", this->indoor_unit_total_run_time_->state);
+    }
+    if (compressor_total_run_time_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  compressor_total_run_time: %f", this->compressor_total_run_time_->state);
+    }
+    if (current_power_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  current_power: %f", this->current_power_->state);
+    }
+    if (vanes_pos_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  vanes_pos: %f", this->vanes_pos_->state);
+    }
+    if (energy_used_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  energy_used: %f", this->energy_used_->state);
+    }
+    if (indoor_unit_thi_r1_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  indoor_unit_thi_r1: %f", this->indoor_unit_thi_r1_->state);
+    }
+    if (indoor_unit_thi_r2_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  indoor_unit_thi_r2: %f", this->indoor_unit_thi_r2_->state);
+    }
+    if (indoor_unit_thi_r3_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  indoor_unit_thi_r3: %f", this->indoor_unit_thi_r3_->state);
+    }
+    if (outdoor_unit_tho_r1_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  outdoor_unit_tho_r1: %f", this->outdoor_unit_tho_r1_->state);
+    }
+    if (outdoor_unit_expansion_valve_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  outdoor_unit_expansion_valve: %f", this->outdoor_unit_expansion_valve_->state);
+    }
+    if (outdoor_unit_discharge_pipe_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  outdoor_unit_discharge_pipe: %f", this->outdoor_unit_discharge_pipe_->state);
+    }
+    if (outdoor_unit_discharge_pipe_super_heat_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  outdoor_unit_discharge_pipe_super_heat: %f", this->outdoor_unit_discharge_pipe_super_heat_->state);
+    }
+    if (protection_state_number_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  protection_state_number: %f", this->protection_state_number_->state);
+    }
+    if (vanesLR_pos_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  vanesLR_pos: %f", this->vanesLR_pos_->state);
+    }
 }
 
 void MhiSensors::update_status(ACStatus status, int value) {
@@ -181,15 +241,6 @@ void MhiSensors::update_status(ACStatus status, int value) {
         // output_P(status, PSTR(TOPIC_OU_FANSPEED), strtmp);
         if (this->outdoor_unit_fan_speed_ != NULL) { 
             this->outdoor_unit_fan_speed_ -> publish_state(value); 
-        }
-        break;
-    case opdata_defrost:
-        // if (value)
-        //     output_P(status, PSTR(TOPIC_DEFROST), PSTR(PAYLOAD_OP_DEFROST_ON));
-        // else
-        //     output_P(status, PSTR(TOPIC_DEFROST), PSTR(PAYLOAD_OP_DEFROST_OFF));
-        if (this->defrost_ != NULL) { 
-            this->defrost_ -> publish_state(value != 0); 
         }
         break;
     case opdata_total_comp_run:

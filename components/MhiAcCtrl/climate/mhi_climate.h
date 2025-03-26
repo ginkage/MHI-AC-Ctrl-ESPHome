@@ -5,17 +5,21 @@
 #include <vector>
 #include "../mhi_platform.h"
 
+using namespace esphome::climate;
+
 namespace esphome {
 namespace mhi {
 
-class MhiClimate : public climate::Climate, public Component, protected MhiStatusListener, public Parented<MhiPlatform> {
+class MhiClimate : 
+    public climate::Climate, 
+    public Component, 
+    public Parented<MhiPlatform>, 
+    protected MhiStatusListener {
 
-public:
+protected:
 
     void setup() override;
     void dump_config() override;
-
-protected:
     void control(const climate::ClimateCall& call) override;
     climate::ClimateTraits traits() override;
     void update_status(ACStatus status, int value) override;

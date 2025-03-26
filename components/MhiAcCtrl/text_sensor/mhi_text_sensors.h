@@ -8,17 +8,20 @@
 namespace esphome {
 namespace mhi {
 
-class MhiTextSensors : public Component, public Parented<MhiPlatform>, protected MhiStatusListener {
+class MhiTextSensors : 
+    public Component, 
+    public Parented<MhiPlatform>, 
+    protected MhiStatusListener {
 
 public:
-    void set_protection_state(TextSensor* sensor);
+    void set_protection_state(text_sensor::TextSensor* sensor);
+protected:
     void setup() override;
     void dump_config() override;
-protected:
     void update_status(ACStatus status, int value) override;
 private:
 
-    TextSensor* protection_state_;
+    text_sensor::TextSensor* protection_state_;
 
 };
 

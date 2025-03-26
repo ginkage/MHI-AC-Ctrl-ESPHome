@@ -15,8 +15,15 @@ void MhiBinarySensors::setup() {
 }
 
 void MhiBinarySensors::dump_config() {
+    
+    ESP_LOGCONFIG(TAG, "MHI Binary Sensors");
 
-    //LOG_CLIMATE(TAG, "MHI-AC-Ctrl Binary Sensors", this);
+    if (defrost_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  defrost: %d", this->defrost_->state);
+    }
+    if (vanes_3d_auto_enabled_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  vanes_3d_auto_enabled: %d", this->vanes_3d_auto_enabled_->state);
+    }
 }
 
 void MhiBinarySensors::update_status(ACStatus status, int value) {

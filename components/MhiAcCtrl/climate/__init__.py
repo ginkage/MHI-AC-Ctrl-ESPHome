@@ -2,10 +2,11 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import climate
 from esphome.core import coroutine
-from .. import MhiAcCtrl, CONF_MHI_AC_CTRL_ID
 from esphome.const import (
     CONF_ID
 )
+from .. import MhiAcCtrl, CONF_MHI_AC_CTRL_ID
+
 mhi_ns = cg.esphome_ns.namespace('mhi')
 MhiClimate = mhi_ns.class_('MhiClimate', cg.Component, climate.Climate)
 

@@ -27,7 +27,7 @@ void MhiPlatform::set_room_temp_api_timeout(int time_in_seconds) {
     this->room_temp_api_timeout_ = time_in_seconds;
 }
 
-void MhiPlatform::set_external_room_temperature_sensor(Sensor* sensor) {
+void MhiPlatform::set_external_room_temperature_sensor(sensor::Sensor* sensor) {
     this->external_temperature_sensor_ = sensor;
 }
 
@@ -35,6 +35,10 @@ void MhiPlatform::loop() {
     if(millis() - room_temp_api_timeout_start_ >= room_temp_api_timeout_*1000) {
         mhi_ac_ctrl_core_.set_troom(0xff);  // use IU temperature sensor
         ESP_LOGD(TAG, "did not receive a room_temp_api value, using IU temperature sensor");
+    }
+
+    if (this->external_temperature_sensor_ != nullptr) {
+        this->transfer_room_temperature(this->external_temperature_sensor_->state);
     }
 
     int ret = mhi_ac_ctrl_core_.loop(100);
@@ -45,15 +49,18 @@ void MhiPlatform::loop() {
 
 void MhiPlatform::dump_config() {
 
-    //LOG_CLIMATE("", "MHI-AC-Ctrl Climate", this)
+    ESP_LOGCONFIG(TAG, "MHI Platform");
+    if (external_temperature_sensor_ != NULL) {
+        ESP_LOGCONFIG(TAG, "  external_temperature_sensor enabled!");
+    }
+
+    ESP_LOGCONFIG(TAG, "  frame_size: %d", this->frame_size_);
+    ESP_LOGCONFIG(TAG, "  room_temp_api_timeout: %d", this->room_temp_api_timeout_);
+    ESP_LOGCONFIG(TAG, "  listeners count: %d", this->listeners_.size());
 }
 
 void MhiPlatform:: cbiStatusFunction(ACStatus status, int value) {
-
-    //ESP_LOGE(TAG, "received status=%i value=%i power=%i", status, value, this->power_);
     ESP_LOGD(TAG, "received status=%i value=%i", status, value);
-
-    ESP_LOGE(TAG, "listeners=%i", this->listeners_.size());
 
     for (MhiStatusListener* listener:this->listeners_) {
         listener->update_status(status, value);
