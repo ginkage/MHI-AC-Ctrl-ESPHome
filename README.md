@@ -30,6 +30,14 @@ Has now 5 different fan modes but I'm not sure if the auto mode works proper, ke
 
 # Changelog:
 
+**v4.0** (2025-04)
+ - Compatibility with ESPHOME 2015.2+
+ - Breaking change: the implementation is ported to the native ESPHome codeden
+   - The configuration file is significantly simplified
+   - No need for custom code in the config file
+   - Sensors are no longer positional
+ - External sensor support
+
 **v3.0** (2024-08)
  - Breaking change: moved all files to component and allow for easy install, thanks to @XMaarten and https://github.com/hberntsen/mhi-ac-ctrl-esp32-c3
    - When you are upgrading from v2.1 or older, and experience compile errors, please see https://github.com/ginkage/MHI-AC-Ctrl-ESPHome/issues/100#issuecomment-2395388853 for manual cleanup steps

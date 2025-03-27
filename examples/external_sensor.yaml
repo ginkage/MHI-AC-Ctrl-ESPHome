@@ -1,0 +1,66 @@
+esphome:
+  name: <device name>
+  friendly_name: <friendly name>
+  min_version: 2024.6.0
+  platformio_options:
+    # Run CPU at 160Mhz to fix mhi_ac_ctrl_core.loop error: -2
+    board_build.f_cpu: 160000000L
+
+esp8266:
+  board: d1_mini
+
+logger:
+  level: INFO
+  baud_rate: 0
+
+ota:
+  - platform: esphome
+    password: <pass here>
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: <hotspot name>
+    password: <hotspot pass>
+
+captive_portal:
+
+external_components:
+  - source: github://ginkage/MHI-AC-Ctrl-ESPHome@master
+    components: [ MhiAcCtrl ]
+
+api:
+  encryption:
+    key: <your key here>
+
+# Version 4.0
+MhiAcCtrl:
+  # Only 20 (legacy) or 33 (includes 3D auto and vertical vanes) possible. 
+  # If you encounter mhi_ac_ctrl_core.loop error: -2 errors, change the frame_size to 20
+  frame_size: 33
+  external_temperature_sensor: room_temperature_sensor
+
+climate:
+  - platform: MhiAcCtrl
+    name: "MHI Air Conditioner"
+
+sensor:
+  #external temperature sensor
+  - platform: homeassistant
+    id: room_temperature_sensor
+    entity_id: sensor.temperature_sensor_your_room_temperature
+
+select:
+  - platform: MhiAcCtrl
+    vertical_vanes:
+      name: Fan Control Up Down
+    horizontal_vanes:
+      name: Fan Control Left Right
+
+switch:
+  - platform: MhiAcCtrl
+    vanes_3d_auto:
+      name: "3D Auto"
