@@ -30,10 +30,6 @@ void MhiBinarySensors::update_status(ACStatus status, int value) {
 
     switch (status) {
     case opdata_defrost:
-        // if (value)
-        //     output_P(status, PSTR(TOPIC_DEFROST), PSTR(PAYLOAD_OP_DEFROST_ON));
-        // else
-        //     output_P(status, PSTR(TOPIC_DEFROST), PSTR(PAYLOAD_OP_DEFROST_OFF));
         if (this->defrost_ != NULL) { 
             this->defrost_ -> publish_state(value != 0); 
         }

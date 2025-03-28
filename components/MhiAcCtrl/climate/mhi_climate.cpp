@@ -70,12 +70,7 @@ void MhiClimate::update_status(ACStatus status, int value) {
     case opdata_mode:
     case erropdata_mode:
         switch (value) {
-        case mode_auto:
-            // if (status != erropdata_mode)
-            //    output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_AUTO));
-            // else
-            //    output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_STOP));
-            //    break;
+        case mode_auto:          
             if (status != erropdata_mode && this->power_ > 0) {
                 this->mode = climate::CLIMATE_MODE_HEAT_COOL;
             } else {

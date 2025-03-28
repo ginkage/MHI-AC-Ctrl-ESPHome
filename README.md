@@ -31,7 +31,7 @@ Has now 5 different fan modes but I'm not sure if the auto mode works proper, ke
 # Changelog:
 
 **v4.0** (2025-04)
- - Compatibility with ESPHOME 2015.2+
+ - Compatibility with ESPHOME 2025.2+
  - Breaking change: the implementation is ported to the native ESPHome codeden
    - The configuration file is significantly simplified
    - No need for custom code in the config file

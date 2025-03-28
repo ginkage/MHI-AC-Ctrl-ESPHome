@@ -2,7 +2,6 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome import automation
 from esphome.const import CONF_ID
-from esphome.components import climate, sensor
 
 CONF_MHI_AC_CTRL_ID = "mhi_ac_ctrl_id"
 CONF_FRAME_SIZE = 'frame_size'
