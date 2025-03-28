@@ -32,7 +32,6 @@ void MhiPlatform::set_external_room_temperature_sensor(sensor::Sensor* sensor) {
 }
 
 void MhiPlatform::loop() {
-
     if (this->external_temperature_sensor_ != nullptr) {
         this->transfer_room_temperature(this->external_temperature_sensor_->state);
         this->room_temp_api_active_ = false;
