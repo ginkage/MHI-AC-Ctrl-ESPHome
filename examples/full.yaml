@@ -58,11 +58,6 @@ api:
             temperature: !lambda 'return temperature_value;'
 
 # Version 4.0
-MhiAcCtrl:
-  # Only 20 (legacy) or 33 (includes 3D auto and vertical vanes) possible. 
-  # If you encounter mhi_ac_ctrl_core.loop error: -2 errors, change the frame_size to 20
-  frame_size: 33
-  external_temperature_sensor: room_temperature_sensor
 
 MhiAcCtrl:
   # Only 20 (legacy) or 33 (includes 3D auto and vertical vanes) possible. 
