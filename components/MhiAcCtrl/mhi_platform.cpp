@@ -32,13 +32,15 @@ void MhiPlatform::set_external_room_temperature_sensor(sensor::Sensor* sensor) {
 }
 
 void MhiPlatform::loop() {
-    if(millis() - room_temp_api_timeout_start_ >= room_temp_api_timeout_*1000) {
+    if((millis() - room_temp_api_timeout_start_ >= room_temp_api_timeout_*1000) && !this->room_temp_api_timeout_handled_) {  
         mhi_ac_ctrl_core_.set_troom(0xff);  // use IU temperature sensor
         ESP_LOGD(TAG, "did not receive a room_temp_api value, using IU temperature sensor");
+        this->room_temp_api_timeout_handled_ = true;  // Mark as handled
     }
 
     if (this->external_temperature_sensor_ != nullptr) {
         this->transfer_room_temperature(this->external_temperature_sensor_->state);
+        this->room_temp_api_timeout_handled_ = false;  // Reset handled flag
     }
 
     int ret = mhi_ac_ctrl_core_.loop(100);
