@@ -43,6 +43,7 @@ private:
     int frame_size_;
     unsigned long room_temp_api_timeout_start_ = millis();
     unsigned long room_temp_api_timeout_;
+    bool room_temp_api_active_ = false;
 
     MHI_AC_Ctrl_Core mhi_ac_ctrl_core_;
 
