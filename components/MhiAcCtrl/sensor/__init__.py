@@ -1,6 +1,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import sensor, text_sensor, binary_sensor
+from esphome.components import sensor
 from esphome.const import (
     CONF_ID,
     DEVICE_CLASS_FREQUENCY,
@@ -9,14 +9,12 @@ from esphome.const import (
     STATE_CLASS_MEASUREMENT,
     STATE_CLASS_TOTAL_INCREASING,
     UNIT_CELSIUS,
-    UNIT_PERCENT,
     UNIT_HOUR,
     UNIT_HERTZ,
     UNIT_AMPERE,
     UNIT_KILOWATT_HOURS,
     ICON_THERMOMETER,
     ICON_FAN,
-    ICON_TIMER,
 )
 from .. import MhiAcCtrl, CONF_MHI_AC_CTRL_ID
 
