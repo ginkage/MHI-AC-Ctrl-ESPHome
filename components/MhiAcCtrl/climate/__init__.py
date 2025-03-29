@@ -4,7 +4,7 @@ from esphome.components import climate
 from esphome.core import coroutine
 from esphome.const import (
     CONF_ID,
-    ICON_AIR_CONDITIONER,  # Add this import
+    ICON_THERMOMETER,
 )
 from .. import MhiAcCtrl, CONF_MHI_AC_CTRL_ID
 
@@ -18,7 +18,7 @@ CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
     }
 ).extend(cv.COMPONENT_SCHEMA).extend(
     {
-        cv.Optional("icon", default=ICON_AIR_CONDITIONER): cv.icon,  # Add icon configuration
+        cv.Optional("icon", default=ICON_THERMOMETER): cv.icon,
     }
 )
 
