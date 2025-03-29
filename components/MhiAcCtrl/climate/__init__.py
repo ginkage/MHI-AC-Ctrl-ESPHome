@@ -4,7 +4,6 @@ from esphome.components import climate
 from esphome.core import coroutine
 from esphome.const import (
     CONF_ID,
-    ICON_THERMOMETER,
 )
 from .. import MhiAcCtrl, CONF_MHI_AC_CTRL_ID
 
