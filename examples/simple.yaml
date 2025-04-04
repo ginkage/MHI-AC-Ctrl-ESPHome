@@ -34,11 +34,11 @@ api:
 
 external_components:
   - source: github://ginkage/MHI-AC-Ctrl-ESPHome@master
-    components: [ MhiAcCtrl ]
+    components: [MhiAcCtrl]
 
 # Version 4.0
 MhiAcCtrl:
-  # Only 20 (legacy) or 33 (includes 3D auto and vertical vanes) possible. 
+  # Only 20 (legacy) or 33 (includes 3D auto and vertical vanes) possible.
   # If you encounter mhi_ac_ctrl_core.loop error: -2 errors, change the frame_size to 20
   frame_size: 33
 

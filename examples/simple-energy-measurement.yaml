@@ -34,11 +34,11 @@ api:
 
 external_components:
   - source: github://ginkage/MHI-AC-Ctrl-ESPHome@master
-    components: [ MhiAcCtrl ]
+    components: [MhiAcCtrl]
 
 # Version 4.0
 MhiAcCtrl:
-  # Only 20 (legacy) or 33 (includes 3D auto and vertical vanes) possible. 
+  # Only 20 (legacy) or 33 (includes 3D auto and vertical vanes) possible.
   # If you encounter mhi_ac_ctrl_core.loop error: -2 errors, change the frame_size to 20
   frame_size: 33
 
@@ -47,7 +47,6 @@ globals:
     type: int
     restore_value: no
     initial_value: "230"
-
 
 climate:
   - platform: MhiAcCtrl
@@ -66,7 +65,7 @@ sensor:
         then:
           - sensor.template.publish:
               id: power
-              state: !lambda 'return id(ac_current_power).state * id(grid_voltage);'
+              state: !lambda "return id(ac_current_power).state * id(grid_voltage);"
   - platform: template
     name: MHI - Current Power
     id: "power"
@@ -76,9 +75,9 @@ sensor:
     name: "MHI - Daily Energy"
     power_id: "power"
     filters:
-        # Multiplication factor from W to kW is 0.001
-        - multiply: 0.001
-        - throttle: 300s
+      # Multiplication factor from W to kW is 0.001
+      - multiply: 0.001
+      - throttle: 300s
     unit_of_measurement: kWh
     method: left
     icon: mdi:lightning-bolt
