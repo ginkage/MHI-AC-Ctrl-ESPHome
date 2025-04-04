@@ -1,11 +1,19 @@
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/ginkage)
 [![paypal RobertJansen1](https://www.paypalobjects.com/en_GB/i/btn/btn_donate_LG.gif)](https://www.paypal.com/donate/?hosted_button_id=TL3SFZ4P6ZDHN)
 
+# How to get started
+
+Create a new device within ESPHome builder and combine the yaml with one of the examples from the example directory, give your unit a name, configure OTA passwords and hotspot and add an api key and install!  
+
+external_sensor.yaml contains the basics to configure the room temperature using an external temperature sensor connected to Home Assistant.  
+full.yaml contains all (20+!) of the metrics that are possibly in the unit and returns them.  
+simple-energy-management.yaml contains the basics to get started with energy measuring (assuming a voltage of 230v to convert A to Wh)  
+simple.yaml basic yaml to get started, contains climate and fan direction control
+
 # MHI-AC-Ctrl-ESPHome
 This project is a simple integration of the amazing work [absalom-muc](https://github.com/absalom-muc) has done with his project [MHI-AC-Ctrl](https://github.com/absalom-muc/MHI-AC-Ctrl).\
 It's supposed to simplify the [Home Assistant](https://www.home-assistant.io/) setup, while giving you OTA and auto-discovery with virtually zero effort and no MQTT needed, powered by [ESPHome](https://esphome.io/).\
 MHI-AC-Ctrl-core.\* files were forked directly, with no modification, whereas your WiFi credentials should go into the \*.yaml file, and mhi_ac_ctrl.h is the core of the integration.\
-Create a new device within ESPHome and combine the yaml with example.yaml, rename example_ac and example-ac and install!
 
 # Fan Modes Up/Down Left/Right
 Most newer MHI units (the ones supporting the WF-RAC WiFi module) support fine grained vane control for Left/Right and Up/Down.  
@@ -29,6 +37,14 @@ Has now 5 different fan modes but I'm not sure if the auto mode works proper, ke
 
 
 # Changelog:
+
+**v4.0** (2025-04)
+ - Compatibility with ESPHOME 2025.2+
+ - Breaking change: the implementation is ported to the native ESPHome codegen
+   - The configuration file is significantly simplified
+   - No need for custom code in the config file
+   - Sensors are no longer positional
+ - External sensor support
 
 **v3.0** (2024-08)
  - Breaking change: moved all files to component and allow for easy install, thanks to @XMaarten and https://github.com/hberntsen/mhi-ac-ctrl-esp32-c3
