@@ -52,7 +52,7 @@ api:
             position: !lambda "return position_value;"
     - service: set_external_room_temperature
       variables:
-        temperature_value: int # 1-7: static positions, 8: swing, 0: unknown
+        temperature_value: float # temperature to set in Celsius
       then:
         - climate.mhi.set_external_room_temperature:
             temperature: !lambda "return temperature_value;"
