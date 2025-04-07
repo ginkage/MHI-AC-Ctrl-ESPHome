@@ -57,3 +57,7 @@ switch:
   - platform: MhiAcCtrl
     vanes_3d_auto:
       name: "3D Auto"
+sensor:
+  - platform: MhiAcCtrl
+    outdoor_temperature:
+      name: "Outdoor temperature"
