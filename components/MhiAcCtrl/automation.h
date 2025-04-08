@@ -44,7 +44,7 @@ public:
   TEMPLATABLE_VALUE(float, temperature);
   
   void play(Ts... x) {
-    int temp = this->temperature_.value(x...);
+    float temp = this->temperature_.value(x...);
     this->parent_->set_room_temperature(temp);
     
   }
