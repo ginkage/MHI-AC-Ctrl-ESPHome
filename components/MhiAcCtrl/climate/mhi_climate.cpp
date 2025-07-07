@@ -333,7 +333,7 @@ void MhiClimate::control(const climate::ClimateCall& call) {
     this->publish_state();
 }
 
-void MhiClimate::on_status_change(ACStatus status, int value) {
+void MhiClimate::update_status(ACStatus status, int value) {
     // ... existing status handling ...
     
     if (status == TROOM) {
