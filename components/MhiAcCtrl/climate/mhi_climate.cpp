@@ -274,16 +274,6 @@ void MhiClimate::control(const climate::ClimateCall& call) {
         this->platform_->set_mode(mode_);
     }
 
-    if (call.get_target_temperature().has_value()) {
-        this->target_temperature = *call.get_target_temperature();
-
-        ESP_LOGE(TAG, "TEMP: Set %f", this->target_temperature);
-
-        this->tsetpoint_ = clamp(this->target_temperature, minimum_temperature_, maximum_temperature_);
-
-        this->platform_->set_tsetpoint(this->tsetpoint_);
-    }
-
     if (call.get_fan_mode().has_value()) {
         this->fan_mode = *call.get_fan_mode();
 

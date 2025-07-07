@@ -7,7 +7,6 @@ from esphome.core import coroutine
 from esphome.const import (
     CONF_ID,
     CONF_ICON,
-    CONF_VISUAL_MIN_TEMPERATURE,
 )
 from .. import MhiAcCtrl, CONF_MHI_AC_CTRL_ID
 
@@ -15,6 +14,7 @@ mhi_ns = cg.esphome_ns.namespace('mhi')
 MhiClimate = mhi_ns.class_('MhiClimate', cg.Component, climate.Climate)
 
 CONF_TEMPERATURE_OFFSET = "temperature_offset"
+CONF_VISUAL_MIN_TEMPERATURE = "visual_min_temperature"
 
 CONFIG_SCHEMA = climate.climate_schema(MhiClimate).extend(
     {
