@@ -91,6 +91,15 @@ You can to change the frame_size in the yaml to 20 to disable newer functionalit
 when framsize is set to 20, 3D auto, and vane Left / Right doesn't work, vane Up / Down works limited.  
 All other features should work fine.  
 
+### Everything has changed, how do i update?!?  
+As time progresses, esphome and this project evolved, allowing for more features and easier installation and updates in the future. When you are on an older versione (wether that is v3.0, v2.0 or earlier) the best way forward is to get one of the example yaml files from the examples folder and apply this to your current yaml file. 
+ 1. Make a copy of your current yaml file, and save it somewhere outside of Home Assistant.
+ 2. Did you not skip step 1?
+ 3. Choose one of the example yaml files from the example dir 
+ 4. Carefully copy the basic information from the backup file into the example file. Take things like name, ota password, wifi credentials, ap fallback settings, api settings and key, and frame_size
+ 5. Double check your new yaml and paste it in esphome builder and deploy
+ 6. If you replaced all information carefully, all should build fine. If not, read the message and see what parts are missing or duplicate (most frequently done wrong)
+
 
 # License
 This project is licensed under the MIT License - see the LICENSE file for details.\

@@ -30,7 +30,7 @@ captive_portal:
 
 external_components:
   - source: github://ginkage/MHI-AC-Ctrl-ESPHome@master
-    components: [ MhiAcCtrl ]
+    components: [MhiAcCtrl]
 
 api:
   encryption:
@@ -39,28 +39,28 @@ api:
   reboot_timeout: 0s
   services:
     - service: set_vertical_vanes
-      variables: 
+      variables:
         position_value: int # 1-4: static positions, 5: swing, 0: unknown
       then:
         - climate.mhi.set_vertical_vanes:
-            position: !lambda 'return position_value;'
+            position: !lambda "return position_value;"
     - service: set_horizontal_vanes
-      variables: 
+      variables:
         position_value: int # 1-7: static positions, 8: swing, 0: unknown
       then:
         - climate.mhi.set_horizontal_vanes:
-            position: !lambda 'return position_value;'
+            position: !lambda "return position_value;"
     - service: set_external_room_temperature
-      variables: 
-        temperature_value: int # 1-7: static positions, 8: swing, 0: unknown
+      variables:
+        temperature_value: float # temperature to set in Celsius
       then:
         - climate.mhi.set_external_room_temperature:
-            temperature: !lambda 'return temperature_value;'
+            temperature: !lambda "return temperature_value;"
 
 # Version 4.0
 
 MhiAcCtrl:
-  # Only 20 (legacy) or 33 (includes 3D auto and vertical vanes) possible. 
+  # Only 20 (legacy) or 33 (includes 3D auto and vertical vanes) possible.
   # If you encounter mhi_ac_ctrl_core.loop error: -2 errors, change the frame_size to 20
   frame_size: 33
   initial_vertical_vanes_position: 5
@@ -84,10 +84,10 @@ climate:
 time:
   - platform: homeassistant
     id: homeassistant_time
-    
+
 binary_sensor:
   - platform: MhiAcCtrl
-    defrost: 
+    defrost:
       name: "Defrost"
     vanes_3d_auto_enabled:
       name: "3D Auto"
@@ -151,7 +151,7 @@ text_sensor:
     bssid:
       name: BSSID
   - platform: MhiAcCtrl
-    protection_state: 
+    protection_state:
       name: "Compressor protection status"
 
 select:
