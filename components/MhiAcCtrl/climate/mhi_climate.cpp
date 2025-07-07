@@ -194,11 +194,11 @@ void MhiClimate::update_status(ACStatus status, int value) {
         this->vanesLR_pos_state_ = value;
         break;
     case status_troom:
-        // dtostrf((value - 61) / 4.0, 0, 2, strtmp);
-        // output_P(status, PSTR(TOPIC_TROOM), strtmp);
-        this->current_temperature = (value - 61) / 4.0;
+        // Calculate the temperature and apply the offset for 0.5°C steps
+        this->current_temperature = ((value - 61) / 4.0) - this->temperature_offset_;
         this->publish_state();
         break;
+
     case status_tsetpoint:
         // itoa(value, strtmp, 10);
         // output_P(status, PSTR(TOPIC_TSETPOINT), strtmp);
@@ -333,16 +333,6 @@ void MhiClimate::control(const climate::ClimateCall& call) {
     this->publish_state();
 }
 
-void MhiClimate::update_status(ACStatus status, int value) {
-    // ... existing status handling ...
-    
-    if (status == TROOM) {
-        // Apply temperature offset to "fool" the AC unit
-        float adjusted_temp = value - this->temperature_offset_;
-        this->current_temperature = adjusted_temp;
-        this->publish_state();
-    }
-}
 
 /// Return the traits of this controller.
 climate::ClimateTraits MhiClimate::traits() {
