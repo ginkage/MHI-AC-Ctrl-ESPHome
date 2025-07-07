@@ -25,6 +25,8 @@ protected:
     void update_status(ACStatus status, int value) override;
 
 private:
+    bool temperature_offset_enabled_{false};
+    float temperature_offset_{0.0};
     float minimum_temperature_{18.0f};
     float maximum_temperature_{30.0f};
     float temperature_step_{0.5f};
@@ -40,6 +42,11 @@ private:
     int vanes_pos_old_state_;
     int vanes_pos_state_;
     MhiPlatform* platform_;
+
+public:
+    void set_temperature_offset_enabled(bool enabled) { 
+        this->temperature_offset_enabled_ = enabled; 
+    }
 
 };
 

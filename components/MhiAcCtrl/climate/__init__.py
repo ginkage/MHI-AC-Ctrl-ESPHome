@@ -11,10 +11,13 @@ from .. import MhiAcCtrl, CONF_MHI_AC_CTRL_ID
 mhi_ns = cg.esphome_ns.namespace('mhi')
 MhiClimate = mhi_ns.class_('MhiClimate', cg.Component, climate.Climate)
 
+CONF_TEMPERATURE_OFFSET = "temperature_offset"
+
 CONFIG_SCHEMA = climate.climate_schema(MhiClimate).extend(
     {
         cv.GenerateID(CONF_MHI_AC_CTRL_ID): cv.use_id(MhiAcCtrl),
         cv.Optional(CONF_ICON, default="mdi:air-conditioner"): cv.icon,
+        cv.Optional(CONF_TEMPERATURE_OFFSET, default=False): cv.boolean,
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
@@ -29,3 +32,6 @@ async def to_code(config):
     
     if CONF_ICON in config:
         cg.add(var.set_icon(config[CONF_ICON]))
+    
+    if config[CONF_TEMPERATURE_OFFSET]:
+        cg.add(var.set_temperature_offset_enabled(True))

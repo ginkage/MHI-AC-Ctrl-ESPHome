@@ -214,6 +214,31 @@ void MhiClimate::update_status(ACStatus status, int value) {
 }
 
 void MhiClimate::control(const climate::ClimateCall& call) {
+    if (call.get_target_temperature().has_value()) {
+        float target_temp = *call.get_target_temperature();
+        
+        if (this->temperature_offset_enabled_) {
+            // Calculate offset needed for 0.5 degree precision
+            float fractional_part = target_temp - floor(target_temp);
+            
+            if (fractional_part >= 0.5) {
+                // For x.5 temperatures, set AC to x+1 and offset return temp by +0.5
+                this->platform_->set_tsetpoint(ceil(target_temp));
+                this->temperature_offset_ = 0.5;
+            } else {
+                // For whole temperatures, set normally with no offset
+                this->platform_->set_tsetpoint(target_temp);
+                this->temperature_offset_ = 0.0;
+            }
+        } else {
+            // Normal operation without offset
+            this->platform_->set_tsetpoint(target_temp);
+            this->temperature_offset_ = 0.0;
+        }
+        
+        this->target_temperature = target_temp;
+        this->publish_state();
+    }
     if (call.get_mode().has_value()) {
         this->mode = *call.get_mode();
         
@@ -305,6 +330,17 @@ void MhiClimate::control(const climate::ClimateCall& call) {
     }
 
     this->publish_state();
+}
+
+void MhiClimate::on_status_change(ACStatus status, int value) {
+    // ... existing status handling ...
+    
+    if (status == TROOM) {
+        // Apply temperature offset to "fool" the AC unit
+        float adjusted_temp = value - this->temperature_offset_;
+        this->current_temperature = adjusted_temp;
+        this->publish_state();
+    }
 }
 
 /// Return the traits of this controller.

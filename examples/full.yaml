@@ -76,6 +76,7 @@ button:
 climate:
   - platform: MhiAcCtrl
     name: "MHI Air Conditioner"
+    temperature_offset: true
     visual:
       temperature_step:
         target_temperature: 0.5
