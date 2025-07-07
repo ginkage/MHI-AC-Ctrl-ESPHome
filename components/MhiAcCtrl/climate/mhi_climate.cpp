@@ -223,6 +223,7 @@ void MhiClimate::control(const climate::ClimateCall& call) {
             
             if (fractional_part >= 0.5) {
                 // For x.5 temperatures, set AC to x+1 and offset return temp by +0.5
+                ESP_LOGD(TAG, "Setting target temperature with offset: %f", ceil(target_temp));
                 this->platform_->set_tsetpoint(ceil(target_temp));
                 this->temperature_offset_ = 0.5;
             } else {
