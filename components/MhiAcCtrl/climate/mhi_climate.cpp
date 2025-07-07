@@ -216,30 +216,34 @@ void MhiClimate::update_status(ACStatus status, int value) {
 void MhiClimate::control(const climate::ClimateCall& call) {
     if (call.get_target_temperature().has_value()) {
         float target_temp = *call.get_target_temperature();
+        this->target_temperature = target_temp; // Store the user's desired temp
+
+        const float ac_unit_min_temp = 18.0f; // Hardware minimum for the AC unit
+
+        // Scenario 1: User wants a temperature below the AC's hardware limit
+        if (target_temp < ac_unit_min_temp) {
+            ESP_LOGD(TAG, "Using low-temp workaround for target: %.1f°C", target_temp);
+            this->platform_->set_tsetpoint(ac_unit_min_temp); // Send the lowest possible temp to the AC
+            this->temperature_offset_ = ac_unit_min_temp - target_temp; // Set offset (e.g., 18 - 17 = 1.0)
         
-        if (this->temperature_offset_enabled_) {
-            // Calculate offset needed for 0.5 degree precision
+        // Scenario 2: Handle 0.5°C steps (if enabled)
+        } else if (this->temperature_offset_enabled_) {
             float fractional_part = target_temp - floor(target_temp);
-            
             if (fractional_part >= 0.5) {
-                // For x.5 temperatures, set AC to x+1 and offset return temp by +0.5
-                ESP_LOGD(TAG, "Setting target temperature with offset: %f", ceil(target_temp));
-                this->platform_->set_tsetpoint(ceil(target_temp));
-                this->temperature_offset_ = 0.5;
+                this->platform_->set_tsetpoint(ceil(target_temp)); // Set AC to x+1
+                this->temperature_offset_ = 0.5; // Offset return temp by -0.5
             } else {
-                // For whole temperatures, set normally with no offset
-                this->platform_->set_tsetpoint(target_temp);
+                this->platform_->set_tsetpoint(target_temp); // Set normally
                 this->temperature_offset_ = 0.0;
             }
+
+        // Scenario 3: Normal operation, no offsets needed
         } else {
-            // Normal operation without offset
             this->platform_->set_tsetpoint(target_temp);
             this->temperature_offset_ = 0.0;
         }
-        
-        this->target_temperature = target_temp;
-        this->publish_state();
     }
+
     if (call.get_mode().has_value()) {
         this->mode = *call.get_mode();
         

@@ -48,6 +48,9 @@ public:
         this->temperature_offset_enabled_ = enabled; 
     }
 
+    void set_minimum_temperature(float temp) { 
+        this->minimum_temperature_ = temp; 
+    }
 };
 
 }
