@@ -31,12 +31,29 @@ CLIMATE_FAN_DIFFUSE in fan speed and status sections and reshuffle the numbers a
 
 Has now 5 different fan modes but I'm not sure if the auto mode works proper, keep testing.
 
+# low temperature heating and cooling
+
+To allow for lower temperature heating or cooling, set the visual_min_temperature in the climate section of the yaml like so:
+
+climate:  
+  - platform: MhiAcCtrl  
+    name: "MHI Air Conditioner"  
+    temperature_offset: true  
+    visual_min_temperature: 17.0  
+
+This will allow for lower temperature heating or cooling
+
 
 # Hardware
  - Hardware designed by [fonske](https://github.com/fonske) can be found [here](JLCPCB/Hardware.md)
 
 
 # Changelog:
+
+**v4.1** (2025-07)
+ - Changed climate.CLIMATE_SCHEMA to fix deprecation warning in 2025.5.0 and higher 
+ - Make 0.5 degrees setpoint actually work
+ - Allow low temp heating and cooling (below 18 degrees)
 
 **v4.0** (2025-04)
  - Compatibility with ESPHOME 2025.2+
