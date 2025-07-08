@@ -51,9 +51,10 @@ This will allow for lower temperature heating or cooling
 # Changelog:
 
 **v4.1** (2025-07)
- - Changed climate.CLIMATE_SCHEMA to fix deprecation warning in 2025.5.0 and higher 
- - Make 0.5 degrees setpoint actually work
- - Allow low temp heating and cooling (below 18 degrees)
+ - Changed climate.CLIMATE_SCHEMA to fix deprecation warning in 2025.5.0 and higher https://github.com/ginkage/MHI-AC-Ctrl-ESPHome/issues/151
+ - Make 0.5 degrees setpoint actually work https://github.com/ginkage/MHI-AC-Ctrl-ESPHome/issues/88
+ - Allow low temp heating and cooling (below 18 degrees) https://github.com/ginkage/MHI-AC-Ctrl-ESPHome/issues/152
+ - Allow fan speed from esphome web interface https://github.com/ginkage/MHI-AC-Ctrl-ESPHome/issues/136
 
 **v4.0** (2025-04)
  - Compatibility with ESPHOME 2025.2+
