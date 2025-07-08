@@ -140,7 +140,7 @@ void MhiSensors::update_status(ACStatus status, int value) {
     case opdata_thi_r2:
         // Indoor Heat exchanger temperature 2 (capillary)
         if (this->indoor_unit_thi_r2_ != NULL) { 
-            this->indoor_unit_thi_r2_ -> publish_state(0.327f * value - 11.4f); 
+            this->indoor_unit_thi_r2_ -> publish_state(value); 
         }
         break;
     case erropdata_thi_r2:
