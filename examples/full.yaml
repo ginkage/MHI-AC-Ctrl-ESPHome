@@ -162,6 +162,8 @@ select:
       name: Fan Control Up Down
     horizontal_vanes:
       name: Fan Control Left Right
+    fan_speed:
+      name: "Fan Speed"
 
 switch:
   - platform: MhiAcCtrl

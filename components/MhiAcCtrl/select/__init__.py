@@ -11,6 +11,7 @@ CONF_VERTICAL_SELECTS = [
     "Down",
     "Swing",
 ]
+ICON_UP_DOWN = "mdi:arrow-up-down"
 CONF_HORIZONTAL = "horizontal_vanes"
 CONF_HORIZONTAL_SELECTS = [
     "Left",
@@ -23,14 +24,24 @@ CONF_HORIZONTAL_SELECTS = [
     "Swing",
 ]
 ICON_LEFT_RIGHT = "mdi:arrow-left-right"
-ICON_UP_DOWN = "mdi:arrow-up-down"
+
+CONF_FAN_SPEED = "fan_speed"
+CONF_FAN_SPEED_SELECTS = [
+    "Auto",
+    "Quiet",
+    "Low",
+    "Medium",
+    "High",
+]
+ICON_FAN = "mdi:fan"
+
 
 mhi_ns = cg.esphome_ns.namespace('mhi')
 MhiVerticalVanesSelect = mhi_ns.class_("MhiVerticalVanesSelect", cg.Component)
 MhiHorizontalVanesSelect = mhi_ns.class_("MhiHorizontalVanesSelect", cg.Component)
+MhiFanSpeedSelect = mhi_ns.class_("MhiFanSpeedSelect", cg.Component)
 
 CONFIG_SCHEMA = {
-    
     cv.GenerateID(CONF_MHI_AC_CTRL_ID): cv.use_id(MhiAcCtrl),
     cv.Optional(CONF_VERTICAL): select.select_schema(
         MhiVerticalVanesSelect,
@@ -40,16 +51,19 @@ CONFIG_SCHEMA = {
         MhiHorizontalVanesSelect,
         icon=ICON_LEFT_RIGHT
     ),
+    cv.Optional(CONF_FAN_SPEED): select.select_schema(
+        MhiFanSpeedSelect,
+        icon=ICON_FAN
+    ),
 }
 
 
 async def to_code(config):
-    
     mhi = await cg.get_variable(config[CONF_MHI_AC_CTRL_ID])
     if vertical_config := config.get(CONF_VERTICAL):
         sel = await select.new_select(
             vertical_config,
-            options=[CONF_VERTICAL_SELECTS],
+            options=CONF_VERTICAL_SELECTS,
         )
         await cg.register_parented(sel, mhi)
         await cg.register_component(sel, vertical_config)
@@ -57,7 +71,15 @@ async def to_code(config):
     if horizontal_config := config.get(CONF_HORIZONTAL):
         sel = await select.new_select(
             horizontal_config,
-            options=[CONF_HORIZONTAL_SELECTS],
+            options=CONF_HORIZONTAL_SELECTS,
         )
         await cg.register_parented(sel, mhi)
         await cg.register_component(sel, horizontal_config)
+
+    if fan_speed_config := config.get(CONF_FAN_SPEED):
+        sel = await select.new_select(
+            fan_speed_config,
+            options=CONF_FAN_SPEED_SELECTS,
+        )
+        await cg.register_parented(sel, mhi)
+        await cg.register_component(sel, fan_speed_config)
