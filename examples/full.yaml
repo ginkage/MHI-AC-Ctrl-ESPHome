@@ -57,7 +57,7 @@ api:
         - climate.mhi.set_external_room_temperature:
             temperature: !lambda "return temperature_value;"
 
-# Version 4.0
+# Version 4.1
 
 MhiAcCtrl:
   # Only 20 (legacy) or 33 (includes 3D auto and vertical vanes) possible.
