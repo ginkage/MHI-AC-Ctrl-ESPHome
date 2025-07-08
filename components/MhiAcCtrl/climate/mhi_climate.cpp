@@ -199,14 +199,27 @@ void MhiClimate::update_status(ACStatus status, int value) {
         this->publish_state();
         break;
 
-    case status_tsetpoint:
-        // itoa(value, strtmp, 10);
-        // output_P(status, PSTR(TOPIC_TSETPOINT), strtmp);
-        this->target_temperature = (value & 0x7f)/ 2.0;
-        ESP_LOGE(TAG, "TEMP: received %f", this->target_temperature);
+    case status_tsetpoint: {
+        float ac_setpoint = (value & 0x7f) / 2.0;
 
+        // If we are using an offset, check if the AC's update is just an
+        // echo of the command we already sent (our target + our offset).
+        if (this->temperature_offset_ != 0.0 && 
+            fabs(ac_setpoint - (this->target_temperature + this->temperature_offset_)) < 0.1) {
+            
+            // This is an expected echo. Do nothing to prevent overwriting our state.
+            ESP_LOGD(TAG, "Ignoring tsetpoint echo from AC: %.1f", ac_setpoint);
+            break;
+        }
+
+        // If it's not an echo, it's a new value from the remote.
+        // Update the target temperature and reset the offset.
+        ESP_LOGI(TAG, "Remote setpoint change detected. Updating target to %.1f", ac_setpoint);
+        this->target_temperature = ac_setpoint;
+        this->temperature_offset_ = 0.0;
         this->publish_state();
         break;
+    }
     default:
         // skip these values as they are not used currently
         break;
