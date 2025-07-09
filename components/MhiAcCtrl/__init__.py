@@ -9,6 +9,9 @@ CONF_FRAME_SIZE = 'frame_size'
 CONF_ROOM_TEMP_TIMEOUT = 'room_temp_timeout'
 CONF_VANES_UD = 'initial_vertical_vanes_position'
 CONF_VANES_LR = 'initial_horizontal_vanes_position'
+CONF_SCK_PIN = "sck_pin"
+CONF_MOSI_PIN = "mosi_pin"
+CONF_MISO_PIN = "miso_pin"
 
 CONF_VANES_POSITION = 'position'
 CONF_TEMPERATURE = 'temperature'
@@ -28,6 +31,9 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_ROOM_TEMP_TIMEOUT, default=60): cv.int_range(min=0, max=3600),
     cv.Optional(CONF_VANES_UD): cv.int_range(min=0, max=5),
     cv.Optional(CONF_VANES_LR): cv.int_range(min=0, max=8),
+    cv.Optional(CONF_SCK_PIN): cv.int_,
+    cv.Optional(CONF_MOSI_PIN): cv.int_,
+    cv.Optional(CONF_MISO_PIN): cv.int_,
 }).extend(cv.COMPONENT_SCHEMA)
 
 async def to_code(config):
@@ -42,7 +48,12 @@ async def to_code(config):
         cg.add(var.set_vanes(config[CONF_VANES_UD]))
     if CONF_VANES_LR in config:
         cg.add(var.set_vanesLR(config[CONF_VANES_LR]))
-
+    if CONF_SCK_PIN in config:
+        cg.add(var.set_sck_pin(config[CONF_SCK_PIN]))
+    if CONF_MOSI_PIN in config:
+        cg.add(var.set_mosi_pin(config[CONF_MOSI_PIN]))
+    if CONF_MISO_PIN in config:
+        cg.add(var.set_miso_pin(config[CONF_MISO_PIN]))
 
 @automation.register_action(
     "climate.mhi.set_vertical_vanes",
