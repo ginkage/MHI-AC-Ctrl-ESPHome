@@ -5,8 +5,22 @@ namespace mhi {
 
 static const char* TAG = "mhi.platform";
 
+int SCK_PIN = 14;
+int MOSI_PIN = 13;
+int MISO_PIN = 12;
+
 void MhiPlatform::setup() {
     
+    if (this->sck_pin_ >= 0) { //
+      SCK_PIN = this->sck_pin_;
+    }
+    if (this->mosi_pin_ >= 0) { //
+      MOSI_PIN = this->mosi_pin_;
+    }
+    if (this->miso_pin_ >= 0) { //
+      MISO_PIN = this->miso_pin_;
+    }
+
     this->mhi_ac_ctrl_core_.MHIAcCtrlStatus(this);
     this->mhi_ac_ctrl_core_.init();
     this->mhi_ac_ctrl_core_.set_frame_size(this->frame_size_); // set framesize. Only 20 (legacy) or 33 (includes 3D auto and vertical vanes) possible
