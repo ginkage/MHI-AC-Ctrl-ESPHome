@@ -38,18 +38,6 @@ api:
 
   reboot_timeout: 0s
   services:
-    - service: set_vertical_vanes
-      variables:
-        position_value: int # 1-4: static positions, 5: swing, 0: unknown
-      then:
-        - climate.mhi.set_vertical_vanes:
-            position: !lambda "return position_value;"
-    - service: set_horizontal_vanes
-      variables:
-        position_value: int # 1-7: static positions, 8: swing, 0: unknown
-      then:
-        - climate.mhi.set_horizontal_vanes:
-            position: !lambda "return position_value;"
     - service: set_external_room_temperature
       variables:
         temperature_value: float # temperature to set in Celsius
@@ -57,7 +45,7 @@ api:
         - climate.mhi.set_external_room_temperature:
             temperature: !lambda "return temperature_value;"
 
-# Version 4.0
+# Version 4.1
 
 MhiAcCtrl:
   # Only 20 (legacy) or 33 (includes 3D auto and vertical vanes) possible.
@@ -76,6 +64,8 @@ button:
 climate:
   - platform: MhiAcCtrl
     name: "MHI Air Conditioner"
+    temperature_offset: true
+    visual_min_temperature: 17.0
     visual:
       temperature_step:
         target_temperature: 0.5
@@ -160,6 +150,8 @@ select:
       name: Fan Control Up Down
     horizontal_vanes:
       name: Fan Control Left Right
+    fan_speed:
+      name: "Fan Speed"
 
 switch:
   - platform: MhiAcCtrl
