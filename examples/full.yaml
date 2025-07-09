@@ -38,18 +38,6 @@ api:
 
   reboot_timeout: 0s
   services:
-    - service: set_vertical_vanes
-      variables:
-        position_value: int # 1-4: static positions, 5: swing, 0: unknown
-      then:
-        - climate.mhi.set_vertical_vanes:
-            position: !lambda "return position_value;"
-    - service: set_horizontal_vanes
-      variables:
-        position_value: int # 1-7: static positions, 8: swing, 0: unknown
-      then:
-        - climate.mhi.set_horizontal_vanes:
-            position: !lambda "return position_value;"
     - service: set_external_room_temperature
       variables:
         temperature_value: float # temperature to set in Celsius
