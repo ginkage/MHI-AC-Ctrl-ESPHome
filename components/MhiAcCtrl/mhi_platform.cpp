@@ -1,13 +1,13 @@
 #include "mhi_platform.h"
 
+int SCK_PIN = 14;
+int MOSI_PIN = 13;
+int MISO_PIN = 12;
 namespace esphome {
 namespace mhi {
 
 static const char* TAG = "mhi.platform";
 
-int SCK_PIN = 14;
-int MOSI_PIN = 13;
-int MISO_PIN = 12;
 
 void MhiPlatform::setup() {
     
