@@ -194,19 +194,32 @@ void MhiClimate::update_status(ACStatus status, int value) {
         this->vanesLR_pos_state_ = value;
         break;
     case status_troom:
-        // dtostrf((value - 61) / 4.0, 0, 2, strtmp);
-        // output_P(status, PSTR(TOPIC_TROOM), strtmp);
-        this->current_temperature = (value - 61) / 4.0;
+        // Calculate the temperature and apply the offset for 0.5°C steps
+        this->current_temperature = ((value - 61) / 4.0) - this->temperature_offset_;
         this->publish_state();
         break;
-    case status_tsetpoint:
-        // itoa(value, strtmp, 10);
-        // output_P(status, PSTR(TOPIC_TSETPOINT), strtmp);
-        this->target_temperature = (value & 0x7f)/ 2.0;
-        ESP_LOGE(TAG, "TEMP: received %f", this->target_temperature);
 
+    case status_tsetpoint: {
+        float ac_setpoint = (value & 0x7f) / 2.0;
+
+        // If we are using an offset, check if the AC's update is just an
+        // echo of the command we already sent (our target + our offset).
+        if (this->temperature_offset_ != 0.0 && 
+            fabs(ac_setpoint - (this->target_temperature + this->temperature_offset_)) < 0.1) {
+            
+            // This is an expected echo. Do nothing to prevent overwriting our state.
+            ESP_LOGD(TAG, "Ignoring tsetpoint echo from AC: %.1f", ac_setpoint);
+            break;
+        }
+
+        // If it's not an echo, it's a new value from the remote.
+        // Update the target temperature and reset the offset.
+        ESP_LOGI(TAG, "Remote setpoint change detected. Updating target to %.1f", ac_setpoint);
+        this->target_temperature = ac_setpoint;
+        this->temperature_offset_ = 0.0;
         this->publish_state();
         break;
+    }
     default:
         // skip these values as they are not used currently
         break;
@@ -214,6 +227,36 @@ void MhiClimate::update_status(ACStatus status, int value) {
 }
 
 void MhiClimate::control(const climate::ClimateCall& call) {
+    if (call.get_target_temperature().has_value()) {
+        float target_temp = *call.get_target_temperature();
+        this->target_temperature = target_temp; // Store the user's desired temp
+
+        const float ac_unit_min_temp = 18.0f; // Hardware minimum for the AC unit
+
+        // Scenario 1: User wants a temperature below the AC's hardware limit
+        if (target_temp < ac_unit_min_temp) {
+            ESP_LOGD(TAG, "Using low-temp workaround for target: %.1f°C", target_temp);
+            this->platform_->set_tsetpoint(ac_unit_min_temp); // Send the lowest possible temp to the AC
+            this->temperature_offset_ = ac_unit_min_temp - target_temp; // Set offset (e.g., 18 - 17 = 1.0)
+        
+        // Scenario 2: Handle 0.5°C steps (if enabled)
+        } else if (this->temperature_offset_enabled_) {
+            float fractional_part = target_temp - floor(target_temp);
+            if (fractional_part >= 0.5) {
+                this->platform_->set_tsetpoint(ceil(target_temp)); // Set AC to x+1
+                this->temperature_offset_ = 0.5; // Offset return temp by -0.5
+            } else {
+                this->platform_->set_tsetpoint(target_temp); // Set normally
+                this->temperature_offset_ = 0.0;
+            }
+
+        // Scenario 3: Normal operation, no offsets needed
+        } else {
+            this->platform_->set_tsetpoint(target_temp);
+            this->temperature_offset_ = 0.0;
+        }
+    }
+
     if (call.get_mode().has_value()) {
         this->mode = *call.get_mode();
         
@@ -242,16 +285,6 @@ void MhiClimate::control(const climate::ClimateCall& call) {
 
         this->platform_->set_power(power_);
         this->platform_->set_mode(mode_);
-    }
-
-    if (call.get_target_temperature().has_value()) {
-        this->target_temperature = *call.get_target_temperature();
-
-        ESP_LOGE(TAG, "TEMP: Set %f", this->target_temperature);
-
-        this->tsetpoint_ = clamp(this->target_temperature, minimum_temperature_, maximum_temperature_);
-
-        this->platform_->set_tsetpoint(this->tsetpoint_);
     }
 
     if (call.get_fan_mode().has_value()) {
@@ -306,6 +339,7 @@ void MhiClimate::control(const climate::ClimateCall& call) {
 
     this->publish_state();
 }
+
 
 /// Return the traits of this controller.
 climate::ClimateTraits MhiClimate::traits() {
