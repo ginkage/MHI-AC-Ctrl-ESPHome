@@ -35,12 +35,13 @@ Has now 5 different fan modes but I'm not sure if the auto mode works proper, ke
 
 To allow for lower temperature heating or cooling, set the visual_min_temperature in the climate section of the yaml like so:
 
+```yaml
 climate:  
   - platform: MhiAcCtrl  
     name: "MHI Air Conditioner"  
     temperature_offset: true  
     visual_min_temperature: 17.0  
-
+```
 This will allow for lower temperature heating or cooling
 
 
