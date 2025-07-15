@@ -17,7 +17,7 @@ It's supposed to simplify the [Home Assistant](https://www.home-assistant.io/) s
 
 # Fan Modes Up/Down Left/Right
 Most newer MHI units (the ones supporting the WF-RAC WiFi module) support fine grained vane control for Left/Right and Up/Down.  
-When your log is flooded with mhi_ac_ctrl_core.loop error: -2 errors after updating to the newer code, please change your yaml file to set `frame_size: 20`.  
+When your log is flooded with `mhi_ac_ctrl_core.loop error: -2` errors after updating to the newer code, please change your yaml file to set `frame_size: 20`.  
 Currently the MHI code allows for more fine grained fan direction than ESPHome climate supports. for that, additional template parts are added.  
 There are 8 modes for Left/Right: Left, Left/Center, Center, Center/Right, Right, Wide, Spot and Swing  
 There are 5 modes for Up/Down: Up, Up/Center, Center/Down, Down and Swing  
