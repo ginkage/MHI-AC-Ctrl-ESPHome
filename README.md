@@ -54,6 +54,8 @@ This will allow for lower temperature heating or cooling.
 
 **v4.2** (2025-07)
  - Allow configuration of pins through yaml
+ - Update calculation of Indoor Heat exchanger temperature 2 (capillary)
+ - Don't spam unit with unchanged room_temp
 
 **v4.1** (2025-07)
  - Changed climate.CLIMATE_SCHEMA to fix deprecation warning in 2025.5.0 and higher https://github.com/ginkage/MHI-AC-Ctrl-ESPHome/issues/151

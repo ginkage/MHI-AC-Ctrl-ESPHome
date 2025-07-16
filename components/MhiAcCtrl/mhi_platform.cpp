@@ -93,6 +93,11 @@ void MhiPlatform::set_room_temperature(float value) {
 void MhiPlatform::transfer_room_temperature(float value) {
     if (isnan(value)) {
         mhi_ac_ctrl_core_.set_troom(0xff); // reset target, use internal sensor
+        return;
+    }
+
+    if (fabs(value - last_room_temperature_) < 0.01) {
+        return;
     }
 
     if ((value > -10) & (value < 48)) {

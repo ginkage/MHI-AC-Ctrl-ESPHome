@@ -42,6 +42,7 @@ public:
 
 private:
     void transfer_room_temperature(float value);
+    float last_room_temperature_ = NAN; 
 
     int frame_size_;
     unsigned long room_temp_api_timeout_start_ = millis();
