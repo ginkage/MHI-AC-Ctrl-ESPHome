@@ -1,12 +1,26 @@
 #include "mhi_platform.h"
 
+int SCK_PIN = 14;
+int MOSI_PIN = 13;
+int MISO_PIN = 12;
 namespace esphome {
 namespace mhi {
 
 static const char* TAG = "mhi.platform";
 
+
 void MhiPlatform::setup() {
     
+    if (this->sck_pin_ >= 0) { //
+      SCK_PIN = this->sck_pin_;
+    }
+    if (this->mosi_pin_ >= 0) { //
+      MOSI_PIN = this->mosi_pin_;
+    }
+    if (this->miso_pin_ >= 0) { //
+      MISO_PIN = this->miso_pin_;
+    }
+
     this->mhi_ac_ctrl_core_.MHIAcCtrlStatus(this);
     this->mhi_ac_ctrl_core_.init();
     this->mhi_ac_ctrl_core_.set_frame_size(this->frame_size_); // set framesize. Only 20 (legacy) or 33 (includes 3D auto and vertical vanes) possible
@@ -78,12 +92,22 @@ void MhiPlatform::set_room_temperature(float value) {
 
 void MhiPlatform::transfer_room_temperature(float value) {
     if (isnan(value)) {
-        mhi_ac_ctrl_core_.set_troom(0xff); // reset target, use internal sensor
+        if (!isnan(this->last_room_temperature_)) {
+            ESP_LOGD(TAG, "set room_temp_api: value is NaN, using internal sensor");
+            mhi_ac_ctrl_core_.set_troom(0xff); // reset target, use internal sensor
+            this->last_room_temperature_ = NAN; // reset last room temperature
+        }
+        return;
+    }
+
+    if (fabs(value - last_room_temperature_) < 0.01) {
+        return;
     }
 
     if ((value > -10) & (value < 48)) {
         byte tmp = value * 4 + 61;
-        this->mhi_ac_ctrl_core_.set_troom(value * 4 + 61);        
+        this->mhi_ac_ctrl_core_.set_troom(value * 4 + 61);
+        this->last_room_temperature_ = value; // store last room temperature
         ESP_LOGD(TAG, "set room_temp_api: %f %i %i", value, (byte)(value * 4 + 61), (byte)tmp);
     }
 }

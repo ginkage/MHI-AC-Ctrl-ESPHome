@@ -45,12 +45,15 @@ api:
         - climate.mhi.set_external_room_temperature:
             temperature: !lambda "return temperature_value;"
 
-# Version 4.1
+# Version 4.2
 
 MhiAcCtrl:
   # Only 20 (legacy) or 33 (includes 3D auto and vertical vanes) possible.
   # If you encounter mhi_ac_ctrl_core.loop error: -2 errors, change the frame_size to 20
   frame_size: 33
+  sck_pin: 14
+  mosi_pin: 13
+  miso_pin: 12
   initial_vertical_vanes_position: 5
   initial_horizontal_vanes_position: 8
   # Update the following to change the default room temp timeout
