@@ -92,9 +92,11 @@ void MhiPlatform::set_room_temperature(float value) {
 
 void MhiPlatform::transfer_room_temperature(float value) {
     if (isnan(value)) {
-        ESP_LOGW(TAG, "set room_temp_api: value is NaN, using internal sensor");
-        mhi_ac_ctrl_core_.set_troom(0xff); // reset target, use internal sensor
-        this->last_room_temperature_ = NAN; // reset last room temperature
+        if (this->last_room_temperature_ != NAN) {
+            ESP_LOGD(TAG, "set room_temp_api: value is NaN, using internal sensor");
+            mhi_ac_ctrl_core_.set_troom(0xff); // reset target, use internal sensor
+            this->last_room_temperature_ = NAN; // reset last room temperature
+        }
         return;
     }
 
