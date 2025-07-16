@@ -5,6 +5,9 @@ from esphome.components import sensor
 from esphome.const import CONF_ID
 
 CONF_MHI_AC_CTRL_ID = "mhi_ac_ctrl_id"
+CONF_SCK_PIN = 'sck_pin'
+CONF_MOSI_PIN = 'mosi_pin'
+CONF_MISO_PIN = 'miso_pin'
 CONF_FRAME_SIZE = 'frame_size'
 CONF_ROOM_TEMP_TIMEOUT = 'room_temp_timeout'
 CONF_VANES_UD = 'initial_vertical_vanes_position'
@@ -23,6 +26,9 @@ SetExternalRoomTemperatureAction = mhi_ns.class_("SetExternalRoomTemperatureActi
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(MhiAcCtrl),
+    cv.Optional(CONF_SCK_PIN, default = 14):  cv.uint16_t,
+    cv.Optional(CONF_MOSI_PIN, default = 13): cv.uint16_t,
+    cv.Optional(CONF_MISO_PIN, default = 12): cv.uint16_t,
     cv.Optional(CONF_EXTERNAL_TEMPERATURE_SENSOR): cv.use_id(sensor.Sensor),
     cv.Optional(CONF_FRAME_SIZE, default=20): cv.int_range(min=20, max=33),
     cv.Optional(CONF_ROOM_TEMP_TIMEOUT, default=60): cv.int_range(min=0, max=3600),
@@ -31,7 +37,10 @@ CONFIG_SCHEMA = cv.Schema({
 }).extend(cv.COMPONENT_SCHEMA)
 
 async def to_code(config):
-    var = cg.new_Pvariable(config[CONF_ID])
+    var = cg.new_Pvariable(config[CONF_ID],
+                           config[CONF_SCK_PIN],
+                           config[CONF_MOSI_PIN],
+                           config[CONF_MISO_PIN])
     await cg.register_component(var, config)
     cg.add(var.set_frame_size(config[CONF_FRAME_SIZE]))
     cg.add(var.set_room_temp_api_timeout(config[CONF_ROOM_TEMP_TIMEOUT]))

@@ -31,11 +31,6 @@ const byte opdata[][2] PROGMEM = {
 #define NoFramesPerOpDataCycle 400             // number of frames used for a OpData request cycle; will be 20s (20 frames are 1s)
 #define minTimeInternalTroom 5000              // minimal time in ms used for Troom internal sensor changes for publishing to avoid jitter 
 
-// pin defintions
-#define SCK_PIN  14
-#define MOSI_PIN 13
-#define MISO_PIN 12
-
 // constants for the frame
 #define SB0 0
 #define SB1 SB0 + 1
@@ -113,6 +108,11 @@ class CallbackInterface_Status {
 
 class MHI_AC_Ctrl_Core {
   private:
+    // pins
+    const uint8_t sck_pin_;
+    const uint8_t mosi_pin_;
+    const uint8_t miso_pin_;
+
     // old status
     byte status_power_old;
     byte status_mode_old;
@@ -166,6 +166,8 @@ class MHI_AC_Ctrl_Core {
     CallbackInterface_Status *m_cbiStatus;
 
   public:
+    explicit MHI_AC_Ctrl_Core(const uint8_t sck_pin, const uint8_t mosi_pin, const uint8_t miso_pin) : sck_pin_(sck_pin), mosi_pin_(mosi_pin), miso_pin_(miso_pin) {}
+
     void MHIAcCtrlStatus(CallbackInterface_Status *cb) {
       m_cbiStatus = cb;
     };

@@ -16,6 +16,7 @@ class MhiPlatform :
     public CallbackInterface_Status {
 
 public:
+    MhiPlatform(uint8_t sck_pin, uint8_t mosi_pin, uint8_t miso_pin) : mhi_ac_ctrl_core_(sck_pin, mosi_pin, miso_pin) {}
 
     void setup() override;
     void set_frame_size(int framesize);
