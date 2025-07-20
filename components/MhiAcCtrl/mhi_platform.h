@@ -54,7 +54,7 @@ private:
 
     MHI_AC_Ctrl_Core mhi_ac_ctrl_core_;
 
-    sensor::Sensor* external_temperature_sensor_;
+    sensor::Sensor* external_temperature_sensor_{nullptr};
 
     std::vector<MhiStatusListener*> listeners_;
 };
