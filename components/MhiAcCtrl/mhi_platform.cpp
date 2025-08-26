@@ -131,6 +131,13 @@ void MhiPlatform::set_tsetpoint(float value) {
     this->mhi_ac_ctrl_core_.set_tsetpoint((byte)(2 * value));
     
     ESP_LOGD(TAG, "set setpoint: %f", value);
+
+    if (this->room_temp_api_active_ && !isnan(this->last_room_temperature_)) {
+        float last_room_temperature_to_send = this->last_room_temperature_;
+        this->last_room_temperature_ = NAN;
+        this->transfer_room_temperature(last_room_temperature_to_send);
+        ESP_LOGD(TAG, "resending external troom to value: %f", last_room_temperature_to_send);
+    }
 }
 void MhiPlatform::set_offset(float value) {
     this->temperature_offset_ = value;
