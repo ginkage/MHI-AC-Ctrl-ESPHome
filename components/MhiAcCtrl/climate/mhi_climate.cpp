@@ -195,7 +195,12 @@ void MhiClimate::update_status(ACStatus status, int value) {
         break;
     case status_troom:
         // Calculate the temperature and apply the offset for 0.5°C steps
-        this->current_temperature = ((value - 61) / 4.0) - this->temperature_offset_;
+        if (!this->platform->get_room_temp_api_active) {
+            this->current_temperature = ((value - 61) / 4.0) - this->temperature_offset_;
+        } else {
+            this->current_temperature = ((value - 61) / 4.0);
+        }
+        
         this->publish_state();
         break;
 

@@ -25,6 +25,8 @@ public:
     void cbiStatusFunction(ACStatus status, int value) override;
 
     void set_room_temperature(float value);
+
+    bool get_room_temp_api_active();
     
     void set_power(ACPower value);
     void set_fan(int value);
