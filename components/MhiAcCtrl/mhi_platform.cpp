@@ -91,7 +91,7 @@ void MhiPlatform::set_room_temperature(float value) {
 }
 
 bool MhiPlatform::get_room_temp_api_active() {
-    return thie_>room_temp_api_active_;
+    return this->room_temp_api_active_;
 }
 
 void MhiPlatform::transfer_room_temperature(float value) {
