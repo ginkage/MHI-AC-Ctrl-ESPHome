@@ -133,7 +133,7 @@ void MhiPlatform::set_tsetpoint(float value) {
     ESP_LOGD(TAG, "set setpoint: %f", value);
 }
 void MhiPlatform::set_offset(float value) {
-    float temperature_offset_ = value;
+    this->temperature_offset_ = value;
 }
 
 void MhiPlatform::set_vanes(int value) {
