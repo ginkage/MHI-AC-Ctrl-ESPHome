@@ -255,6 +255,7 @@ void MhiClimate::control(const climate::ClimateCall& call) {
             this->platform_->set_tsetpoint(target_temp);
             this->temperature_offset_ = 0.0;
         }
+        this->current_temperature = this->current_temperature - this->temperature_offset_;
     }
 
     if (call.get_mode().has_value()) {
