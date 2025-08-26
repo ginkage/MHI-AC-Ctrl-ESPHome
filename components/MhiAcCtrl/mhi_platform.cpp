@@ -104,6 +104,12 @@ void MhiPlatform::transfer_room_temperature(float value) {
         return;
     }
 
+    if (this->temperature_offset_ > 0.0f) {
+        float orig_value = value;
+        value = orig_value - this->temperature_offset_;
+        ESP_LOGD(TAG, "offset %f for original temp %f -> new troom %f", this->temperature_offset_ , orig_value, value);
+    }
+
     if ((value > -10) & (value < 48)) {
         byte tmp = value * 4 + 61;
         this->mhi_ac_ctrl_core_.set_troom(value * 4 + 61);
@@ -125,6 +131,9 @@ void MhiPlatform::set_tsetpoint(float value) {
     this->mhi_ac_ctrl_core_.set_tsetpoint((byte)(2 * value));
     
     ESP_LOGD(TAG, "set setpoint: %f", value);
+}
+void MhiPlatform::set_offset(float value) {
+    float temperature_offset_ = value;
 }
 
 void MhiPlatform::set_vanes(int value) {

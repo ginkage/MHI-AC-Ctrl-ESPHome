@@ -245,15 +245,18 @@ void MhiClimate::control(const climate::ClimateCall& call) {
             if (fractional_part >= 0.5) {
                 this->platform_->set_tsetpoint(ceil(target_temp)); // Set AC to x+1
                 this->temperature_offset_ = 0.5; // Offset return temp by -0.5
+                this->platform_->set_offset(0.5);
             } else {
                 this->platform_->set_tsetpoint(target_temp); // Set normally
                 this->temperature_offset_ = 0.0;
+                this->platform_->set_offset(0.0);
             }
 
         // Scenario 3: Normal operation, no offsets needed
         } else {
             this->platform_->set_tsetpoint(target_temp);
             this->temperature_offset_ = 0.0;
+            this->platform_->set_offset(0.0);
         }
     }
 

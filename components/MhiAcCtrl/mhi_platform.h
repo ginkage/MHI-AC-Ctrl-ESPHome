@@ -30,6 +30,7 @@ public:
     void set_fan(int value);
     void set_mode(ACMode value);
     void set_tsetpoint(float value);
+    void set_offset(float value);
     void set_vanes(int value);
     void set_vanesLR(int value);
     void set_3Dauto(bool value);
