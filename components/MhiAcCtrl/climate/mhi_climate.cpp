@@ -195,7 +195,7 @@ void MhiClimate::update_status(ACStatus status, int value) {
         break;
     case status_troom:
         // Calculate the temperature and apply the offset for 0.5°C steps
-        if (!this->platform_->get_room_temp_api_active()) {
+        if (!this->platform_->get_room_temp_api_active()) {   // add offset only if not using an external value, as this is done there already
             this->current_temperature = ((value - 61) / 4.0) - this->temperature_offset_;
         } else {
             this->current_temperature = ((value - 61) / 4.0);
@@ -250,12 +250,12 @@ void MhiClimate::control(const climate::ClimateCall& call) {
         } else if (this->temperature_offset_enabled_) {
             float fractional_part = target_temp - floor(target_temp);
             if (fractional_part >= 0.5) {
-                this->platform_->set_offset(0.5);
+                this->platform_->set_offset(0.5); // set offset value to mhi_platform as well, we use it when sending external sensor values
                 this->temperature_offset_ = 0.5; // Offset return temp by -0.5
                 this->platform_->set_tsetpoint(ceil(target_temp)); // Set AC to x+1
                 ESP_LOGD(TAG, "MhiClimate::control - get_target_temperature - set_tsetpoint %f, set_offset 0.5", ceil(target_temp));
             } else {
-                this->platform_->set_offset(0.0);
+                this->platform_->set_offset(0.0);  // set offset value to mhi_platform as well, we use it when sending external sensor values
                 this->temperature_offset_ = 0.0;
                 this->platform_->set_tsetpoint(target_temp); // Set normally
                 ESP_LOGD(TAG, "MhiClimate::control - get_target_temperature - set_tsetpoint %f, set_offset 0.0", target_temp);
@@ -263,7 +263,7 @@ void MhiClimate::control(const climate::ClimateCall& call) {
 
         // Scenario 3: Normal operation, no offsets needed
         } else {
-            this->platform_->set_offset(0.0);
+            this->platform_->set_offset(0.0);  // set offset value to mhi_platform as well, we use it when sending external sensor values
             this->temperature_offset_ = 0.0;
             this->platform_->set_tsetpoint(target_temp);
             ESP_LOGD(TAG, "MhiClimate::control - get_target_temperature - set_tsetpoint %f, set_offset 0.0", target_temp);

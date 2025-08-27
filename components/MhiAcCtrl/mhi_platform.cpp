@@ -108,15 +108,15 @@ void MhiPlatform::transfer_room_temperature(float value) {
         return;
     }
 
-    if (this->temperature_offset_ > 0.0f) {
+    if (this->temperature_offset_ > 0.0f) {  // if we have a offset value subtract this before setting troom value
         float orig_value = value;
         value = orig_value - this->temperature_offset_;
         ESP_LOGD(TAG, "offset %f for original temp %f -> new troom %f", this->temperature_offset_ , orig_value, value);
     }
 
     ESP_LOGD(TAG, "value: %f - last_room_temperature_ %f ", value, last_room_temperature_);
-    if (fabs(value - last_room_temperature_) < 0.1) {
-        ESP_LOGD(TAG, "value %f - last_room_temperature_ %f < 0.1, returning", value, last_room_temperature_);
+    if (fabs(value - last_room_temperature_) < 0.01) {
+        ESP_LOGD(TAG, "value %f - last_room_temperature_ %f < 0.01, returning", value, last_room_temperature_);
         return;
     }
 
@@ -143,6 +143,7 @@ void MhiPlatform::set_tsetpoint(float value) {
     ESP_LOGD(TAG, "set setpoint: %f", value);
 
     if (this->room_temp_api_active_ && !isnan(this->last_room_temperature_)) {
+        // send external sensor again if setpoint changed
         float last_room_temperature_to_send = this->last_room_temperature_;
         this->last_room_temperature_ = NAN;
         this->transfer_room_temperature(last_room_temperature_to_send);
@@ -151,6 +152,7 @@ void MhiPlatform::set_tsetpoint(float value) {
 }
 void MhiPlatform::set_offset(float value) {
     if (value < 0.01f) {
+        // if 0.5 offset is reset add this to the last known room temperature
         this->last_room_temperature_ += this->temperature_offset_;
     }
     this->temperature_offset_ = value;
