@@ -150,6 +150,9 @@ void MhiPlatform::set_tsetpoint(float value) {
     }
 }
 void MhiPlatform::set_offset(float value) {
+    if (value < 0.01f) {
+        this->last_room_temperature_ += this->temperature_offset_;
+    }
     this->temperature_offset_ = value;
     ESP_LOGD(TAG, "set temperature offset: %f", value);
 }
