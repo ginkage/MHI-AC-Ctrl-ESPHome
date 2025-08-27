@@ -27,6 +27,7 @@ public:
     void set_room_temperature(float value);
 
     bool get_room_temp_api_active();
+    float get_room_temp_offset();
     
     void set_power(ACPower value);
     void set_fan(int value);

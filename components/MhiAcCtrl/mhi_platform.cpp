@@ -94,6 +94,10 @@ bool MhiPlatform::get_room_temp_api_active() {
     return this->room_temp_api_active_;
 }
 
+float MhiPlatform::get_room_temp_offset() {
+    return this->temperature_offset_;
+}
+
 void MhiPlatform::transfer_room_temperature(float value) {
     if (isnan(value)) {
         if (!isnan(this->last_room_temperature_)) {
