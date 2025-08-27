@@ -28,6 +28,7 @@ void MhiSensors::set_vanesLR_pos (Sensor* sensor) { vanesLR_pos_ = sensor; }
 
 
 void MhiSensors::setup() {
+    this->platform_ = this->parent_;
     this->parent_->add_listener(this);
 }
 
