@@ -251,21 +251,21 @@ void MhiClimate::control(const climate::ClimateCall& call) {
             float fractional_part = target_temp - floor(target_temp);
             if (fractional_part >= 0.5) {
                 this->platform_->set_offset(0.5);
-                this->platform_->set_tsetpoint(ceil(target_temp)); // Set AC to x+1
                 this->temperature_offset_ = 0.5; // Offset return temp by -0.5
+                this->platform_->set_tsetpoint(ceil(target_temp)); // Set AC to x+1
                 ESP_LOGD(TAG, "MhiClimate::control - get_target_temperature - set_tsetpoint %f, set_offset 0.5", ceil(target_temp));
             } else {
                 this->platform_->set_offset(0.0);
-                this->platform_->set_tsetpoint(target_temp); // Set normally
                 this->temperature_offset_ = 0.0;
+                this->platform_->set_tsetpoint(target_temp); // Set normally
                 ESP_LOGD(TAG, "MhiClimate::control - get_target_temperature - set_tsetpoint %f, set_offset 0.0", target_temp);
             }
 
         // Scenario 3: Normal operation, no offsets needed
         } else {
             this->platform_->set_offset(0.0);
-            this->platform_->set_tsetpoint(target_temp);
             this->temperature_offset_ = 0.0;
+            this->platform_->set_tsetpoint(target_temp);
             ESP_LOGD(TAG, "MhiClimate::control - get_target_temperature - set_tsetpoint %f, set_offset 0.0", target_temp);
         }
     }
