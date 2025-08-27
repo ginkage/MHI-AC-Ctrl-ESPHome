@@ -125,6 +125,7 @@ void MhiSensors::update_status(ACStatus status, int value) {
         // dtostrf(value * 0.25f - 15, 0, 2, strtmp);
         // output_P(status, PSTR(TOPIC_RETURNAIR), strtmp);
         if (return_air_temperature_ != NULL) { 
+            ESP_LOGD(TAG, "get_room_temp_offset() %f, value %i", this->platform_->get_room_temp_offset(), value);
             if (this->platform_->get_room_temp_offset()>0.0f) {
                 value = value + this->platform_->get_room_temp_offset();
             }
