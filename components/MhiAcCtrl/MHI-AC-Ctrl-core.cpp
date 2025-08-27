@@ -106,6 +106,7 @@ void MHI_AC_Ctrl_Core::request_ErrOpData() {
 
 void MHI_AC_Ctrl_Core::set_troom(byte troom) {
   //Serial.printf("MHI_AC_Ctrl_Core::set_troom %i\n", troom);
+  ESP_LOGD(TAG, "MHI_AC_Ctrl_Core::set_troom %i",  (byte)troom);
   new_Troom = troom;
 }
 
