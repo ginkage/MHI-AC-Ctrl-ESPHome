@@ -104,7 +104,9 @@ void MhiPlatform::transfer_room_temperature(float value) {
         return;
     }
 
-    if (fabs(value - last_room_temperature_) < 0.01) {
+    ESP_LOGD(TAG, "value: %f - last_room_temperature_ %f ", value, last_room_temperature_);
+    if (fabs(value - last_room_temperature_) < 0.1) {
+        ESP_LOGD(TAG, "value %f - last_room_temperature_ %f < 0.1, returning", value, last_room_temperature_);
         return;
     }
 
