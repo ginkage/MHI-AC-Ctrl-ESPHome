@@ -198,7 +198,8 @@ void MhiClimate::update_status(ACStatus status, int value) {
         if (!this->platform_->get_room_temp_api_active()) {   // add offset only if not using an external value, as this is done there already
             this->current_temperature = ((value - 61) / 4.0) - this->temperature_offset_;
         } else {
-            this->current_temperature = ((value - 61) / 4.0);
+            // offset is added when sending external sensor value to unit, no need to change the current_temperature value
+            this->current_temperature = ((value - 61) / 4.0) + this->temperature_offset_;
         }
         
         this->publish_state();
