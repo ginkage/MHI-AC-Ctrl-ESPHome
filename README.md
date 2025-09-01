@@ -47,6 +47,7 @@ This will allow for lower temperature heating or cooling.
 
 # Hardware
  - Hardware designed by [fonske](https://github.com/fonske) can be found [here](JLCPCB/Hardware.md)
+ - A ready-to-go esp32-s3 based airco controller can be bought at [tinytronics.nl](https://www.tinytronics.nl/en/development-boards/microcontroller-boards/with-wi-fi/universal-air-conditioning-controller-esp32-s3) instructions can be found [here](UniversalAircoController/README.md)
 
 
 # Changelog:
