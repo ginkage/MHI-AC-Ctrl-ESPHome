@@ -34,5 +34,5 @@ Place your controller somewhere safe in the unit.
 # Software
 This hardware is only compatible with v4.2 and up, since the GPIO pins need to be set in the yaml file.
 
-See sample.yml file for the example.
+See [`UniversalAircoController.yaml`](https://github.com/ginkage/MHI-AC-Ctrl-ESPHome/blob/master/examples/UniversalAircoController.yaml) file for the example.
 It is basically the simple.yml but with the pins set.
