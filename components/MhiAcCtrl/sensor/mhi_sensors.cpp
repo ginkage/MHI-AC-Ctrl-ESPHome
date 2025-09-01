@@ -131,7 +131,7 @@ void MhiSensors::update_status(ACStatus status, int value) {
             if (this->platform_->get_room_temp_offset()>0.0f) {
                 offset_value += this->platform_->get_room_temp_offset();
             }
-            return_air_temperature_ -> publish_state((value * 0.25f - 15) + offset_value); 
+            return_air_temperature_ -> publish_state((value * 0.25f - 15) - offset_value); 
         }
         break;
     case opdata_thi_r1:
