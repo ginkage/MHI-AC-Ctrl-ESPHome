@@ -231,6 +231,8 @@ void MhiClimate::control(const climate::ClimateCall& call) {
         float target_temp = *call.get_target_temperature();
         this->target_temperature = target_temp; // Store the user's desired temp
 
+        ESP_LOGD(TAG, "MhiClimate::control - get_target_temperature - New target_temperature: %.1f°C", target_temp);
+
         const float ac_unit_min_temp = 18.0f; // Hardware minimum for the AC unit
 
         // Scenario 1: User wants a temperature below the AC's hardware limit
@@ -243,17 +245,23 @@ void MhiClimate::control(const climate::ClimateCall& call) {
         } else if (this->temperature_offset_enabled_) {
             float fractional_part = target_temp - floor(target_temp);
             if (fractional_part >= 0.5) {
-                this->platform_->set_tsetpoint(ceil(target_temp)); // Set AC to x+1
+                this->platform_->set_offset(0.5); // set offset value to mhi_platform as well, we use it when sending external sensor values
                 this->temperature_offset_ = 0.5; // Offset return temp by -0.5
+                this->platform_->set_tsetpoint(ceil(target_temp)); // Set AC to x+1
+                ESP_LOGD(TAG, "MhiClimate::control - get_target_temperature - set_tsetpoint %f, set_offset 0.5", ceil(target_temp));
             } else {
-                this->platform_->set_tsetpoint(target_temp); // Set normally
+                this->platform_->set_offset(0.0);  // set offset value to mhi_platform as well, we use it when sending external sensor values
                 this->temperature_offset_ = 0.0;
+                this->platform_->set_tsetpoint(target_temp); // Set normally
+                ESP_LOGD(TAG, "MhiClimate::control - get_target_temperature - set_tsetpoint %f, set_offset 0.0", target_temp);
             }
 
         // Scenario 3: Normal operation, no offsets needed
         } else {
-            this->platform_->set_tsetpoint(target_temp);
+            this->platform_->set_offset(0.0);  // set offset value to mhi_platform as well, we use it when sending external sensor values
             this->temperature_offset_ = 0.0;
+            this->platform_->set_tsetpoint(target_temp);
+            ESP_LOGD(TAG, "MhiClimate::control - get_target_temperature - set_tsetpoint %f, set_offset 0.0", target_temp);
         }
     }
 
