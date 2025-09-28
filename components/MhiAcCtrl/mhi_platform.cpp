@@ -1,8 +1,5 @@
 #include "mhi_platform.h"
 
-int SCK_PIN = 14;
-int MOSI_PIN = 13;
-int MISO_PIN = 12;
 namespace esphome {
 namespace mhi {
 
@@ -10,23 +7,12 @@ static const char* TAG = "mhi.platform";
 
 
 void MhiPlatform::setup() {
-    
-    if (this->sck_pin_ >= 0) { //
-      SCK_PIN = this->sck_pin_;
-    }
-    if (this->mosi_pin_ >= 0) { //
-      MOSI_PIN = this->mosi_pin_;
-    }
-    if (this->miso_pin_ >= 0) { //
-      MISO_PIN = this->miso_pin_;
-    }
-
     this->mhi_ac_ctrl_core_.MHIAcCtrlStatus(this);
-    this->mhi_ac_ctrl_core_.init();
+    this->mhi_ac_ctrl_core_.init(this->sck_pin_, this->mosi_pin_, this->miso_pin_); // initialize MHI AC Ctrl core
     this->mhi_ac_ctrl_core_.set_frame_size(this->frame_size_); // set framesize. Only 20 (legacy) or 33 (includes 3D auto and vertical vanes) possible
 
     if (this->external_temperature_sensor_ != nullptr) {
-        this->external_temperature_sensor_->add_on_state_callback([this](float state) {        
+        this->external_temperature_sensor_->add_on_state_callback([this](float state) {
             this->transfer_room_temperature(state);
         });
         this->transfer_room_temperature(this->external_temperature_sensor_->state);
@@ -123,12 +109,12 @@ void MhiPlatform::set_mode(ACMode value){
 }
 void MhiPlatform::set_tsetpoint(float value) {
     this->mhi_ac_ctrl_core_.set_tsetpoint((byte)(2 * value));
-    
+
     ESP_LOGD(TAG, "set setpoint: %f", value);
 }
 
 void MhiPlatform::set_vanes(int value) {
-    
+
     this->mhi_ac_ctrl_core_.set_vanes(value);
     ESP_LOGD(TAG, "set vanes: %i", value);
 }
@@ -136,7 +122,7 @@ void MhiPlatform::set_vanes(int value) {
 void MhiPlatform::set_vanesLR(int value) {
 
     if (this->frame_size_ == 33) {
-    
+
         ESP_LOGD(TAG, "setting vanesLR to: %i", value);
         this->mhi_ac_ctrl_core_.set_vanesLR(value);
         ESP_LOGD(TAG, "set vanes Left Right: %i", value);
@@ -148,7 +134,7 @@ void MhiPlatform::set_vanesLR(int value) {
 
 void MhiPlatform::set_3Dauto(bool value) {
     if (this->frame_size_ == 33) {
-        
+
         if (value) {
             ESP_LOGD(TAG, "set 3D auto: on");
             this->mhi_ac_ctrl_core_.set_3Dauto(AC3Dauto::Dauto_on); // Set swing to 3Dauto

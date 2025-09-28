@@ -3,6 +3,7 @@
 
 #include "MHI-AC-Ctrl-core.h"
 #include "esphome/components/sensor/sensor.h"
+#include "esphome/core/hal.h"
 #include "esphome/core/time.h"
 #include <vector>
 #include <string>
@@ -11,11 +12,15 @@
 namespace esphome {
 namespace mhi {
 
-class MhiPlatform : 
-    public Component, 
+class MhiPlatform :
+    public Component,
     public CallbackInterface_Status {
 
 public:
+
+    void set_sck_pin(GPIOPin *sck_pin) { sck_pin_ = sck_pin; }
+    void set_mosi_pin(GPIOPin *mosi_pin) { mosi_pin_ = mosi_pin; }
+    void set_miso_pin(GPIOPin *miso_pin) { miso_pin_ = miso_pin; }
 
     void setup() override;
     void set_frame_size(int framesize);
@@ -25,7 +30,7 @@ public:
     void cbiStatusFunction(ACStatus status, int value) override;
 
     void set_room_temperature(float value);
-    
+
     void set_power(ACPower value);
     void set_fan(int value);
     void set_mode(ACMode value);
@@ -34,23 +39,20 @@ public:
     void set_vanesLR(int value);
     void set_3Dauto(bool value);
     void set_external_room_temperature_sensor(sensor::Sensor* sensor);
-    void set_sck_pin(int pin) { this->sck_pin_ = pin; };
-    void set_mosi_pin(int pin) { this->mosi_pin_ = pin; };
-    void set_miso_pin(int pin) { this->miso_pin_ = pin; };
     void add_listener(MhiStatusListener* listener);
 
 
 private:
     void transfer_room_temperature(float value);
-    float last_room_temperature_ = NAN; 
+    float last_room_temperature_ = NAN;
 
     int frame_size_;
     unsigned long room_temp_api_timeout_start_ = millis();
     unsigned long room_temp_api_timeout_;
     bool room_temp_api_active_ = false;
-    int sck_pin_ = -1;
-    int mosi_pin_ = -1;
-    int miso_pin_ = -1;
+    GPIOPin * sck_pin_;
+    GPIOPin * mosi_pin_;
+    GPIOPin * miso_pin_;
 
     MHI_AC_Ctrl_Core mhi_ac_ctrl_core_;
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include "esphome/core/hal.h"
 
 // comment out the data you are not interested, but at least leave one row !
 const byte opdata[][2] PROGMEM = {
@@ -29,13 +30,7 @@ const byte opdata[][2] PROGMEM = {
 
 //#define NoFramesPerPacket 20                 // number of frames/packet, must be an even number
 #define NoFramesPerOpDataCycle 400             // number of frames used for a OpData request cycle; will be 20s (20 frames are 1s)
-#define minTimeInternalTroom 5000              // minimal time in ms used for Troom internal sensor changes for publishing to avoid jitter 
-
-// Declare extern variables for the pins the only change to the original code
-// This allows to set the pins in the configuration file
-extern int SCK_PIN;
-extern int MOSI_PIN;
-extern int MISO_PIN;
+#define minTimeInternalTroom 5000              // minimal time in ms used for Troom internal sensor changes for publishing to avoid jitter
 
 // constants for the frame
 #define SB0 0
@@ -158,7 +153,7 @@ class MHI_AC_Ctrl_Core {
     bool request_erropData = false;
     byte new_Troom = 0xff;    // writing 0xff to DB3 indicates the usage of the internal room temperature sensor
     float Troom_offset = 0.0;
-    
+
     byte new_VanesLR0 = 0;
     byte new_VanesLR1 = 0;
     byte new_3Dauto = 0;
@@ -166,13 +161,17 @@ class MHI_AC_Ctrl_Core {
 
     CallbackInterface_Status *m_cbiStatus;
 
+    esphome::GPIOPin * sck_pin_;
+    esphome::GPIOPin * mosi_pin_;
+    esphome::GPIOPin * miso_pin_;
+
   public:
     void MHIAcCtrlStatus(CallbackInterface_Status *cb) {
       m_cbiStatus = cb;
     };
 
 
-    void init();                          // initialization called once after boot
+    void init(esphome::GPIOPin * sck_pin, esphome::GPIOPin * mosi_pin, esphome::GPIOPin * miso_pin);                          // initialization called once after boot
     void reset_old_values();              // resets the 'old' variables ensuring that all status information are resend
     int loop(uint max_time_ms);           // receive / transmit a frame of 20 bytes
     void set_power(boolean power);        // power on/off the AC
