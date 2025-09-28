@@ -1,6 +1,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome import automation
+from esphome import automation, pins
 from esphome.components import sensor
 from esphome.const import CONF_ID
 
@@ -31,9 +31,9 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_ROOM_TEMP_TIMEOUT, default=60): cv.int_range(min=0, max=3600),
     cv.Optional(CONF_VANES_UD): cv.int_range(min=0, max=5),
     cv.Optional(CONF_VANES_LR): cv.int_range(min=0, max=8),
-    cv.Optional(CONF_SCK_PIN): cv.int_,
-    cv.Optional(CONF_MOSI_PIN): cv.int_,
-    cv.Optional(CONF_MISO_PIN): cv.int_,
+    cv.Optional(CONF_SCK_PIN, default="14"): pins.gpio_input_pin_schema,
+    cv.Optional(CONF_MOSI_PIN, default="13"): pins.gpio_input_pin_schema,
+    cv.Optional(CONF_MISO_PIN, default="12"): pins.gpio_output_pin_schema,
 }).extend(cv.COMPONENT_SCHEMA)
 
 async def to_code(config):
@@ -48,12 +48,13 @@ async def to_code(config):
         cg.add(var.set_vanes(config[CONF_VANES_UD]))
     if CONF_VANES_LR in config:
         cg.add(var.set_vanesLR(config[CONF_VANES_LR]))
-    if CONF_SCK_PIN in config:
-        cg.add(var.set_sck_pin(config[CONF_SCK_PIN]))
-    if CONF_MOSI_PIN in config:
-        cg.add(var.set_mosi_pin(config[CONF_MOSI_PIN]))
-    if CONF_MISO_PIN in config:
-        cg.add(var.set_miso_pin(config[CONF_MISO_PIN]))
+
+    sck = await cg.gpio_pin_expression(config[CONF_SCK_PIN])
+    mosi = await cg.gpio_pin_expression(config[CONF_MOSI_PIN])
+    miso = await cg.gpio_pin_expression(config[CONF_MISO_PIN])
+    cg.add(var.set_sck_pin(sck))
+    cg.add(var.set_mosi_pin(mosi))
+    cg.add(var.set_miso_pin(miso))
 
 @automation.register_action(
     "climate.mhi.set_vertical_vanes",

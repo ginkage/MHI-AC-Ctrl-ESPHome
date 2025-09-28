@@ -52,11 +52,16 @@ void MHI_AC_Ctrl_Core::reset_old_values() {  // used e.g. when MQTT connection t
   op_ou_eev1_old = 0xffff;
 }
 
-void MHI_AC_Ctrl_Core::init() {
-  //MeasureFrequency(m_cbiStatus);
-  pinMode(SCK_PIN, INPUT);
-  pinMode(MOSI_PIN, INPUT);
-  pinMode(MISO_PIN, OUTPUT);
+void MHI_AC_Ctrl_Core::init(esphome::GPIOPin * sck_pin, esphome::GPIOPin * mosi_pin, esphome::GPIOPin * miso_pin) {
+  this->sck_pin_ = sck_pin;
+  this->sck_pin_->setup();
+
+  this->mosi_pin_ = mosi_pin;
+  this->mosi_pin_->setup();
+
+  this->miso_pin_ = miso_pin;
+  this->miso_pin_->setup();
+
   MHI_AC_Ctrl_Core::reset_old_values();
 }
 
@@ -140,11 +145,11 @@ static byte MOSI_frame[33];
   if (frameSize == 33)
     MISO_frame[0] = 0xAA;
 
-   
+
   call_counter++;
   int SCKMillis = millis();               // time of last SCK low level
   while (millis() - SCKMillis < 5) {      // wait for 5ms stable high signal to detect a frame start
-    if (!digitalRead(SCK_PIN))
+    if (!this->sck_pin_->digital_read())
       SCKMillis = millis();
     if (millis() - startMillis > max_time_ms)
       return err_msg_timeout_SCK_low;       // SCK stuck@ low error detection
@@ -153,7 +158,7 @@ static byte MOSI_frame[33];
 
   doubleframe = !doubleframe;             // toggle every frame
   MISO_frame[DB14] = doubleframe << 2;    // MISO_frame[DB14] bit2 toggles with every frame
-  
+
   // Requesting all different opdata's is an opdata cycle. A cycle will take 20s.
   // With the current 20 different opdata's, every opdata request will take 1sec (interval).
   // If there are only 5 different opdata's defined, these 5 will be spread about the 20s cycle. The interval will increase.
@@ -175,9 +180,9 @@ static byte MOSI_frame[33];
   else  // reset OpData request
   {
     MISO_frame[DB6] = 0x80;
-    MISO_frame[DB9] = 0xff;    
+    MISO_frame[DB9] = 0xff;
   }
-  
+
   if (doubleframe) {                        // and the other MISO data changes are updated when MISO_frame[DB14] bit2 is set
     MISO_frame[DB0] = 0x00;
     MISO_frame[DB1] = 0x00;
@@ -224,7 +229,7 @@ static byte MOSI_frame[33];
     MISO_frame[DB16] = 0;
     MISO_frame[DB16] |= new_VanesLR1;
     MISO_frame[DB17] = 0;
-    MISO_frame[DB17] |= new_VanesLR0;  
+    MISO_frame[DB17] |= new_VanesLR0;
     MISO_frame[DB17] |= new_3Dauto;
     new_3Dauto = 0;
     new_VanesLR0 = 0;
@@ -242,16 +247,16 @@ static byte MOSI_frame[33];
     byte bit_mask = 1;
     for (uint8_t bit_cnt = 0; bit_cnt < 8; bit_cnt++) { // read and write 1 byte
       SCKMillis = millis();
-      while (digitalRead(SCK_PIN)) { // wait for falling edge
+      while (this->sck_pin_->digital_read()) { // wait for falling edge
         if (millis() - startMillis > max_time_ms)
           return err_msg_timeout_SCK_high;       // SCK stuck@ high error detection
-      } 
+      }
       if ((MISO_frame[byte_cnt] & bit_mask) > 0)
-        digitalWrite(MISO_PIN, 1);
+        this->miso_pin_->digital_write(true);
       else
-        digitalWrite(MISO_PIN, 0);
-      while (!digitalRead(SCK_PIN)) {} // wait for rising edge
-      if (digitalRead(MOSI_PIN))
+        this->miso_pin_->digital_write(false);
+      while (!this->sck_pin_->digital_read()) {} // wait for rising edge
+      if (this->mosi_pin_->digital_read())
         MOSI_byte += bit_mask;
       bit_mask = bit_mask << 1;
     }
@@ -269,7 +274,7 @@ static byte MOSI_frame[33];
 
   if (frameSize == 33) { // Only for framesize 33 (WF-RAC)
     checksum = calc_checksumFrame33(MOSI_frame);
-    if ( MOSI_frame[CBL2] != lowByte(checksum ) ) 
+    if ( MOSI_frame[CBL2] != lowByte(checksum ) )
       return err_msg_invalid_checksum;
   }
 
@@ -313,7 +318,7 @@ static byte MOSI_frame[33];
     if (vanestmp != status_vanes_old) {
       // if ((vanestmp & 0x88) == 0) // last vanes update was via IR-RC, so status is not known
       //   m_cbiStatus->cbiStatusFunction(status_vanes, vanes_unknown);
-      // else 
+      // else
       if ((vanestmp & 0x40) != 0) // Vanes status swing
         m_cbiStatus->cbiStatusFunction(status_vanes, vanes_swing);
       else {
@@ -322,7 +327,7 @@ static byte MOSI_frame[33];
       status_vanes_old = vanestmp;
     }
 
-    
+
     if(MOSI_frame[DB3] != status_troom_old) {
       // To avoid jitter with the fast changing AC internal temperature sensor
       if (MISO_frame[DB3] != 0xff) {                                      // not internal sensor used, just publish
@@ -337,7 +342,7 @@ static byte MOSI_frame[33];
           m_cbiStatus->cbiStatusFunction(status_troom, status_troom_old);
         }
     }
-    
+
     if (MOSI_frame[DB2] != status_tsetpoint_old) { // Temperature setpoint
       status_tsetpoint_old = MOSI_frame[DB2];
       m_cbiStatus->cbiStatusFunction(status_tsetpoint, status_tsetpoint_old);
@@ -353,7 +358,7 @@ static byte MOSI_frame[33];
 
     switch (MOSI_frame[DB9]) {
       case 0x94:                              // 0 energy-kwh n * 0.25 kWh used since power on
-        if ((MOSI_frame[DB6] & 0x80) != 0) {  // 
+        if ((MOSI_frame[DB6] & 0x80) != 0) {  //
           if (MOSI_type_opdata) {
             if (((MOSI_frame[DB12]<<8)+(MOSI_frame[DB11])) != op_kwh_old) {
               op_kwh_old = (MOSI_frame[DB12]<<8)+(MOSI_frame[DB11]);
