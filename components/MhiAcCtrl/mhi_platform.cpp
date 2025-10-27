@@ -111,7 +111,7 @@ void MhiPlatform::transfer_room_temperature(float value) {
     if (this->temperature_offset_ > 0.0f) {  // if we have a offset value add this before setting troom value
         float orig_value = value;
         value = orig_value + this->temperature_offset_;
-        ESP_LOGD(TAG, "offset %f for original temp %f -> new troom %f", this->temperature_offset_ , orig_value, value);
+        //ESP_LOGD(TAG, "offset %f for original temp %f -> new troom %f", this->temperature_offset_ , orig_value, value);
     }
 
     //ESP_LOGD(TAG, "value: %f - last_room_temperature_ %f ", value, last_room_temperature_);
