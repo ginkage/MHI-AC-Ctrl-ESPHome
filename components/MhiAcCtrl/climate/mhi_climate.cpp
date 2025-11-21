@@ -1,4 +1,5 @@
 #include "esphome/core/log.h"
+#include "esphome/core/version.h"
 #include "mhi_climate.h"
 
 namespace esphome {
@@ -342,6 +343,19 @@ void MhiClimate::control(const climate::ClimateCall& call) {
 
 
 /// Return the traits of this controller.
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2025, 11, 0)
+climate::ClimateTraits MhiClimate::traits() {
+    auto traits = climate::ClimateTraits();
+    traits.add_feature_flags(climate::CLIMATE_SUPPORTS_CURRENT_TEMPERATURE);
+    traits.set_supported_modes({ climate::CLIMATE_MODE_OFF, climate::CLIMATE_MODE_HEAT_COOL, climate::CLIMATE_MODE_COOL, climate::CLIMATE_MODE_HEAT, climate::CLIMATE_MODE_DRY,climate::CLIMATE_MODE_FAN_ONLY });
+    traits.set_visual_min_temperature(this->minimum_temperature_);
+    traits.set_visual_max_temperature(this->maximum_temperature_);
+    traits.set_visual_temperature_step(this->temperature_step_);
+    traits.set_supported_fan_modes({ climate::CLIMATE_FAN_AUTO, climate::CLIMATE_FAN_QUIET, CLIMATE_FAN_LOW, climate::CLIMATE_FAN_MEDIUM, climate::CLIMATE_FAN_HIGH });
+    traits.set_supported_swing_modes({ climate::CLIMATE_SWING_OFF, climate::CLIMATE_SWING_BOTH, climate::CLIMATE_SWING_VERTICAL, climate::CLIMATE_SWING_HORIZONTAL });
+    return traits;
+}
+#else
 climate::ClimateTraits MhiClimate::traits() {
     auto traits = climate::ClimateTraits();
     traits.set_supports_current_temperature(true);
@@ -354,6 +368,7 @@ climate::ClimateTraits MhiClimate::traits() {
     traits.set_supported_swing_modes({ CLIMATE_SWING_OFF, CLIMATE_SWING_BOTH, CLIMATE_SWING_VERTICAL, CLIMATE_SWING_HORIZONTAL });
     return traits;
 }
+#endif
 
 
 } //namespace mhi
