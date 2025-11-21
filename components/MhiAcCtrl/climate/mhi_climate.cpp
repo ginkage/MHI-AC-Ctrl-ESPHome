@@ -240,7 +240,10 @@ void MhiClimate::control(const climate::ClimateCall& call) {
         if (setpoint < ac_unit_min_temp)
             setpoint = ac_unit_min_temp;
 
-        float offset = setpoint - target_temp;
+        float offset = 0.0;
+        if (this->temperature_offset_enabled_) {
+            offset = setpoint - target_temp;
+        }
         this->platform_->set_offset(offset);
         this->temperature_offset_ = offset;
         this->platform_->set_tsetpoint(setpoint);
