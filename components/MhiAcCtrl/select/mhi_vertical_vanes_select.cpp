@@ -12,7 +12,7 @@ void MhiVerticalVanesSelect::setup() {
 
 void MhiVerticalVanesSelect::dump_config(){
     ESP_LOGCONFIG(TAG, "MHI Vertical Vanes Select");
-    ESP_LOGCONFIG(TAG, "  state: %d", this->state);
+    ESP_LOGCONFIG(TAG, "  state: %d", this->current_option());
 }
 
 void MhiVerticalVanesSelect::control(const std::string &value) {
