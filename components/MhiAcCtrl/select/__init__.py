@@ -37,9 +37,9 @@ ICON_FAN = "mdi:fan"
 
 
 mhi_ns = cg.esphome_ns.namespace('mhi')
-MhiVerticalVanesSelect = mhi_ns.class_("MhiVerticalVanesSelect", cg.Component)
-MhiHorizontalVanesSelect = mhi_ns.class_("MhiHorizontalVanesSelect", cg.Component)
-MhiFanSpeedSelect = mhi_ns.class_("MhiFanSpeedSelect", cg.Component)
+MhiVerticalVanesSelect = mhi_ns.class_("MhiVerticalVanesSelect", select.Select, cg.Component)
+MhiHorizontalVanesSelect = mhi_ns.class_("MhiHorizontalVanesSelect", select.Select, cg.Component)
+MhiFanSpeedSelect = mhi_ns.class_("MhiFanSpeedSelect", select.Select, cg.Component)
 
 CONFIG_SCHEMA = {
     cv.GenerateID(CONF_MHI_AC_CTRL_ID): cv.use_id(MhiAcCtrl),
