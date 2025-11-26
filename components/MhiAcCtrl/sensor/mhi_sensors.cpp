@@ -28,6 +28,7 @@ void MhiSensors::set_vanesLR_pos (Sensor* sensor) { vanesLR_pos_ = sensor; }
 
 
 void MhiSensors::setup() {
+    this->platform_ = this->parent_;
     this->parent_->add_listener(this);
 }
 
@@ -124,7 +125,13 @@ void MhiSensors::update_status(ACStatus status, int value) {
         // dtostrf(value * 0.25f - 15, 0, 2, strtmp);
         // output_P(status, PSTR(TOPIC_RETURNAIR), strtmp);
         if (return_air_temperature_ != NULL) { 
-            return_air_temperature_ -> publish_state(value * 0.25f - 15); 
+            //ESP_LOGD(TAG, "get_room_temp_offset() %f, value %i", this->platform_->get_room_temp_offset(), value);
+            // if there is a temperature offset set add this on top, as I want the return air temp value be the original one
+            float offset_value = 0.0f;
+            if (this->platform_->get_room_temp_offset()>0.0f) {
+                offset_value += this->platform_->get_room_temp_offset();
+            }
+            return_air_temperature_ -> publish_state((value * 0.25f - 15) - offset_value); 
         }
         break;
     case opdata_thi_r1:

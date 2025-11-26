@@ -61,6 +61,7 @@ private:
     Sensor* outdoor_unit_discharge_pipe_super_heat_;
     Sensor* protection_state_number_;
     Sensor* vanesLR_pos_;
+    MhiPlatform* platform_;
 };
 
 }

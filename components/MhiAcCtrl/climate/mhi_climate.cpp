@@ -232,30 +232,23 @@ void MhiClimate::control(const climate::ClimateCall& call) {
         float target_temp = *call.get_target_temperature();
         this->target_temperature = target_temp; // Store the user's desired temp
 
+        ESP_LOGD(TAG, "MhiClimate::control - get_target_temperature - New target_temperature: %.1f°C", target_temp);
+
         const float ac_unit_min_temp = 18.0f; // Hardware minimum for the AC unit
 
-        // Scenario 1: User wants a temperature below the AC's hardware limit
-        if (target_temp < ac_unit_min_temp) {
-            ESP_LOGD(TAG, "Using low-temp workaround for target: %.1f°C", target_temp);
-            this->platform_->set_tsetpoint(ac_unit_min_temp); // Send the lowest possible temp to the AC
-            this->temperature_offset_ = ac_unit_min_temp - target_temp; // Set offset (e.g., 18 - 17 = 1.0)
-        
-        // Scenario 2: Handle 0.5°C steps (if enabled)
-        } else if (this->temperature_offset_enabled_) {
-            float fractional_part = target_temp - floor(target_temp);
-            if (fractional_part >= 0.5) {
-                this->platform_->set_tsetpoint(ceil(target_temp)); // Set AC to x+1
-                this->temperature_offset_ = 0.5; // Offset return temp by -0.5
-            } else {
-                this->platform_->set_tsetpoint(target_temp); // Set normally
-                this->temperature_offset_ = 0.0;
-            }
+        float setpoint = ceil(target_temp);
+        if (setpoint < ac_unit_min_temp)
+            setpoint = ac_unit_min_temp;
 
-        // Scenario 3: Normal operation, no offsets needed
-        } else {
-            this->platform_->set_tsetpoint(target_temp);
-            this->temperature_offset_ = 0.0;
+        float offset = 0.0;
+        if (this->temperature_offset_enabled_) {
+            offset = setpoint - target_temp;
         }
+        this->platform_->set_offset(offset);
+        this->temperature_offset_ = offset;
+        this->platform_->set_tsetpoint(setpoint);
+
+        ESP_LOGD(TAG, "MhiClimate::control - get_target_temperature - set_tsetpoint %f, set_offset %f", setpoint, offset);
     }
 
     if (call.get_mode().has_value()) {
