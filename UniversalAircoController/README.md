@@ -1,3 +1,5 @@
+# There is an unresolved issue with the universal airco controller!  https://github.com/ginkage/MHI-AC-Ctrl-ESPHome/issues/196
+
 # Hardware
 
 Hardware used:
