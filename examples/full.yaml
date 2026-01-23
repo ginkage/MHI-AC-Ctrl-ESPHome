@@ -131,7 +131,7 @@ sensor:
     vanes_pos:
       name: "Vanes"
     vanesLR_pos:
-      name: "Vanes Left/Right"
+      name: "Vanes Left⁄Right"
 
 text_sensor:
   - platform: version

@@ -1,4 +1,5 @@
 #include "esphome/core/log.h"
+#include "esphome/core/version.h"
 #include "mhi_climate.h"
 
 namespace esphome {
@@ -231,30 +232,23 @@ void MhiClimate::control(const climate::ClimateCall& call) {
         float target_temp = *call.get_target_temperature();
         this->target_temperature = target_temp; // Store the user's desired temp
 
+        ESP_LOGD(TAG, "MhiClimate::control - get_target_temperature - New target_temperature: %.1f°C", target_temp);
+
         const float ac_unit_min_temp = 18.0f; // Hardware minimum for the AC unit
 
-        // Scenario 1: User wants a temperature below the AC's hardware limit
-        if (target_temp < ac_unit_min_temp) {
-            ESP_LOGD(TAG, "Using low-temp workaround for target: %.1f°C", target_temp);
-            this->platform_->set_tsetpoint(ac_unit_min_temp); // Send the lowest possible temp to the AC
-            this->temperature_offset_ = ac_unit_min_temp - target_temp; // Set offset (e.g., 18 - 17 = 1.0)
-        
-        // Scenario 2: Handle 0.5°C steps (if enabled)
-        } else if (this->temperature_offset_enabled_) {
-            float fractional_part = target_temp - floor(target_temp);
-            if (fractional_part >= 0.5) {
-                this->platform_->set_tsetpoint(ceil(target_temp)); // Set AC to x+1
-                this->temperature_offset_ = 0.5; // Offset return temp by -0.5
-            } else {
-                this->platform_->set_tsetpoint(target_temp); // Set normally
-                this->temperature_offset_ = 0.0;
-            }
+        float setpoint = ceil(target_temp);
+        if (setpoint < ac_unit_min_temp)
+            setpoint = ac_unit_min_temp;
 
-        // Scenario 3: Normal operation, no offsets needed
-        } else {
-            this->platform_->set_tsetpoint(target_temp);
-            this->temperature_offset_ = 0.0;
+        float offset = 0.0;
+        if (this->temperature_offset_enabled_) {
+            offset = setpoint - target_temp;
         }
+        this->platform_->set_offset(offset);
+        this->temperature_offset_ = offset;
+        this->platform_->set_tsetpoint(setpoint);
+
+        ESP_LOGD(TAG, "MhiClimate::control - get_target_temperature - set_tsetpoint %f, set_offset %f", setpoint, offset);
     }
 
     if (call.get_mode().has_value()) {
@@ -342,6 +336,19 @@ void MhiClimate::control(const climate::ClimateCall& call) {
 
 
 /// Return the traits of this controller.
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2025, 11, 0)
+climate::ClimateTraits MhiClimate::traits() {
+    auto traits = climate::ClimateTraits();
+    traits.add_feature_flags(climate::CLIMATE_SUPPORTS_CURRENT_TEMPERATURE);
+    traits.set_supported_modes({ climate::CLIMATE_MODE_OFF, climate::CLIMATE_MODE_HEAT_COOL, climate::CLIMATE_MODE_COOL, climate::CLIMATE_MODE_HEAT, climate::CLIMATE_MODE_DRY,climate::CLIMATE_MODE_FAN_ONLY });
+    traits.set_visual_min_temperature(this->minimum_temperature_);
+    traits.set_visual_max_temperature(this->maximum_temperature_);
+    traits.set_visual_temperature_step(this->temperature_step_);
+    traits.set_supported_fan_modes({ climate::CLIMATE_FAN_AUTO, climate::CLIMATE_FAN_QUIET, CLIMATE_FAN_LOW, climate::CLIMATE_FAN_MEDIUM, climate::CLIMATE_FAN_HIGH });
+    traits.set_supported_swing_modes({ climate::CLIMATE_SWING_OFF, climate::CLIMATE_SWING_BOTH, climate::CLIMATE_SWING_VERTICAL, climate::CLIMATE_SWING_HORIZONTAL });
+    return traits;
+}
+#else
 climate::ClimateTraits MhiClimate::traits() {
     auto traits = climate::ClimateTraits();
     traits.set_supports_current_temperature(true);
@@ -354,6 +361,7 @@ climate::ClimateTraits MhiClimate::traits() {
     traits.set_supported_swing_modes({ CLIMATE_SWING_OFF, CLIMATE_SWING_BOTH, CLIMATE_SWING_VERTICAL, CLIMATE_SWING_HORIZONTAL });
     return traits;
 }
+#endif
 
 
 } //namespace mhi

@@ -13,7 +13,7 @@ Create a new device within ESPHome builder and combine the yaml with one of the 
 # MHI-AC-Ctrl-ESPHome
 This project is a simple integration of the amazing work [absalom-muc](https://github.com/absalom-muc) has done with his project [MHI-AC-Ctrl](https://github.com/absalom-muc/MHI-AC-Ctrl).\
 It's supposed to simplify the [Home Assistant](https://www.home-assistant.io/) setup, while giving you OTA and auto-discovery with virtually zero effort and no MQTT needed, powered by [ESPHome](https://ESPHome.io/).\
-`MHI-AC-Ctrl-core.*` files were forked directly, with no modification, whereas your WiFi credentials should go into the `*.yaml` file, and `mhi_ac_ctrl.h` is the core of the integration.
+`MHI-AC-Ctrl-core.*` files were forked directly, with a small modification to allow for pin setting in yaml, whereas your WiFi credentials should go into the `*.yaml` file, and `mhi_ac_ctrl.h` is the core of the integration.
 
 # Fan Modes Up/Down Left/Right
 Most newer MHI units (the ones supporting the WF-RAC WiFi module) support fine grained vane control for Left/Right and Up/Down.  
@@ -47,16 +47,17 @@ This will allow for lower temperature heating or cooling.
 
 # Hardware
  - Hardware designed by [fonske](https://github.com/fonske) can be found [here](JLCPCB/Hardware.md)
+ - A ready-to-go esp32-s3 based airco controller can be bought at [tinytronics.nl](https://www.tinytronics.nl/en/development-boards/microcontroller-boards/with-wi-fi/universal-air-conditioning-controller-esp32-s3) instructions can be found [here](UniversalAircoController/README.md)
 
 
 # Changelog:
 
 
-
-=======
 **v4.2** (2025-07)
  - Allow configuration of pins through yaml
-
+ - Update calculation of Indoor Heat exchanger temperature 2 (capillary)
+ - Don't spam unit with unchanged room_temp
+ - **Deprecating set set_vertical_vanes and set_horizontal_vanes, will be removed in v4.3 use select functions for fan control**
 
 **v4.1** (2025-07)
  - Changed climate.CLIMATE_SCHEMA to fix deprecation warning in 2025.5.0 and higher https://github.com/ginkage/MHI-AC-Ctrl-ESPHome/issues/151
@@ -64,7 +65,6 @@ This will allow for lower temperature heating or cooling.
  - Allow low temp heating and cooling (below 18 degrees) https://github.com/ginkage/MHI-AC-Ctrl-ESPHome/issues/152
  - Allow fan speed from esphome web interface https://github.com/ginkage/MHI-AC-Ctrl-ESPHome/issues/136
  - Deprecating set set_vertical_vanes and set_horizontal_vanes, will be removed in v4.3 use select functions for fan control
-
 
 **v4.0** (2025-04)
  - Compatibility with ESPHOME 2025.2+

@@ -25,11 +25,15 @@ public:
     void cbiStatusFunction(ACStatus status, int value) override;
 
     void set_room_temperature(float value);
+
+    bool get_room_temp_api_active();
+    float get_room_temp_offset();
     
     void set_power(ACPower value);
     void set_fan(int value);
     void set_mode(ACMode value);
     void set_tsetpoint(float value);
+    void set_offset(float value);
     void set_vanes(int value);
     void set_vanesLR(int value);
     void set_3Dauto(bool value);
@@ -42,6 +46,8 @@ public:
 
 private:
     void transfer_room_temperature(float value);
+    float last_room_temperature_ = NAN; 
+    float temperature_offset_ = 0.0f;
 
     int frame_size_;
     unsigned long room_temp_api_timeout_start_ = millis();
@@ -53,7 +59,7 @@ private:
 
     MHI_AC_Ctrl_Core mhi_ac_ctrl_core_;
 
-    sensor::Sensor* external_temperature_sensor_;
+    sensor::Sensor* external_temperature_sensor_{nullptr};
 
     std::vector<MhiStatusListener*> listeners_;
 };
