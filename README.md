@@ -3,7 +3,7 @@
 
 # How to get started
 
-Create a new device within ESPHome builder and combine the yaml with one of the examples from the `examples` directory. Give your unit a name, configure OTA passwords, hotspot, add an API key and install!  
+Create a new device within ESPHome builder and combine the yaml with one of the examples from the `examples` directory. Give your unit a name, configure OTA passwords, hotspot, add an API key (generator can be found on https://esphome.io/components/api/#configuration-variables) and install!  
 
 - [`simple.yaml`](https://github.com/ginkage/MHI-AC-Ctrl-ESPHome/blob/master/examples/simple.yaml): Basic yaml to get started, contains climate and fan direction control.
 - [`external_sensor.yaml`](https://github.com/ginkage/MHI-AC-Ctrl-ESPHome/blob/master/examples/external_sensor.yaml): Contains the basics to configure the room temperature using an external temperature sensor connected to Home Assistant.  
