@@ -64,7 +64,7 @@ async def to_code(config):
             cv.Required(CONF_VANES_POSITION): cv.templatable(cv.int_range(min=1, max=5)),
         }
     ),
-    synchronous=True,
+    [span_4](start_span)synchronous=False, # Korrektur für ESPHome 2026.3[span_4](end_span)
 )
 async def set_vertical_vanes_to_code(config, action_id, template_arg, args):
     mhi = await cg.get_variable(config[CONF_MHI_AC_CTRL_ID])
@@ -82,7 +82,7 @@ async def set_vertical_vanes_to_code(config, action_id, template_arg, args):
             cv.Required(CONF_VANES_POSITION): cv.templatable(cv.int_range(min=1, max=8)),
         }
     ),
-    synchronous=True,
+    [span_5](start_span)synchronous=False, # Korrektur für ESPHome 2026.3[span_5](end_span)
 )
 async def set_horizontal_vanes_to_code(config, action_id, template_arg, args):
     mhi = await cg.get_variable(config[CONF_MHI_AC_CTRL_ID])
@@ -90,7 +90,6 @@ async def set_horizontal_vanes_to_code(config, action_id, template_arg, args):
     template_ = await cg.templatable(config[CONF_VANES_POSITION], args, int)
     cg.add(var.set_position(template_))
     return var
-
 
 @automation.register_action(
     "climate.mhi.set_external_room_temperature",
@@ -101,7 +100,7 @@ async def set_horizontal_vanes_to_code(config, action_id, template_arg, args):
             cv.Required(CONF_TEMPERATURE): cv.templatable(cv.float_),
         }
     ),
-    synchronous=True,
+    [span_6](start_span)synchronous=False, # Korrektur für ESPHome 2026.3[span_6](end_span)
 )
 async def set_external_room_temperature_to_code(config, action_id, template_arg, args):
     mhi = await cg.get_variable(config[CONF_MHI_AC_CTRL_ID])
