@@ -64,6 +64,7 @@ async def to_code(config):
             cv.Required(CONF_VANES_POSITION): cv.templatable(cv.int_range(min=1, max=5)),
         }
     ),
+    synchronous=True,
 )
 async def set_vertical_vanes_to_code(config, action_id, template_arg, args):
     mhi = await cg.get_variable(config[CONF_MHI_AC_CTRL_ID])
@@ -81,6 +82,7 @@ async def set_vertical_vanes_to_code(config, action_id, template_arg, args):
             cv.Required(CONF_VANES_POSITION): cv.templatable(cv.int_range(min=1, max=8)),
         }
     ),
+    synchronous=True,
 )
 async def set_horizontal_vanes_to_code(config, action_id, template_arg, args):
     mhi = await cg.get_variable(config[CONF_MHI_AC_CTRL_ID])
@@ -99,6 +101,7 @@ async def set_horizontal_vanes_to_code(config, action_id, template_arg, args):
             cv.Required(CONF_TEMPERATURE): cv.templatable(cv.float_),
         }
     ),
+    synchronous=True,
 )
 async def set_external_room_temperature_to_code(config, action_id, template_arg, args):
     mhi = await cg.get_variable(config[CONF_MHI_AC_CTRL_ID])
