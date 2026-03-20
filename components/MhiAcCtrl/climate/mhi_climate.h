@@ -52,8 +52,7 @@ public:
         this->minimum_temperature_ = temp; 
     }
 
-    // KORREKTUR für ESPHome 2026.3.0: 
-    [span_9](start_span)// Diese leere Funktion verhindert den Abbruch des Updates[span_9](end_span).
+    // Diese leere Funktion verhindert den Abbruch des Updates
     void set_icon(const std::string &icon) {} 
 };
 
