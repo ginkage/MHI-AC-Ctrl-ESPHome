@@ -53,12 +53,9 @@ public:
     }
 
     // KORREKTUR für ESPHome 2026.3.0: 
-    // Diese leere Funktion verhindert den Abbruch des Updates.
+    [span_9](start_span)// Diese leere Funktion verhindert den Abbruch des Updates[span_9](end_span).
     void set_icon(const std::string &icon) {} 
 };
 
-
-
-
-
-
+}
+}
