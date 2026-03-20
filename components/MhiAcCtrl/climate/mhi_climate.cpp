@@ -77,7 +77,7 @@ void MhiClimate::update_status(ACStatus status, int value) {
             break;
         case mode_heat:
             this->mode = climate::CLIMATE_MODE_HEAT;
-            this->platform_->set_vanes(vanes_4); // SMART LOGIC: Konvektion (Unten)
+            this->platform_->set_vanes(vanes_5); // SMART LOGIC: Konvektion (Unten)
             break;
         default:
             ESP_LOGD(TAG, "unknown status mode value %i", value);
@@ -194,7 +194,7 @@ void MhiClimate::control(const climate::ClimateCall& call) {
             break;
         case climate::CLIMATE_MODE_HEAT:
             mode_ = mode_heat;
-            this->platform_->set_vanes(vanes_4); // SMART LOGIC: Konvektion (Unten)
+            this->platform_->set_vanes(vanes_5); // SMART LOGIC: Konvektion (Unten)
             break;
         case climate::CLIMATE_MODE_DRY:
             mode_ = mode_dry;
