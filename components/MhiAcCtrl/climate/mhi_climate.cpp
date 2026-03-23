@@ -201,8 +201,7 @@ void MhiClimate::control(const climate::ClimateCall& call) {
             
         case climate::CLIMATE_MODE_HEAT:
             mode_ = mode_heat;
-            this->platform_->set_vanes(vanes_5);  // SMART LOGIC: Konvektion (Ganz Unten)
-            
+            this->platform_->set_vanes(vanes_5);  // SMART LOGIC: Konvektion (Ganz Unten)            
             // FIX: Verhindert, dass Home Assistant beim Moduswechsel ungewollt alte Zustände mitsendet
             if (this->swing_mode != climate::CLIMATE_SWING_OFF) {
                 this->swing_mode = climate::CLIMATE_SWING_OFF;
