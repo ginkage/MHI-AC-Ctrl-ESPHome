@@ -97,11 +97,11 @@ enum ACMode {   // Mode enum
 };
 
 enum ACVanes {  // Vanes enum
-  vanes_1 = 1, vanes_2 = 2, vanes_3 = 3, vanes_4 = 4, vanes_unknown = 0, vanes_swing = 5
+  vanes_1 = 1, vanes_2 = 2, vanes_3 = 3, vanes_4 = 4, vanes_5 = 5, vanes_unknown = 0, vanes_swing = 6
 };
 
 enum ACVanesLR {  // Vanes Left Right enum
-  vanesLR_1 = 1, vanesLR_2 = 2, vanesLR_3 = 3, vanesLR_4 = 4, vanesLR_5 = 5, vanesLR_6 = 6, vanesLR_7 = 7, vanesLR_swing = 8
+  vanesLR_stop = 0, vanesLR_1 = 1, vanesLR_2 = 2, vanesLR_3 = 3, vanesLR_4 = 4, vanesLR_5 = 5, vanesLR_6 = 6, vanesLR_7 = 7, vanesLR_swing = 8
 };
 
 enum AC3Dauto {  // 3D auto enum
@@ -162,7 +162,7 @@ class MHI_AC_Ctrl_Core {
     byte new_VanesLR0 = 0;
     byte new_VanesLR1 = 0;
     byte new_3Dauto = 0;
-    byte frameSize = 20;
+    byte frameSize = 33;
 
     CallbackInterface_Status *m_cbiStatus;
 

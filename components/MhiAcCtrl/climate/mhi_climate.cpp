@@ -10,20 +10,16 @@ static const char* TAG = "mhi.climate";
 void MhiClimate::setup() {
     this->power_ = power_off;
     this->current_temperature = NAN;
-    // restore set points
     auto restore = this->restore_state_();
     if (restore.has_value()) {
         restore->apply(this);
     } else {
-        // restore from defaults
         this->mode = climate::CLIMATE_MODE_OFF;
-        // initialize target temperature to some value so that it's not NAN
         this->target_temperature = roundf(clamp(
             this->current_temperature, this->minimum_temperature_, this->maximum_temperature_));
         this->fan_mode = climate::CLIMATE_FAN_AUTO;
         this->swing_mode = climate::CLIMATE_SWING_OFF;
     }
-    // Never send nan to HA
     if (isnan(this->target_temperature))
         this->target_temperature = 20;
 
@@ -32,7 +28,6 @@ void MhiClimate::setup() {
 
     this->platform_ = this->parent_;
     this->platform_->add_listener(this);
-    
 }
 
 void MhiClimate::dump_config() {
@@ -40,14 +35,9 @@ void MhiClimate::dump_config() {
 }
 
 void MhiClimate::update_status(ACStatus status, int value) {
-
     static int mode_tmp = 0xff;
 
-    
-    ESP_LOGD(TAG, "received status=%i value=%i power=%i", status, value, this->power_);
-
     if (this->power_ == power_off) {
-        // Workaround for status after reboot
         this->mode = climate::CLIMATE_MODE_OFF;
         this->publish_state();
     }
@@ -56,11 +46,8 @@ void MhiClimate::update_status(ACStatus status, int value) {
     case status_power:
         if (value == power_on) {
             this->power_ = power_on;
-            // output_P(status, (TOPIC_POWER), PSTR(PAYLOAD_POWER_ON));
             update_status(status_mode, mode_tmp);
         } else {
-            // output_P(status, (TOPIC_POWER), (PAYLOAD_POWER_OFF));
-            // output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_OFF));
             this->power_ = power_off;
             this->mode = climate::CLIMATE_MODE_OFF;
             this->publish_state();
@@ -79,20 +66,18 @@ void MhiClimate::update_status(ACStatus status, int value) {
             }
             break;
         case mode_dry:
-            // output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_DRY));
             this->mode = climate::CLIMATE_MODE_DRY;
             break;
         case mode_cool:
-            // output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_COOL));
             this->mode = climate::CLIMATE_MODE_COOL;
+            this->platform_->set_vanes(vanes_1); // SMART LOGIC: Coanda (Oben)
             break;
         case mode_fan:
-            // output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_FAN));
             this->mode = climate::CLIMATE_MODE_FAN_ONLY;
             break;
         case mode_heat:
-            // output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_HEAT));
             this->mode = climate::CLIMATE_MODE_HEAT;
+            this->platform_->set_vanes(vanes_5); // SMART LOGIC: Konvektion (Unten)
             break;
         default:
             ESP_LOGD(TAG, "unknown status mode value %i", value);
@@ -101,33 +86,18 @@ void MhiClimate::update_status(ACStatus status, int value) {
         break;
     case status_fan:
         switch (value) {
-        case 0:
-            this->fan_mode = climate::CLIMATE_FAN_QUIET;
-            break;
-        case 1:
-            this->fan_mode = climate::CLIMATE_FAN_LOW;
-            break;
-        case 2:
-            this->fan_mode = climate::CLIMATE_FAN_MEDIUM;
-            break;
-        case 6:
-            this->fan_mode = climate::CLIMATE_FAN_HIGH;
-            break;
-        case 7:
-            this->fan_mode = climate::CLIMATE_FAN_AUTO;
-            break;
+        case 0: this->fan_mode = climate::CLIMATE_FAN_QUIET; break;
+        case 1: this->fan_mode = climate::CLIMATE_FAN_LOW; break;
+        case 2: this->fan_mode = climate::CLIMATE_FAN_MEDIUM; break;
+        case 6: this->fan_mode = climate::CLIMATE_FAN_HIGH; break;
+        case 7: this->fan_mode = climate::CLIMATE_FAN_AUTO; break;
         }
         this->publish_state();
         break;
     case status_vanes:
-        // Vanes Up Down, also known as Vertical
         if (this->vanesLR_pos_state_ == vanesLR_swing) {
             switch (value) {
-                case vanes_unknown:
-                case vanes_1:
-                case vanes_2:
-                case vanes_3:
-                case vanes_4:
+                case vanes_unknown: case vanes_1: case vanes_2: case vanes_3: case vanes_4:
                     this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
                     this->vanes_pos_old_state_ = value;
                     break;
@@ -135,14 +105,9 @@ void MhiClimate::update_status(ACStatus status, int value) {
                     this->swing_mode = climate::CLIMATE_SWING_BOTH;
                     break;
             }
-        }
-        else {
+        } else {
             switch (value) {
-                case vanes_unknown:
-                case vanes_1:
-                case vanes_2:
-                case vanes_3:
-                case vanes_4:
+                case vanes_unknown: case vanes_1: case vanes_2: case vanes_3: case vanes_4:
                     this->swing_mode = climate::CLIMATE_SWING_OFF;
                     this->vanes_pos_old_state_ = value;
                     break;
@@ -150,7 +115,6 @@ void MhiClimate::update_status(ACStatus status, int value) {
                     this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
                     break;
             }
-
         }
         this->vanes_pos_state_ = value;
         this->publish_state();
@@ -158,13 +122,7 @@ void MhiClimate::update_status(ACStatus status, int value) {
     case status_vanesLR:
         if (this->vanes_pos_state_ == vanes_swing) {
             switch (value) {
-                case vanesLR_1:
-                case vanesLR_2:
-                case vanesLR_3:
-                case vanesLR_4:
-                case vanesLR_5:
-                case vanesLR_6:
-                case vanesLR_7:
+                case vanesLR_1: case vanesLR_2: case vanesLR_3: case vanesLR_4: case vanesLR_5: case vanesLR_6: case vanesLR_7:
                     this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
                     this->vanesLR_pos_old_state_ = value;
                     break;
@@ -172,16 +130,9 @@ void MhiClimate::update_status(ACStatus status, int value) {
                     this->swing_mode = climate::CLIMATE_SWING_BOTH;
                     break;
             }
-        }
-        else {
+        } else {
             switch (value) {
-                case vanesLR_1:
-                case vanesLR_2:
-                case vanesLR_3:
-                case vanesLR_4:
-                case vanesLR_5:
-                case vanesLR_6:
-                case vanesLR_7:
+                case vanesLR_1: case vanesLR_2: case vanesLR_3: case vanesLR_4: case vanesLR_5: case vanesLR_6: case vanesLR_7:
                     this->swing_mode = climate::CLIMATE_SWING_OFF;
                     this->vanesLR_pos_old_state_ = value;
                     break;
@@ -189,40 +140,26 @@ void MhiClimate::update_status(ACStatus status, int value) {
                     this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
                     break;
             }
-
         }
         this->publish_state();
         this->vanesLR_pos_state_ = value;
         break;
     case status_troom:
-        // Calculate the temperature and apply the offset for 0.5°C steps
         this->current_temperature = ((value - 61) / 4.0) - this->temperature_offset_;
         this->publish_state();
         break;
-
     case status_tsetpoint: {
         float ac_setpoint = (value & 0x7f) / 2.0;
-
-        // If we are using an offset, check if the AC's update is just an
-        // echo of the command we already sent (our target + our offset).
         if (this->temperature_offset_ != 0.0 && 
             fabs(ac_setpoint - (this->target_temperature + this->temperature_offset_)) < 0.1) {
-            
-            // This is an expected echo. Do nothing to prevent overwriting our state.
-            ESP_LOGD(TAG, "Ignoring tsetpoint echo from AC: %.1f", ac_setpoint);
             break;
         }
-
-        // If it's not an echo, it's a new value from the remote.
-        // Update the target temperature and reset the offset.
-        ESP_LOGI(TAG, "Remote setpoint change detected. Updating target to %.1f", ac_setpoint);
         this->target_temperature = ac_setpoint;
         this->temperature_offset_ = 0.0;
         this->publish_state();
         break;
     }
     default:
-        // skip these values as they are not used currently
         break;
     }
 }
@@ -230,16 +167,11 @@ void MhiClimate::update_status(ACStatus status, int value) {
 void MhiClimate::control(const climate::ClimateCall& call) {
     if (call.get_target_temperature().has_value()) {
         float target_temp = *call.get_target_temperature();
-        this->target_temperature = target_temp; // Store the user's desired temp
-
-        ESP_LOGD(TAG, "MhiClimate::control - get_target_temperature - New target_temperature: %.1f°C", target_temp);
-
-        const float ac_unit_min_temp = 18.0f; // Hardware minimum for the AC unit
-
+        this->target_temperature = target_temp; 
+        const float ac_unit_min_temp = 18.0f; 
         float setpoint = ceil(target_temp);
         if (setpoint < ac_unit_min_temp)
             setpoint = ac_unit_min_temp;
-
         float offset = 0.0;
         if (this->temperature_offset_enabled_) {
             offset = setpoint - target_temp;
@@ -247,13 +179,10 @@ void MhiClimate::control(const climate::ClimateCall& call) {
         this->platform_->set_offset(offset);
         this->temperature_offset_ = offset;
         this->platform_->set_tsetpoint(setpoint);
-
-        ESP_LOGD(TAG, "MhiClimate::control - get_target_temperature - set_tsetpoint %f, set_offset %f", setpoint, offset);
     }
 
     if (call.get_mode().has_value()) {
         this->mode = *call.get_mode();
-        
         this->power_ = power_on;
         switch (this->mode) {
         case climate::CLIMATE_MODE_OFF:
@@ -261,9 +190,23 @@ void MhiClimate::control(const climate::ClimateCall& call) {
             break;
         case climate::CLIMATE_MODE_COOL:
             mode_ = mode_cool;
+            this->platform_->set_vanes(vanes_1);  // SMART LOGIC: Coanda (Ganz Oben)
+            
+            // FIX: Verhindert, dass Home Assistant beim Moduswechsel ungewollt alte Zustände mitsendet
+            if (this->swing_mode != climate::CLIMATE_SWING_OFF) {
+                this->swing_mode = climate::CLIMATE_SWING_OFF;
+                this->publish_state();
+            }
             break;
+            
         case climate::CLIMATE_MODE_HEAT:
             mode_ = mode_heat;
+            this->platform_->set_vanes(vanes_5);  // SMART LOGIC: Konvektion (Ganz Unten)            
+            // FIX: Verhindert, dass Home Assistant beim Moduswechsel ungewollt alte Zustände mitsendet
+            if (this->swing_mode != climate::CLIMATE_SWING_OFF) {
+                this->swing_mode = climate::CLIMATE_SWING_OFF;
+                this->publish_state();
+            }
             break;
         case climate::CLIMATE_MODE_DRY:
             mode_ = mode_dry;
@@ -276,33 +219,20 @@ void MhiClimate::control(const climate::ClimateCall& call) {
             mode_ = mode_auto;
             break;
         }
-
         this->platform_->set_power(power_);
         this->platform_->set_mode(mode_);
     }
 
     if (call.get_fan_mode().has_value()) {
         this->fan_mode = *call.get_fan_mode();
-
         switch (*this->fan_mode) {
-        case climate::CLIMATE_FAN_QUIET:
-            fan_ = 0;
-            break;
-        case climate::CLIMATE_FAN_LOW:
-            fan_ = 1;
-            break;
-        case climate::CLIMATE_FAN_MEDIUM:
-            fan_ = 2;
-            break;
-        case climate::CLIMATE_FAN_HIGH:
-            fan_ = 6;
-            break;
+        case climate::CLIMATE_FAN_QUIET: fan_ = 0; break;
+        case climate::CLIMATE_FAN_LOW: fan_ = 1; break;
+        case climate::CLIMATE_FAN_MEDIUM: fan_ = 2; break;
+        case climate::CLIMATE_FAN_HIGH: fan_ = 6; break;
         case climate::CLIMATE_FAN_AUTO:
-        default:
-            fan_ = 7;
-            break;
+        default: fan_ = 7; break;
         }
-
         this->platform_->set_fan(fan_);
     }
 
@@ -322,29 +252,27 @@ void MhiClimate::control(const climate::ClimateCall& call) {
             break;
         default:
         case climate::CLIMATE_SWING_BOTH:
-            // vanes_ = vanes_swing;
             vanesLR_ = vanesLR_swing;
             vanes_ = vanes_swing;
             break;
         }
-        this->platform_->set_vanesLR(vanesLR_); // Set vanesLR to swing
-        this->platform_->set_vanes(vanes_); // Set vanes to swing
+        this->platform_->set_vanesLR(vanesLR_); 
+        this->platform_->set_vanes(vanes_); 
     }
 
     this->publish_state();
 }
-
 
 /// Return the traits of this controller.
 #if ESPHOME_VERSION_CODE >= VERSION_CODE(2025, 11, 0)
 climate::ClimateTraits MhiClimate::traits() {
     auto traits = climate::ClimateTraits();
     traits.add_feature_flags(climate::CLIMATE_SUPPORTS_CURRENT_TEMPERATURE);
-    traits.set_supported_modes({ climate::CLIMATE_MODE_OFF, climate::CLIMATE_MODE_HEAT_COOL, climate::CLIMATE_MODE_COOL, climate::CLIMATE_MODE_HEAT, climate::CLIMATE_MODE_DRY,climate::CLIMATE_MODE_FAN_ONLY });
+    traits.set_supported_modes({ climate::CLIMATE_MODE_OFF, climate::CLIMATE_MODE_HEAT_COOL, climate::CLIMATE_MODE_COOL, climate::CLIMATE_MODE_HEAT, climate::CLIMATE_MODE_DRY, climate::CLIMATE_MODE_FAN_ONLY });
     traits.set_visual_min_temperature(this->minimum_temperature_);
     traits.set_visual_max_temperature(this->maximum_temperature_);
     traits.set_visual_temperature_step(this->temperature_step_);
-    traits.set_supported_fan_modes({ climate::CLIMATE_FAN_AUTO, climate::CLIMATE_FAN_QUIET, CLIMATE_FAN_LOW, climate::CLIMATE_FAN_MEDIUM, climate::CLIMATE_FAN_HIGH });
+    traits.set_supported_fan_modes({ climate::CLIMATE_FAN_AUTO, climate::CLIMATE_FAN_QUIET, climate::CLIMATE_FAN_LOW, climate::CLIMATE_FAN_MEDIUM, climate::CLIMATE_FAN_HIGH });
     traits.set_supported_swing_modes({ climate::CLIMATE_SWING_OFF, climate::CLIMATE_SWING_BOTH, climate::CLIMATE_SWING_VERTICAL, climate::CLIMATE_SWING_HORIZONTAL });
     return traits;
 }
@@ -352,17 +280,16 @@ climate::ClimateTraits MhiClimate::traits() {
 climate::ClimateTraits MhiClimate::traits() {
     auto traits = climate::ClimateTraits();
     traits.set_supports_current_temperature(true);
-    traits.set_supported_modes({ CLIMATE_MODE_OFF, CLIMATE_MODE_HEAT_COOL, CLIMATE_MODE_COOL, CLIMATE_MODE_HEAT, CLIMATE_MODE_DRY, CLIMATE_MODE_FAN_ONLY });
+    traits.set_supported_modes({ climate::CLIMATE_MODE_OFF, climate::CLIMATE_MODE_HEAT_COOL, climate::CLIMATE_MODE_COOL, climate::CLIMATE_MODE_HEAT, climate::CLIMATE_MODE_DRY, climate::CLIMATE_MODE_FAN_ONLY });
     traits.set_supports_two_point_target_temperature(false);
     traits.set_visual_min_temperature(this->minimum_temperature_);
     traits.set_visual_max_temperature(this->maximum_temperature_);
     traits.set_visual_temperature_step(this->temperature_step_);
-    traits.set_supported_fan_modes({ CLIMATE_FAN_AUTO, CLIMATE_FAN_QUIET, CLIMATE_FAN_LOW, CLIMATE_FAN_MEDIUM, CLIMATE_FAN_HIGH });
-    traits.set_supported_swing_modes({ CLIMATE_SWING_OFF, CLIMATE_SWING_BOTH, CLIMATE_SWING_VERTICAL, CLIMATE_SWING_HORIZONTAL });
+    traits.set_supported_fan_modes({ climate::CLIMATE_FAN_AUTO, climate::CLIMATE_FAN_QUIET, climate::CLIMATE_FAN_LOW, climate::CLIMATE_FAN_MEDIUM, climate::CLIMATE_FAN_HIGH });
+    traits.set_supported_swing_modes({ climate::CLIMATE_SWING_OFF, climate::CLIMATE_SWING_BOTH, climate::CLIMATE_SWING_VERTICAL, climate::CLIMATE_SWING_HORIZONTAL });
     return traits;
 }
 #endif
-
 
 } //namespace mhi
 } //namespace esphome

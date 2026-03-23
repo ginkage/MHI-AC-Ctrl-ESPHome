@@ -64,7 +64,7 @@ async def to_code(config):
             cv.Required(CONF_VANES_POSITION): cv.templatable(cv.int_range(min=1, max=5)),
         }
     ),
-    synchronous=True,
+    synchronous=False,
 )
 async def set_vertical_vanes_to_code(config, action_id, template_arg, args):
     mhi = await cg.get_variable(config[CONF_MHI_AC_CTRL_ID])
@@ -82,7 +82,7 @@ async def set_vertical_vanes_to_code(config, action_id, template_arg, args):
             cv.Required(CONF_VANES_POSITION): cv.templatable(cv.int_range(min=1, max=8)),
         }
     ),
-    synchronous=True,
+    synchronous=False,
 )
 async def set_horizontal_vanes_to_code(config, action_id, template_arg, args):
     mhi = await cg.get_variable(config[CONF_MHI_AC_CTRL_ID])
@@ -90,7 +90,6 @@ async def set_horizontal_vanes_to_code(config, action_id, template_arg, args):
     template_ = await cg.templatable(config[CONF_VANES_POSITION], args, int)
     cg.add(var.set_position(template_))
     return var
-
 
 @automation.register_action(
     "climate.mhi.set_external_room_temperature",
@@ -101,11 +100,11 @@ async def set_horizontal_vanes_to_code(config, action_id, template_arg, args):
             cv.Required(CONF_TEMPERATURE): cv.templatable(cv.float_),
         }
     ),
-    synchronous=True,
+    synchronous=False,
 )
 async def set_external_room_temperature_to_code(config, action_id, template_arg, args):
     mhi = await cg.get_variable(config[CONF_MHI_AC_CTRL_ID])
     var = cg.new_Pvariable(action_id, template_arg, mhi)
     template_ = await cg.templatable(config[CONF_TEMPERATURE], args, float)
     cg.add(var.set_temperature(template_))
-    return var
+    return va
