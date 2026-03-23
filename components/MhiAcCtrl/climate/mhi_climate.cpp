@@ -190,11 +190,24 @@ void MhiClimate::control(const climate::ClimateCall& call) {
             break;
         case climate::CLIMATE_MODE_COOL:
             mode_ = mode_cool;
-            this->platform_->set_vanes(vanes_1); // SMART LOGIC: Coanda (Oben)
+            this->platform_->set_vanes(vanes_1);  // SMART LOGIC: Coanda (Ganz Oben)
+            
+            // FIX: Verhindert, dass Home Assistant beim Moduswechsel ungewollt alte Zustände mitsendet
+            if (this->swing_mode != climate::CLIMATE_SWING_OFF) {
+                this->swing_mode = climate::CLIMATE_SWING_OFF;
+                this->publish_state();
+            }
             break;
+            
         case climate::CLIMATE_MODE_HEAT:
             mode_ = mode_heat;
-            this->platform_->set_vanes(vanes_5); // SMART LOGIC: Konvektion (Unten)
+            this->platform_->set_vanes(vanes_5);  // SMART LOGIC: Konvektion (Ganz Unten)
+            
+            // FIX: Verhindert, dass Home Assistant beim Moduswechsel ungewollt alte Zustände mitsendet
+            if (this->swing_mode != climate::CLIMATE_SWING_OFF) {
+                this->swing_mode = climate::CLIMATE_SWING_OFF;
+                this->publish_state();
+            }
             break;
         case climate::CLIMATE_MODE_DRY:
             mode_ = mode_dry;
