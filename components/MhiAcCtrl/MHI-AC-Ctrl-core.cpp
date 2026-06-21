@@ -236,22 +236,32 @@ static byte MOSI_frame[33];
   //Serial.println();
   //Serial.print(F("MISO:"));
   // read/write MOSI/MISO frame
-  for (uint8_t byte_cnt = 0; byte_cnt < frameSize; byte_cnt++) { // read and write a data packet of 20 bytes
-    //Serial.printf("x%02x ", MISO_frame[byte_cnt]);
+  // On ESP8266, digitalRead/Write are ~half an SPI clock period too slow and tip
+  // timing-marginal units past the error threshold (issue #191) — drive/read the
+  // pins through direct GPIO registers instead. GPIO0..15 only (D1-mini wiring);
+  // ESP32 keeps digitalRead/Write unchanged.
+#ifdef ESP8266
+  const uint32_t sck_mask = (1UL << SCK_PIN), mosi_mask = (1UL << MOSI_PIN), miso_mask = (1UL << MISO_PIN);
+  #define MHI_SCK_HIGH      (GPI & sck_mask)
+  #define MHI_MOSI_HIGH     (GPI & mosi_mask)
+  #define MHI_MISO_WRITE(v) do { if (v) GPOS = miso_mask; else GPOC = miso_mask; } while (0)
+#else
+  #define MHI_SCK_HIGH      digitalRead(SCK_PIN)
+  #define MHI_MOSI_HIGH     digitalRead(MOSI_PIN)
+  #define MHI_MISO_WRITE(v) digitalWrite(MISO_PIN, (v))
+#endif
+  for (uint8_t byte_cnt = 0; byte_cnt < frameSize; byte_cnt++) { // read and write a data packet
     MOSI_byte = 0;
     byte bit_mask = 1;
     for (uint8_t bit_cnt = 0; bit_cnt < 8; bit_cnt++) { // read and write 1 byte
-      SCKMillis = millis();
-      while (digitalRead(SCK_PIN)) { // wait for falling edge
-        if (millis() - startMillis > max_time_ms)
+      uint16_t guard = 0;
+      while (MHI_SCK_HIGH) { // wait for falling edge (millis() kept out of the spin)
+        if (++guard == 0 && millis() - startMillis > max_time_ms)
           return err_msg_timeout_SCK_high;       // SCK stuck@ high error detection
-      } 
-      if ((MISO_frame[byte_cnt] & bit_mask) > 0)
-        digitalWrite(MISO_PIN, 1);
-      else
-        digitalWrite(MISO_PIN, 0);
-      while (!digitalRead(SCK_PIN)) {} // wait for rising edge
-      if (digitalRead(MOSI_PIN))
+      }
+      MHI_MISO_WRITE((MISO_frame[byte_cnt] & bit_mask) > 0);
+      while (!MHI_SCK_HIGH) {} // wait for rising edge
+      if (MHI_MOSI_HIGH)
         MOSI_byte += bit_mask;
       bit_mask = bit_mask << 1;
     }
@@ -260,6 +270,9 @@ static byte MOSI_frame[33];
       MOSI_frame[byte_cnt] = MOSI_byte;
     }
   }
+#undef MHI_SCK_HIGH
+#undef MHI_MOSI_HIGH
+#undef MHI_MISO_WRITE
 
   checksum = calc_checksum(MOSI_frame);
   if (((MOSI_frame[SB0] & 0xfe) != 0x6c) | (MOSI_frame[SB1] != 0x80) | (MOSI_frame[SB2] != 0x04))
