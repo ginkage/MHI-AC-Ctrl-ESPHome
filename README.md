@@ -189,8 +189,6 @@ command_worker: true
 
 The first testing point deliberately keeps RX synchronisation and decoding in the ESPHome main loop. Classified RX processing will be added to the same worker in a later stage; separate `rx_worker` and `tx_worker` settings are no longer used.
 
-See [`COMMAND_WORKER_V2_PLAN.md`](COMMAND_WORKER_V2_PLAN.md) for the migration sequence and hardware acceptance gates. See [`DIAGNOSTICS.md`](DIAGNOSTICS.md#command-worker-diagnostics) for the counters to monitor.
-
 ## Frame size
 
 Use `frame_size: 20` for older units that do not support the larger frame layout.

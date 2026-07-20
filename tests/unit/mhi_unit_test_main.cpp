@@ -33,6 +33,7 @@ int main() {
   command_coordinator_ignores_background_and_stale_completions();
   command_coordinator_blocks_prepare_while_in_flight_or_confirming();
   command_coordinator_preserves_newer_same_field_after_tx_failure();
+  command_coordinator_preserves_newer_same_field_after_stage_rejection();
   command_coordinator_restores_failed_field_without_losing_new_unrelated_command();
   command_coordinator_assigns_increasing_generations();
   tx_completion_queue_preserves_order_and_reports_overwrite();

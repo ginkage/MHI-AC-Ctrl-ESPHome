@@ -50,14 +50,7 @@ void command_coordinator_starts_confirmation_after_tx_completion() {
   command.power_set = true;
   command.power = true;
 
-  // Commands are encoded only on the command half of the alternating frame.
-  EXPECT_TRUE(coordinator.prepare_next(command, runtime, config, frame, result, envelope));
-  if (!envelope.is_command()) {
-    EXPECT_TRUE(coordinator.prepare_next(command, runtime, config, frame, result, envelope));
-  }
-
-  EXPECT_TRUE(envelope.is_command());
-  const MhiCommandState before{};
+  const MhiTxEnvelope envelope = prepare_command_envelope(coordinator, command, runtime, config, before);
   coordinator.on_stage_result(envelope, before, command, true);
   EXPECT_TRUE(coordinator.has_command_in_flight());
   EXPECT_EQ(coordinator.pending_mask(), 0U);
@@ -366,6 +359,28 @@ void command_coordinator_preserves_newer_same_field_after_tx_failure() {
   EXPECT_TRUE(coordinator.on_tx_completion(completion_for(envelope, false, 900U), command));
   EXPECT_TRUE(command.fan_set);
   EXPECT_EQ(command.fan, 6U);
+}
+
+
+void command_coordinator_preserves_newer_same_field_after_stage_rejection() {
+  MhiCommandCoordinator coordinator{};
+  MhiCommandState command{};
+  MhiTxRuntime runtime{};
+  MhiTxBuildConfig config{};
+  MhiCommandState before{};
+
+  command.target_temp_set = true;
+  command.target_temp_c = 22.0F;
+  const MhiTxEnvelope envelope = prepare_command_envelope(coordinator, command, runtime, config, before);
+
+  // A newer request arrives after build but before the transport accepts the frame.
+  command.target_temp_set = true;
+  command.target_temp_c = 24.0F;
+
+  coordinator.on_stage_result(envelope, before, command, false);
+  EXPECT_TRUE(command.target_temp_set);
+  expect_near(command.target_temp_c, 24.0F);
+  EXPECT_FALSE(coordinator.has_command_in_flight());
 }
 
 void command_coordinator_restores_failed_field_without_losing_new_unrelated_command() {
