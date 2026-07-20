@@ -50,13 +50,27 @@ void command_coordinator_starts_confirmation_after_tx_completion() {
   command.power_set = true;
   command.power = true;
 
-  const MhiTxEnvelope envelope = prepare_command_envelope(coordinator, command, runtime, config, before);
+  // Commands are encoded only on the command half of the alternating frame.
+  EXPECT_TRUE(coordinator.prepare_next(command, runtime, config, frame, result, envelope));
+  if (!envelope.is_command()) {
+    EXPECT_TRUE(coordinator.prepare_next(command, runtime, config, frame, result, envelope));
+  }
+
   EXPECT_TRUE(envelope.is_command());
+  const MhiCommandState before{};
   coordinator.on_stage_result(envelope, before, command, true);
   EXPECT_TRUE(coordinator.has_command_in_flight());
   EXPECT_EQ(coordinator.pending_mask(), 0U);
 
-  EXPECT_TRUE(coordinator.on_tx_completion(completion_for(envelope, true, 100U), command));
+  MhiTxCompletion completion{};
+  completion.generation = envelope.generation;
+  completion.kind = envelope.kind;
+  completion.command_mask = envelope.command_mask;
+  completion.intent = envelope.intent;
+  completion.success = true;
+  completion.completed_at_ms = 100U;
+
+  EXPECT_TRUE(coordinator.on_tx_completion(completion, command));
   EXPECT_FALSE(coordinator.has_command_in_flight());
   EXPECT_EQ(coordinator.pending_mask(), MHI_COMMAND_POWER);
   EXPECT_EQ(coordinator.pending_age_ms(150U), 50U);
@@ -67,12 +81,19 @@ void command_coordinator_restores_command_when_stage_is_rejected() {
   MhiCommandState command{};
   MhiTxRuntime runtime{};
   MhiTxBuildConfig config{};
-  MhiCommandState before{};
+  MhiFrameBuffer frame{};
+  MhiTxBuildResult result{};
+  MhiTxEnvelope envelope{};
 
   command.target_temp_set = true;
   command.target_temp_c = 23.5F;
+  const MhiCommandState before = command;
 
-  const MhiTxEnvelope envelope = prepare_command_envelope(coordinator, command, runtime, config, before);
+  EXPECT_TRUE(coordinator.prepare_next(command, runtime, config, frame, result, envelope));
+  if (!envelope.is_command()) {
+    EXPECT_TRUE(coordinator.prepare_next(command, runtime, config, frame, result, envelope));
+  }
+
   EXPECT_TRUE(envelope.is_command());
   EXPECT_FALSE(command.target_temp_set);
   coordinator.on_stage_result(envelope, before, command, false);
@@ -87,16 +108,31 @@ void command_coordinator_requeues_failed_command() {
   MhiCommandState command{};
   MhiTxRuntime runtime{};
   MhiTxBuildConfig config{};
-  MhiCommandState before{};
+  MhiFrameBuffer frame{};
+  MhiTxBuildResult result{};
+  MhiTxEnvelope envelope{};
 
   command.fan_set = true;
   command.fan = 6U;
+  MhiCommandState before = command;
 
-  const MhiTxEnvelope envelope = prepare_command_envelope(coordinator, command, runtime, config, before);
+  EXPECT_TRUE(coordinator.prepare_next(command, runtime, config, frame, result, envelope));
+  if (!envelope.is_command()) {
+    EXPECT_TRUE(coordinator.prepare_next(command, runtime, config, frame, result, envelope));
+  }
+  EXPECT_TRUE(envelope.is_command());
   coordinator.on_stage_result(envelope, before, command, true);
   EXPECT_FALSE(command.fan_set);
 
-  EXPECT_TRUE(coordinator.on_tx_completion(completion_for(envelope, false, 200U), command));
+  MhiTxCompletion completion{};
+  completion.generation = envelope.generation;
+  completion.kind = envelope.kind;
+  completion.command_mask = envelope.command_mask;
+  completion.intent = envelope.intent;
+  completion.success = false;
+  completion.completed_at_ms = 200U;
+
+  EXPECT_TRUE(coordinator.on_tx_completion(completion, command));
   EXPECT_TRUE(command.fan_set);
   EXPECT_EQ(command.fan, 6U);
   EXPECT_EQ(coordinator.pending_mask(), 0U);
