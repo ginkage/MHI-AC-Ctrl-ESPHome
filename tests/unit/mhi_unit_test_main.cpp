@@ -22,6 +22,21 @@ int main() {
   duplex_tx_mailbox_latest_stage_replaces_unclaimed_frame();
   duplex_tx_mailbox_rejects_invalid_frames_without_losing_pending_data();
 
+  command_coordinator_starts_confirmation_after_tx_completion();
+  command_coordinator_restores_command_when_stage_is_rejected();
+  command_coordinator_requeues_failed_command();
+  command_coordinator_restores_vertical_vane_after_stage_rejection();
+  command_coordinator_restores_horizontal_vane_after_tx_failure();
+  command_coordinator_combines_vertical_and_horizontal_vanes();
+  command_coordinator_preserves_3d_auto_louver_context();
+  command_coordinator_restores_3d_auto_after_tx_failure();
+  command_coordinator_ignores_background_and_stale_completions();
+  command_coordinator_blocks_prepare_while_in_flight_or_confirming();
+  command_coordinator_preserves_newer_same_field_after_tx_failure();
+  command_coordinator_restores_failed_field_without_losing_new_unrelated_command();
+  command_coordinator_assigns_increasing_generations();
+  tx_completion_queue_preserves_order_and_reports_overwrite();
+
   frame_classifier_classifies_status_opdata_and_extended_status();
   frame_catalog_overwrites_repeated_status_with_latest();
   frame_catalog_keeps_opdata_slots_separate_by_key();

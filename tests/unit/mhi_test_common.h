@@ -12,6 +12,7 @@
 #include "mhi_checksum.h"
 #include "mhi_command.h"
 #include "mhi_command_confirmation.h"
+#include "mhi_command_coordinator.h"
 #include "mhi_defs.h"
 #include "mhi_diag.h"
 #include "mhi_duplex_tx_mailbox.h"
@@ -201,6 +202,21 @@ void frame_queue_overwrites_oldest_complete_frame();
 void duplex_tx_mailbox_stages_and_consumes_20_byte_frame();
 void duplex_tx_mailbox_latest_stage_replaces_unclaimed_frame();
 void duplex_tx_mailbox_rejects_invalid_frames_without_losing_pending_data();
+
+void command_coordinator_starts_confirmation_after_tx_completion();
+void command_coordinator_restores_command_when_stage_is_rejected();
+void command_coordinator_requeues_failed_command();
+void command_coordinator_restores_vertical_vane_after_stage_rejection();
+void command_coordinator_restores_horizontal_vane_after_tx_failure();
+void command_coordinator_combines_vertical_and_horizontal_vanes();
+void command_coordinator_preserves_3d_auto_louver_context();
+void command_coordinator_restores_3d_auto_after_tx_failure();
+void command_coordinator_ignores_background_and_stale_completions();
+void command_coordinator_blocks_prepare_while_in_flight_or_confirming();
+void command_coordinator_preserves_newer_same_field_after_tx_failure();
+void command_coordinator_restores_failed_field_without_losing_new_unrelated_command();
+void command_coordinator_assigns_increasing_generations();
+void tx_completion_queue_preserves_order_and_reports_overwrite();
 
 void frame_classifier_classifies_status_opdata_and_extended_status();
 void frame_catalog_overwrites_repeated_status_with_latest();
