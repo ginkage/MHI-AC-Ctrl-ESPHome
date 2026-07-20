@@ -16,7 +16,9 @@ CONFIGS=(
   "tests/components/MhiAcCtrl/test.esp32-s3-idf-rmt-spi-rx-fast-gpio-tx.yaml"
   "tests/components/MhiAcCtrl/test.esp32-s3-idf-rmt-cs-spi.yaml"
   "tests/components/MhiAcCtrl/test.esp32-s3-idf-rmt-cs-spi-frame33.yaml"
+  "tests/components/MhiAcCtrl/test.esp32-s3-idf-rmt-cs-spi-command-worker.yaml"
   "tests/components/MhiAcCtrl/test.esp32-idf-external-clock-rx.yaml"
+  "tests/components/MhiAcCtrl/test.esp32-idf-external-clock-rx-command-worker.yaml"
   "tests/components/MhiAcCtrl/test.esp32-c3-idf.yaml"
 )
 

@@ -46,9 +46,7 @@ void MhiFanSpeedSelect::control(const std::string& value) {
     return;
   }
 
-  auto& command = this->parent_->state().command();
-  command.fan_set = true;
-  command.fan = fan_code;
+  this->parent_->request_fan_command(fan_code);
 
   ESP_LOGD(TAG, "Fan speed command staged: %s; waiting for confirmed MOSI state", value.c_str());
 }

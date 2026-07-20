@@ -52,7 +52,6 @@ void MhiClimate::control(const climate::ClimateCall& call) {
     return;
   }
 
-  auto& command = this->parent_->state().command();
   bool had_change = false;
 
   if (call.get_target_temperature().has_value()) {
@@ -76,9 +75,7 @@ void MhiClimate::control(const climate::ClimateCall& call) {
       this->temperature_offset_ = 0.0f;
     }
 
-    command.target_temp_set = true;
-    command.target_temp_c = ac_target;
-
+    this->parent_->request_target_temperature_command(ac_target);
     had_change = true;
 
     ESP_LOGD(TAG, "Requested target %.1f°C, AC setpoint %.1f°C, offset %.1f°C", requested_target, ac_target,
@@ -89,14 +86,10 @@ void MhiClimate::control(const climate::ClimateCall& call) {
     const auto requested_mode = *call.get_mode();
 
     if (requested_mode == climate::CLIMATE_MODE_OFF) {
-      command.power_set = true;
-      command.power = false;
+      this->parent_->request_power_command(false);
     } else {
-      command.power_set = true;
-      command.power = true;
-
-      command.mode_set = true;
-      command.mode = this->mode_to_mhi_(requested_mode);
+      this->parent_->request_power_command(true);
+      this->parent_->request_mode_command(this->mode_to_mhi_(requested_mode));
     }
 
     had_change = true;
@@ -107,8 +100,7 @@ void MhiClimate::control(const climate::ClimateCall& call) {
     uint8_t fan_code = 0U;
 
     if (this->fan_to_mhi_(requested_fan, fan_code)) {
-      command.fan_set = true;
-      command.fan = fan_code;
+      this->parent_->request_fan_command(fan_code);
       had_change = true;
     } else {
       ESP_LOGW(TAG, "Ignoring unsupported fan mode for configured fan profile");
@@ -180,34 +172,24 @@ void MhiClimate::apply_swing_command_(climate::ClimateSwingMode swing) {
     return;
   }
 
-  auto& command = this->parent_->state().command();
-
   switch (swing) {
     case climate::CLIMATE_SWING_OFF:
-      command.vertical_vane_set = true;
-      command.vertical_vane = this->last_vertical_vane_position_;
-
-      command.horizontal_vane_set = true;
-      command.horizontal_vane = this->last_horizontal_vane_position_;
+      this->parent_->request_vertical_vane_command(this->last_vertical_vane_position_);
+      this->parent_->request_horizontal_vane_command(this->last_horizontal_vane_position_);
       break;
 
     case climate::CLIMATE_SWING_VERTICAL:
-      command.vertical_vane_set = true;
-      command.vertical_vane = 5U;  // TX builder treats 5 as vertical swing.
+      this->parent_->request_vertical_vane_command(5U);  // TX builder treats 5 as vertical swing.
       break;
 
     case climate::CLIMATE_SWING_HORIZONTAL:
-      command.horizontal_vane_set = true;
-      command.horizontal_vane = 8U;  // TX builder treats 8 as horizontal swing.
+      this->parent_->request_horizontal_vane_command(8U);  // TX builder treats 8 as horizontal swing.
       break;
 
     case climate::CLIMATE_SWING_BOTH:
     default:
-      command.vertical_vane_set = true;
-      command.vertical_vane = 5U;
-
-      command.horizontal_vane_set = true;
-      command.horizontal_vane = 8U;
+      this->parent_->request_vertical_vane_command(5U);
+      this->parent_->request_horizontal_vane_command(8U);
       break;
   }
 }

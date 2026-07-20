@@ -57,7 +57,8 @@ class MhiRmtCsSpiTransport final : public IMhiDuplexTransport {
   void loop() override;
   void shutdown() override;
   std::size_t read(uint8_t* dst, std::size_t max_len) override;
-  bool send(const uint8_t* data, std::size_t len) override;
+  bool send(const MhiTxEnvelope& envelope) override;
+  bool take_tx_completion(MhiTxCompletion& completion) override;
 
   const char* name() const override {
     return "rmt_cs_spi";
@@ -81,8 +82,7 @@ class MhiRmtCsSpiTransport final : public IMhiDuplexTransport {
     spi_slave_transaction_t transaction{};
     uint8_t* rx_buffer{nullptr};
     uint8_t* tx_buffer{nullptr};
-    std::size_t tx_len{0U};
-    uint32_t tx_generation{0U};
+    MhiTxEnvelope tx_envelope{};
   };
 
   static bool rmt_receive_done_callback_(rmt_channel_handle_t channel, const rmt_rx_done_event_data_t* event_data,
@@ -106,6 +106,7 @@ class MhiRmtCsSpiTransport final : public IMhiDuplexTransport {
   std::array<TransactionSlot, kTransactionQueueDepth> transaction_slots_{};
   MhiFrameQueue<kCompletedFrameQueueDepth> completed_frames_{};
   MhiDuplexTxMailbox tx_mailbox_{};
+  MhiTxCompletionQueue<8U> tx_completions_{};
   mutable portMUX_TYPE mux_ = portMUX_INITIALIZER_UNLOCKED;
 
   rmt_channel_handle_t rmt_channel_{nullptr};

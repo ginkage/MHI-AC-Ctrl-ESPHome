@@ -52,24 +52,43 @@ void MhiAcCtrl::apply_external_room_temperature_(float value) {
     return;
   }
 
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
+  }
   auto& command = this->state_.command();
   command.room_temp_override_raw = static_cast<uint8_t>((value * 4.0f) + 61.0f);
   command.room_temp_override_set = true;
+  const uint8_t raw = command.room_temp_override_raw;
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreGive(this->command_mutex_);
+  }
   this->last_external_room_temperature_c_ = value;
+  this->notify_command_worker_();
 
   ESP_LOGD(DIAG_TAG, "external room temperature staged: %.2fC raw=0x%02x", value,
-           static_cast<unsigned int>(command.room_temp_override_raw));
+           static_cast<unsigned int>(raw));
 }
 
 void MhiAcCtrl::clear_external_room_temperature_() {
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
+  }
+
   if (std::isnan(this->last_external_room_temperature_c_) && this->tx_runtime_.room_temp_override_raw == 0xFFU) {
+    if (this->command_mutex_ != nullptr) {
+      xSemaphoreGive(this->command_mutex_);
+    }
     return;
   }
 
   auto& command = this->state_.command();
   command.room_temp_override_raw = 0xFFU;
   command.room_temp_override_set = true;
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreGive(this->command_mutex_);
+  }
   this->last_external_room_temperature_c_ = NAN;
+  this->notify_command_worker_();
 
   ESP_LOGD(DIAG_TAG, "external room temperature cleared; using indoor-unit sensor");
 }
@@ -91,6 +110,74 @@ void MhiAcCtrl::check_external_room_temperature_timeout_() {
   ESP_LOGD(DIAG_TAG, "external room temperature timed out after %ds", this->room_temp_api_timeout_s_);
 }
 
+void MhiAcCtrl::request_power_command(bool power) {
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
+  }
+  auto& command = this->state_.command();
+  command.power_set = true;
+  command.power = power;
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreGive(this->command_mutex_);
+  }
+  this->notify_command_worker_();
+}
+
+void MhiAcCtrl::request_mode_command(uint8_t mode) {
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
+  }
+  auto& command = this->state_.command();
+  command.mode_set = true;
+  command.mode = mode;
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreGive(this->command_mutex_);
+  }
+  this->notify_command_worker_();
+}
+
+void MhiAcCtrl::request_fan_command(uint8_t fan) {
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
+  }
+  auto& command = this->state_.command();
+  command.fan_set = true;
+  command.fan = fan;
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreGive(this->command_mutex_);
+  }
+  this->notify_command_worker_();
+}
+
+void MhiAcCtrl::request_target_temperature_command(float target_temp_c) {
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
+  }
+  auto& command = this->state_.command();
+  command.target_temp_set = true;
+  command.target_temp_c = target_temp_c;
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreGive(this->command_mutex_);
+  }
+  this->notify_command_worker_();
+}
+
+void MhiAcCtrl::request_vertical_vane_command(uint8_t vertical_vane) {
+  if (vertical_vane < 1U || vertical_vane > 5U) {
+    return;
+  }
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
+  }
+  auto& command = this->state_.command();
+  command.vertical_vane_set = true;
+  command.vertical_vane = vertical_vane;
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreGive(this->command_mutex_);
+  }
+  this->notify_command_worker_();
+}
+
 bool MhiAcCtrl::request_horizontal_vane_command(uint8_t horizontal_vane) {
   if (horizontal_vane < 1U || horizontal_vane > 8U) {
     ESP_LOGW(DIAG_TAG, "command: unsupported horizontal vane request value=%u",
@@ -98,59 +185,85 @@ bool MhiAcCtrl::request_horizontal_vane_command(uint8_t horizontal_vane) {
     return false;
   }
 
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
+  }
+
   auto& command = this->state_.command();
   const uint32_t queued_mask = command.pending_command_mask();
-  const uint32_t pending_mask = this->command_confirmation_.pending_mask();
-  const auto& pending_intent = this->command_confirmation_.pending_intent();
+  const uint32_t pending_mask = this->command_coordinator_.pending_mask();
+  const auto pending_intent = this->command_coordinator_.pending_intent();
 
+  bool accepted = true;
   if (command.horizontal_vane_set && command.horizontal_vane == horizontal_vane) {
-    ESP_LOGD(DIAG_TAG, "command: duplicate queued horizontal vane request ignored value=%u",
+    accepted = false;
+  } else if ((pending_mask & MHI_COMMAND_HORIZONTAL_VANE) != 0U &&
+             pending_intent.horizontal_vane == horizontal_vane) {
+    accepted = false;
+  } else {
+    const bool extended_louver_busy = ((queued_mask | pending_mask) & kNoPendingExtendedFeedbackMask) != 0U;
+    if (!extended_louver_busy && this->confirmed_extended_louver_matches_horizontal_(horizontal_vane)) {
+      accepted = false;
+    }
+  }
+
+  if (accepted) {
+    command.horizontal_vane_set = true;
+    command.horizontal_vane = horizontal_vane;
+  }
+
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreGive(this->command_mutex_);
+  }
+
+  if (!accepted) {
+    ESP_LOGD(DIAG_TAG, "command: duplicate or already-confirmed horizontal vane request ignored value=%u",
              static_cast<unsigned int>(horizontal_vane));
     return false;
   }
 
-  if ((pending_mask & MHI_COMMAND_HORIZONTAL_VANE) != 0U && pending_intent.horizontal_vane == horizontal_vane) {
-    ESP_LOGD(DIAG_TAG, "command: duplicate pending horizontal vane request ignored value=%u",
-             static_cast<unsigned int>(horizontal_vane));
-    return false;
-  }
-
-  const bool extended_louver_busy = ((queued_mask | pending_mask) & kNoPendingExtendedFeedbackMask) != 0U;
-  if (!extended_louver_busy && this->confirmed_extended_louver_matches_horizontal_(horizontal_vane)) {
-    ESP_LOGD(DIAG_TAG, "command: confirmed horizontal vane request ignored value=%u",
-             static_cast<unsigned int>(horizontal_vane));
-    return false;
-  }
-
-  command.horizontal_vane_set = true;
-  command.horizontal_vane = horizontal_vane;
+  this->notify_command_worker_();
   return true;
 }
 
 bool MhiAcCtrl::request_three_d_auto_command(bool enabled) {
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
+  }
+
   auto& command = this->state_.command();
   const uint32_t queued_mask = command.pending_command_mask();
-  const uint32_t pending_mask = this->command_confirmation_.pending_mask();
-  const auto& pending_intent = this->command_confirmation_.pending_intent();
+  const uint32_t pending_mask = this->command_coordinator_.pending_mask();
+  const auto pending_intent = this->command_coordinator_.pending_intent();
 
+  bool accepted = true;
   if (command.three_d_auto_set && command.three_d_auto == enabled) {
-    ESP_LOGD(DIAG_TAG, "command: duplicate queued 3D auto request ignored state=%s", enabled ? "ON" : "OFF");
+    accepted = false;
+  } else if ((pending_mask & MHI_COMMAND_THREE_D_AUTO) != 0U && pending_intent.three_d_auto == enabled) {
+    accepted = false;
+  } else {
+    const bool extended_louver_busy = ((queued_mask | pending_mask) & kNoPendingExtendedFeedbackMask) != 0U;
+    if (!extended_louver_busy && this->confirmed_extended_louver_matches_three_d_auto_(enabled)) {
+      accepted = false;
+    }
+  }
+
+  if (accepted) {
+    command.three_d_auto_set = true;
+    command.three_d_auto = enabled;
+  }
+
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreGive(this->command_mutex_);
+  }
+
+  if (!accepted) {
+    ESP_LOGD(DIAG_TAG, "command: duplicate or already-confirmed 3D auto request ignored state=%s",
+             enabled ? "ON" : "OFF");
     return false;
   }
 
-  if ((pending_mask & MHI_COMMAND_THREE_D_AUTO) != 0U && pending_intent.three_d_auto == enabled) {
-    ESP_LOGD(DIAG_TAG, "command: duplicate pending 3D auto request ignored state=%s", enabled ? "ON" : "OFF");
-    return false;
-  }
-
-  const bool extended_louver_busy = ((queued_mask | pending_mask) & kNoPendingExtendedFeedbackMask) != 0U;
-  if (!extended_louver_busy && this->confirmed_extended_louver_matches_three_d_auto_(enabled)) {
-    ESP_LOGD(DIAG_TAG, "command: confirmed 3D auto request ignored state=%s", enabled ? "ON" : "OFF");
-    return false;
-  }
-
-  command.three_d_auto_set = true;
-  command.three_d_auto = enabled;
+  this->notify_command_worker_();
   return true;
 }
 
@@ -164,7 +277,7 @@ void MhiAcCtrl::setup() {
   ESP_LOGCONFIG(TAG, "Setting up MHI AC Ctrl rewrite skeleton");
 
   this->diagnostics_.stats().reset();
-  this->command_confirmation_.reset();
+  this->command_coordinator_.reset();
   this->frame_sync_.set_stats(&this->diagnostics_.stats());
   this->last_diag_log_ms_ = 0U;
   this->pending_extended_feedback_candidate_ = false;
@@ -190,36 +303,35 @@ void MhiAcCtrl::setup() {
   this->room_temp_api_active_ = false;
   this->room_temp_api_timeout_start_ms_ = 0U;
   this->last_external_room_temperature_c_ = NAN;
-  this->rx_worker_running_ = false;
-  this->rx_worker_stop_requested_ = false;
-  this->rx_worker_started_ = false;
-  this->rx_worker_task_ = nullptr;
-  this->rx_worker_loops_ = 0U;
-  this->rx_worker_idle_yields_ = 0U;
-  this->rx_worker_ingested_frames_ = 0U;
-  this->tx_worker_running_ = false;
-  this->tx_worker_stop_requested_ = false;
-  this->tx_worker_started_ = false;
-  this->tx_worker_task_ = nullptr;
-  this->tx_worker_loops_ = 0U;
-  this->tx_worker_idle_yields_ = 0U;
-  this->tx_worker_flush_attempts_ = 0U;
-  this->tx_worker_flush_successes_ = 0U;
+  this->command_worker_running_ = false;
+  this->command_worker_stop_requested_ = false;
+  this->command_worker_started_ = false;
+  this->command_worker_task_ = nullptr;
+  this->command_worker_wakes_ = 0U;
+  this->command_worker_service_runs_ = 0U;
+  this->command_worker_idle_timeouts_ = 0U;
+  this->command_worker_frames_staged_ = 0U;
+  this->command_worker_completions_ = 0U;
+
+  if (this->command_mutex_ == nullptr) {
+    this->command_mutex_ = xSemaphoreCreateMutex();
+  }
+  if (this->command_mutex_ == nullptr) {
+    ESP_LOGE(TAG, "Command mutex allocation failed; command_worker disabled");
+    this->command_worker_enabled_ = false;
+  }
 
   this->tx_config_.frame_size = this->frame_size_ == 33 ? kMhiFrame33Bytes : kMhiFrame20Bytes;
 
   this->tx_config_.enabled_opdata_mask = this->opdata_mask_;
 
   this->frame_sync_.reset();
-  this->rx_worker_frame_sync_.reset();
   portENTER_CRITICAL(&this->frame_catalog_mux_);
   this->frame_catalog_.reset();
   portEXIT_CRITICAL(&this->frame_catalog_mux_);
   this->frame_catalog_sequence_ = 0U;
   this->frame_sync_.set_mode(MhiFrameSyncMode::MOSI_ONLY);
   this->frame_sync_.set_33_byte_frames_enabled(this->frame_size_ == 33);
-  this->rx_worker_frame_sync_.set_mode(MhiFrameSyncMode::MOSI_ONLY);
-  this->rx_worker_frame_sync_.set_33_byte_frames_enabled(this->frame_size_ == 33);
 
   this->transport_.set_diagnostics(&this->diagnostics_);
   this->transport_.set_rmt_spi_frame_gap_us(this->rmt_spi_frame_gap_us_);
@@ -229,7 +341,7 @@ void MhiAcCtrl::setup() {
 
   this->rx_byte_critical_sections_enabled_ = true;
   this->transport_.set_rx_byte_critical_sections(this->rx_byte_critical_sections_enabled_);
-  this->transport_.set_auto_tx_flush(!this->tx_worker_enabled_);
+  this->transport_.set_auto_tx_flush(true);
 
   this->transport_.setup();
 
@@ -241,12 +353,12 @@ void MhiAcCtrl::setup() {
     this->apply_external_room_temperature_(this->external_room_temperature_sensor_->state);
   }
 
-  this->start_rx_worker_();
-  this->start_tx_worker_();
+  this->start_command_worker_();
 
-  ESP_LOGCONFIG(TAG, "RX mode: %s",
-                this->rx_worker_enabled_ ? "RX worker catalog writer" : "synchronous main-loop sampling");
-  ESP_LOGCONFIG(TAG, "TX mode: %s", this->tx_worker_enabled_ ? "worker bus-marker flusher" : "main-loop auto flush");
+  ESP_LOGCONFIG(TAG, "RX mode: synchronous main-loop sampling");
+  ESP_LOGCONFIG(TAG, "Command mode: %s",
+                this->command_worker_enabled_ ? "event-driven command worker" : "main-loop command coordinator");
+  ESP_LOGCONFIG(TAG, "TX mode: transport-owned real-time transmission");
 }
 
 void MhiAcCtrl::loop() {
@@ -254,6 +366,7 @@ void MhiAcCtrl::loop() {
   bool state_changed = false;
   uint32_t section_start_us = loop_start_us;
   this->transport_.loop();
+  this->drain_tx_completions_();
   const uint32_t transport_loop_us = elapsed_us_(section_start_us);
 
   uint32_t tx_stage_us = 0U;
@@ -261,7 +374,16 @@ void MhiAcCtrl::loop() {
 
   section_start_us = micros();
   this->check_external_room_temperature_timeout_();
-  this->build_and_stage_tx_frame_();
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
+  }
+  this->refresh_extended_louver_tx_context_();
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreGive(this->command_mutex_);
+  }
+  if (!this->command_worker_enabled_) {
+    this->service_command_pipeline_();
+  }
   tx_stage_us = elapsed_us_(section_start_us);
 
   section_start_us = micros();
@@ -305,23 +427,18 @@ void MhiAcCtrl::dump_config() {
   ESP_LOGCONFIG(TAG, "  TX driver active: %s", diag.tx_driver_name);
   ESP_LOGCONFIG(TAG, "  RX ready: %s", diag.rx_driver_ready ? "YES" : "NO");
   ESP_LOGCONFIG(TAG, "  TX ready: %s", diag.tx_driver_ready ? "YES" : "NO");
-  ESP_LOGCONFIG(TAG, "  RX mode: %s", this->rx_worker_enabled_ ? "worker catalog writer" : "main-loop sampling");
-  ESP_LOGCONFIG(TAG, "  RX worker: enabled=%s running=%s core=%d priority=%lu stack=%lu start_delay=%lums",
-                this->rx_worker_enabled_ ? "YES" : "NO", this->rx_worker_running_ ? "YES" : "NO",
-                this->rx_worker_core_id_, static_cast<unsigned long>(this->rx_worker_priority_),
-                static_cast<unsigned long>(this->rx_worker_stack_size_),
-                static_cast<unsigned long>(this->rx_worker_start_delay_ms_));
+  ESP_LOGCONFIG(TAG, "  RX mode: main-loop sampling (classified RX handoff is a later stage)");
   ESP_LOGCONFIG(TAG, "  Frame start idle: %lums", static_cast<unsigned long>(this->frame_start_idle_ms_));
   ESP_LOGCONFIG(TAG, "  RMT/SPI frame gap: %luus", static_cast<unsigned long>(this->rmt_spi_frame_gap_us_));
   ESP_LOGCONFIG(TAG, "  TX background interval: %lums", static_cast<unsigned long>(this->tx_background_interval_ms_));
   ESP_LOGCONFIG(TAG, "  TX priority: commands bypass interval, background waits for no pending confirmation");
-  ESP_LOGCONFIG(TAG, "  TX ownership: queue/flush split, auto_flush=%s",
+  ESP_LOGCONFIG(TAG, "  TX ownership: transport-owned real-time transmission, auto_flush=%s",
                 this->transport_.auto_tx_flush() ? "YES" : "NO");
-  ESP_LOGCONFIG(TAG, "  TX worker: enabled=%s running=%s core=%d priority=%lu stack=%lu start_delay=%lums",
-                this->tx_worker_enabled_ ? "YES" : "NO", this->tx_worker_running_ ? "YES" : "NO",
-                this->tx_worker_core_id_, static_cast<unsigned long>(this->tx_worker_priority_),
-                static_cast<unsigned long>(this->tx_worker_stack_size_),
-                static_cast<unsigned long>(this->tx_worker_start_delay_ms_));
+  ESP_LOGCONFIG(TAG, "  Command worker: enabled=%s running=%s core=%d priority=%lu stack=%lu start_delay=%lums",
+                this->command_worker_enabled_ ? "YES" : "NO", this->command_worker_running_ ? "YES" : "NO",
+                this->command_worker_core_id_, static_cast<unsigned long>(this->command_worker_priority_),
+                static_cast<unsigned long>(this->command_worker_stack_size_),
+                static_cast<unsigned long>(this->command_worker_start_delay_ms_));
   ESP_LOGCONFIG(TAG, "  RX byte critical sections: %s", this->rx_byte_critical_sections_enabled_ ? "YES" : "NO");
   ESP_LOGCONFIG(TAG, "  Opdata request mask: 0x%08lx", static_cast<unsigned long>(this->opdata_mask_));
   ESP_LOGCONFIG(TAG, "  Frame catalog: enabled latest-slot decode");
@@ -465,7 +582,7 @@ void MhiAcCtrl::log_runtime_diagnostics_() {
            "last_confirmed_age_ms=%lu last_timeout_age_ms=%lu",
            static_cast<unsigned long>(stats.command_confirmations),
            static_cast<unsigned long>(stats.command_confirmation_timeouts),
-           static_cast<unsigned long>(this->command_confirmation_.pending_mask()),
+           static_cast<unsigned long>(this->command_coordinator_.pending_mask()),
            static_cast<unsigned long>(stats.last_confirmed_command_mask),
            static_cast<unsigned long>(stats.last_command_confirmation_timeout_mask),
            static_cast<unsigned long>(diag.last_command_confirmation_age_ms),
@@ -493,19 +610,15 @@ void MhiAcCtrl::log_runtime_diagnostics_() {
            static_cast<unsigned long>(this->tx_background_interval_deferrals_),
            static_cast<unsigned long>(this->tx_background_confirmation_deferrals_));
 
-  ESP_LOGI(DIAG_TAG, "runtime: rx_worker enabled=%s running=%s loops=%lu ingested=%lu idle_yields=%lu",
-           this->rx_worker_enabled_ ? "YES" : "NO", this->rx_worker_running_ ? "YES" : "NO",
-           static_cast<unsigned long>(this->rx_worker_loops_),
-           static_cast<unsigned long>(this->rx_worker_ingested_frames_),
-           static_cast<unsigned long>(this->rx_worker_idle_yields_));
-
   ESP_LOGI(DIAG_TAG,
-           "runtime: tx_worker enabled=%s running=%s loops=%lu flush_attempts=%lu flush_successes=%lu idle_yields=%lu",
-           this->tx_worker_enabled_ ? "YES" : "NO", this->tx_worker_running_ ? "YES" : "NO",
-           static_cast<unsigned long>(this->tx_worker_loops_),
-           static_cast<unsigned long>(this->tx_worker_flush_attempts_),
-           static_cast<unsigned long>(this->tx_worker_flush_successes_),
-           static_cast<unsigned long>(this->tx_worker_idle_yields_));
+           "runtime: command_worker enabled=%s running=%s wakes=%lu service_runs=%lu idle_timeouts=%lu "
+           "frames_staged=%lu completions=%lu",
+           this->command_worker_enabled_ ? "YES" : "NO", this->command_worker_running_ ? "YES" : "NO",
+           static_cast<unsigned long>(this->command_worker_wakes_),
+           static_cast<unsigned long>(this->command_worker_service_runs_),
+           static_cast<unsigned long>(this->command_worker_idle_timeouts_),
+           static_cast<unsigned long>(this->command_worker_frames_staged_),
+           static_cast<unsigned long>(this->command_worker_completions_));
 
   ESP_LOGI(DIAG_TAG, "runtime: loop_us last=%lu avg=%lu max=%lu over_budget=%lu budget=%lu last_over_budget_age_ms=%lu",
            static_cast<unsigned long>(stats.loop_last_us), static_cast<unsigned long>(stats.loop_avg_us),
@@ -574,188 +687,206 @@ void MhiAcCtrl::refresh_extended_louver_tx_context_() {
   this->tx_config_.extended_louver_three_d_auto = status.three_d_auto;
 }
 
-void MhiAcCtrl::start_rx_worker_() {
-  if (!this->rx_worker_enabled_) {
+void MhiAcCtrl::start_command_worker_() {
+  if (!this->command_worker_enabled_ || this->command_worker_started_) {
     return;
   }
 
-  if (this->rx_worker_started_) {
-    return;
-  }
-
-  this->rx_worker_stop_requested_ = false;
-  this->rx_worker_running_ = false;
+  this->command_worker_stop_requested_ = false;
+  this->command_worker_running_ = false;
 
   TaskHandle_t task_handle = nullptr;
-  const BaseType_t priority = static_cast<BaseType_t>(this->rx_worker_priority_);
-  const uint32_t stack_size = this->rx_worker_stack_size_;
+  const BaseType_t priority = static_cast<BaseType_t>(this->command_worker_priority_);
+  const uint32_t stack_size = this->command_worker_stack_size_;
 
   BaseType_t created = pdFALSE;
-  if (this->rx_worker_core_id_ >= 0) {
-    created = xTaskCreatePinnedToCore(&MhiAcCtrl::rx_worker_task_entry_, "mhi_rx_worker", stack_size, this, priority,
-                                      &task_handle, static_cast<BaseType_t>(this->rx_worker_core_id_));
+  if (this->command_worker_core_id_ >= 0) {
+    created = xTaskCreatePinnedToCore(&MhiAcCtrl::command_worker_task_entry_, "mhi_command_worker", stack_size, this,
+                                      priority, &task_handle,
+                                      static_cast<BaseType_t>(this->command_worker_core_id_));
   } else {
-    created = xTaskCreate(&MhiAcCtrl::rx_worker_task_entry_, "mhi_rx_worker", stack_size, this, priority, &task_handle);
+    created = xTaskCreate(&MhiAcCtrl::command_worker_task_entry_, "mhi_command_worker", stack_size, this, priority,
+                          &task_handle);
   }
 
   if (created != pdPASS || task_handle == nullptr) {
-    ESP_LOGE(TAG, "RX worker start failed: stack=%lu priority=%lu core=%d", static_cast<unsigned long>(stack_size),
-             static_cast<unsigned long>(this->rx_worker_priority_), this->rx_worker_core_id_);
-    this->rx_worker_enabled_ = false;
-    this->rx_worker_task_ = nullptr;
+    ESP_LOGE(TAG, "Command worker start failed: stack=%lu priority=%lu core=%d",
+             static_cast<unsigned long>(stack_size), static_cast<unsigned long>(this->command_worker_priority_),
+             this->command_worker_core_id_);
+    this->command_worker_enabled_ = false;
+    this->command_worker_task_ = nullptr;
     return;
   }
 
-  this->rx_worker_task_ = task_handle;
-  this->rx_worker_started_ = true;
-  ESP_LOGCONFIG(TAG, "RX worker started: stack=%lu priority=%lu core=%d start_delay=%lums",
-                static_cast<unsigned long>(stack_size), static_cast<unsigned long>(this->rx_worker_priority_),
-                this->rx_worker_core_id_, static_cast<unsigned long>(this->rx_worker_start_delay_ms_));
+  this->command_worker_task_ = task_handle;
+  this->command_worker_started_ = true;
+  ESP_LOGCONFIG(TAG, "Command worker started: stack=%lu priority=%lu core=%d start_delay=%lums",
+                static_cast<unsigned long>(stack_size), static_cast<unsigned long>(this->command_worker_priority_),
+                this->command_worker_core_id_, static_cast<unsigned long>(this->command_worker_start_delay_ms_));
 }
 
-void MhiAcCtrl::stop_rx_worker_() {
-  if (!this->rx_worker_started_) {
+void MhiAcCtrl::stop_command_worker_() {
+  if (!this->command_worker_started_) {
     return;
   }
 
-  this->rx_worker_stop_requested_ = true;
+  this->command_worker_stop_requested_ = true;
+  this->notify_command_worker_();
 }
 
-void MhiAcCtrl::rx_worker_task_entry_(void* arg) {
+void MhiAcCtrl::command_worker_task_entry_(void* arg) {
   auto* self = static_cast<MhiAcCtrl*>(arg);
   if (self == nullptr) {
     vTaskDelete(nullptr);
     return;
   }
 
-  self->rx_worker_task_loop_();
+  self->command_worker_task_loop_();
   vTaskDelete(nullptr);
 }
 
-void MhiAcCtrl::rx_worker_task_loop_() {
-  this->rx_worker_running_ = true;
+void MhiAcCtrl::command_worker_task_loop_() {
+  this->command_worker_running_ = true;
 
-  if (this->rx_worker_start_delay_ms_ > 0U) {
-    vTaskDelay(pdMS_TO_TICKS(this->rx_worker_start_delay_ms_));
+  if (this->command_worker_start_delay_ms_ > 0U) {
+    vTaskDelay(pdMS_TO_TICKS(this->command_worker_start_delay_ms_));
   }
 
-  uint8_t buffer[kMhiMaxFrameBytes]{};
-  MhiFrameBuffer frame{};
-
-  while (!this->rx_worker_stop_requested_) {
-    this->rx_worker_loops_++;
-
-    const std::size_t len = this->transport_.read_rx_for_worker(buffer, sizeof(buffer));
-    if (len == 0U) {
-      this->rx_worker_idle_yields_++;
-      vTaskDelay(pdMS_TO_TICKS(1));
-      continue;
+  while (!this->command_worker_stop_requested_) {
+    const uint32_t notified = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(50));
+    if (notified == 0U) {
+      this->command_worker_idle_timeouts_++;
+    } else {
+      this->command_worker_wakes_ += notified;
     }
 
-    this->rx_worker_frame_sync_.push_bytes(buffer, len);
-
-    bool ingested_any = false;
-    while (this->rx_worker_frame_sync_.pop_frame(frame)) {
-      this->diagnostics_.stats().on_valid_frame(millis());
-      if (this->ingest_rx_frame_(frame)) {
-        this->rx_worker_ingested_frames_++;
-        ingested_any = true;
-      }
+    if (this->command_worker_stop_requested_) {
+      break;
     }
 
-    if (ingested_any) {
-      taskYIELD();
-    }
+    this->command_worker_service_runs_++;
+    this->service_command_pipeline_();
   }
 
-  this->rx_worker_running_ = false;
-  this->rx_worker_started_ = false;
-  this->rx_worker_task_ = nullptr;
+  this->command_worker_running_ = false;
+  this->command_worker_started_ = false;
+  this->command_worker_task_ = nullptr;
 }
 
-void MhiAcCtrl::start_tx_worker_() {
-  if (!this->tx_worker_enabled_) {
+void MhiAcCtrl::notify_command_worker_() {
+  if (!this->command_worker_enabled_ || this->command_worker_task_ == nullptr) {
     return;
   }
 
-  if (this->tx_worker_started_) {
+  xTaskNotifyGive(this->command_worker_task_);
+}
+
+void MhiAcCtrl::service_command_pipeline_() {
+  MhiFrameBuffer tx_frame{};
+  MhiTxBuildResult build_result{};
+  MhiTxEnvelope envelope{};
+  MhiCommandState command_before_build{};
+  bool should_build = false;
+
+  const uint32_t now = millis();
+
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
+  }
+
+  this->suppress_duplicate_pending_commands_();
+  auto& command = this->state_.command();
+  const bool has_pending_command = command.has_pending_command();
+
+  if (!this->command_coordinator_.has_command_in_flight() && !this->command_coordinator_.has_pending_confirmation() &&
+      (has_pending_command || this->background_tx_allowed_(now))) {
+    command_before_build = command;
+    should_build = this->command_coordinator_.prepare_next(command, this->tx_runtime_, this->tx_config_, tx_frame,
+                                                           build_result, envelope);
+  }
+
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreGive(this->command_mutex_);
+  }
+
+  if (!should_build || !envelope.valid()) {
     return;
   }
 
-  this->tx_worker_stop_requested_ = false;
-  this->tx_worker_running_ = false;
+  const bool command_frame = envelope.is_command();
+  const bool background_frame = !command_frame;
 
-  TaskHandle_t task_handle = nullptr;
-  const BaseType_t priority = static_cast<BaseType_t>(this->tx_worker_priority_);
-  const uint32_t stack_size = this->tx_worker_stack_size_;
-
-  BaseType_t created = pdFALSE;
-  if (this->tx_worker_core_id_ >= 0) {
-    created = xTaskCreatePinnedToCore(&MhiAcCtrl::tx_worker_task_entry_, "mhi_tx_worker", stack_size, this, priority,
-                                      &task_handle, static_cast<BaseType_t>(this->tx_worker_core_id_));
+  if (command_frame) {
+    this->tx_command_priority_attempts_++;
   } else {
-    created = xTaskCreate(&MhiAcCtrl::tx_worker_task_entry_, "mhi_tx_worker", stack_size, this, priority, &task_handle);
+    this->tx_background_attempts_++;
   }
 
-  if (created != pdPASS || task_handle == nullptr) {
-    ESP_LOGE(TAG, "TX worker start failed: stack=%lu priority=%lu core=%d", static_cast<unsigned long>(stack_size),
-             static_cast<unsigned long>(this->tx_worker_priority_), this->tx_worker_core_id_);
-    this->tx_worker_enabled_ = false;
-    this->transport_.set_auto_tx_flush(true);
-    this->tx_worker_task_ = nullptr;
-    return;
+  const bool queued = this->transport_.queue_tx(envelope);
+
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
+  }
+  this->command_coordinator_.on_stage_result(envelope, command_before_build, this->state_.command(), queued);
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreGive(this->command_mutex_);
   }
 
-  this->tx_worker_task_ = task_handle;
-  this->tx_worker_started_ = true;
-  ESP_LOGCONFIG(TAG, "TX worker started: stack=%lu priority=%lu core=%d start_delay=%lums",
-                static_cast<unsigned long>(stack_size), static_cast<unsigned long>(this->tx_worker_priority_),
-                this->tx_worker_core_id_, static_cast<unsigned long>(this->tx_worker_start_delay_ms_));
+  if (queued) {
+    this->command_worker_frames_staged_++;
+  }
+
+  if (background_frame) {
+    this->last_background_tx_ms_ = now;
+    if (!queued) {
+      this->tx_background_failures_++;
+    }
+  }
+
+  this->record_tx_build_result_(build_result, tx_frame, queued);
 }
 
-void MhiAcCtrl::stop_tx_worker_() {
-  if (!this->tx_worker_started_) {
-    return;
-  }
+void MhiAcCtrl::drain_tx_completions_() {
+  MhiTxCompletion completion{};
+  bool command_state_changed = false;
+  bool clear_command_candidate = false;
 
-  this->tx_worker_stop_requested_ = true;
-}
+  while (this->transport_.take_tx_completion(completion)) {
+    if (completion.is_command()) {
+      this->command_worker_completions_++;
+    }
 
-void MhiAcCtrl::tx_worker_task_entry_(void* arg) {
-  auto* self = static_cast<MhiAcCtrl*>(arg);
-  if (self == nullptr) {
-    vTaskDelete(nullptr);
-    return;
-  }
+    if (this->command_mutex_ != nullptr) {
+      xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
+    }
+    const bool handled = this->command_coordinator_.on_tx_completion(completion, this->state_.command());
+    if (handled && completion.success && this->command_coordinator_.pending_mask() != 0U) {
+      clear_command_candidate = true;
+    }
+    if (this->command_mutex_ != nullptr) {
+      xSemaphoreGive(this->command_mutex_);
+    }
 
-  self->tx_worker_task_loop_();
-  vTaskDelete(nullptr);
-}
-
-void MhiAcCtrl::tx_worker_task_loop_() {
-  this->tx_worker_running_ = true;
-
-  if (this->tx_worker_start_delay_ms_ > 0U) {
-    vTaskDelay(pdMS_TO_TICKS(this->tx_worker_start_delay_ms_));
-  }
-
-  while (!this->tx_worker_stop_requested_) {
-    this->tx_worker_loops_++;
-    this->tx_worker_flush_attempts_++;
-
-    if (this->transport_.flush_tx_on_bus_marker()) {
-      this->tx_worker_flush_successes_++;
-      taskYIELD();
+    if (!completion.is_command()) {
       continue;
     }
 
-    this->tx_worker_idle_yields_++;
-    vTaskDelay(pdMS_TO_TICKS(1));
+    if (completion.success) {
+      this->diagnostics_.stats().on_tx_command_frame(completion.command_mask, completion.completed_at_ms);
+      command_state_changed = handled;
+    } else {
+      this->diagnostics_.stats().on_tx_command_failure(completion.command_mask, completion.completed_at_ms);
+      command_state_changed = handled;
+    }
   }
 
-  this->tx_worker_running_ = false;
-  this->tx_worker_started_ = false;
-  this->tx_worker_task_ = nullptr;
+  if (clear_command_candidate) {
+    this->clear_command_candidate_();
+  }
+
+  if (command_state_changed) {
+    this->notify_command_worker_();
+  }
 }
 
 bool MhiAcCtrl::background_tx_due_(uint32_t now_ms) const {
@@ -769,7 +900,14 @@ bool MhiAcCtrl::background_tx_due_(uint32_t now_ms) const {
 }
 
 bool MhiAcCtrl::command_confirmation_pending_() const {
-  return this->command_confirmation_.pending_mask() != 0U;
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
+  }
+  const bool pending = this->command_coordinator_.pending_mask() != 0U;
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreGive(this->command_mutex_);
+  }
+  return pending;
 }
 
 bool MhiAcCtrl::background_tx_allowed_(uint32_t now_ms) {
@@ -778,7 +916,7 @@ bool MhiAcCtrl::background_tx_allowed_(uint32_t now_ms) {
     return false;
   }
 
-  if (this->command_confirmation_pending_()) {
+  if (this->command_coordinator_.has_pending_confirmation()) {
     this->tx_background_confirmation_deferrals_++;
     return false;
   }
@@ -786,60 +924,11 @@ bool MhiAcCtrl::background_tx_allowed_(uint32_t now_ms) {
   return true;
 }
 
-void MhiAcCtrl::build_and_stage_tx_frame_() {
-  this->suppress_duplicate_pending_commands_();
-
-  const bool has_pending_command = this->state_.command().has_pending_command();
-  const uint32_t now = millis();
-
-  if (!has_pending_command && !this->background_tx_allowed_(now)) {
-    return;
-  }
-
-  this->refresh_extended_louver_tx_context_();
-
-  MhiFrameBuffer tx_frame{};
-  MhiTxBuildResult build_result{};
-
-  const bool built = MhiTxBuilder::build_next_frame(this->state_.command(), this->tx_runtime_, this->tx_config_,
-                                                    tx_frame, build_result);
-
-  if (!built || tx_frame.len == 0U) {
-    return;
-  }
-
-  const bool command_frame = build_result.has_encoded_commands();
-  const bool background_frame = !has_pending_command && !command_frame;
-
-  if (has_pending_command) {
-    this->tx_command_priority_attempts_++;
-  } else {
-    this->tx_background_attempts_++;
-  }
-
-  const bool queued = this->transport_.queue_tx(tx_frame.bytes(), tx_frame.len);
-
-  if (background_frame) {
-    this->last_background_tx_ms_ = now;
-    if (!queued) {
-      this->tx_background_failures_++;
-    }
-  }
-
-  this->record_tx_build_result_(build_result, tx_frame, queued);
-}
-
 void MhiAcCtrl::record_tx_build_result_(const MhiTxBuildResult& result, const MhiFrameBuffer& frame, bool sent) {
   const uint32_t now = millis();
 
   if (result.has_encoded_commands()) {
-    if (sent) {
-      this->diagnostics_.stats().on_tx_command_frame(result.encoded_command_mask, now);
-      this->command_confirmation_.stage(result.intent, result.encoded_command_mask, now);
-      if (this->command_confirmation_.pending_mask() != 0U) {
-        this->clear_command_candidate_();
-      }
-    } else {
+    if (!sent) {
       this->diagnostics_.stats().on_tx_command_failure(result.encoded_command_mask, now);
     }
 
@@ -860,10 +949,6 @@ void MhiAcCtrl::record_tx_build_result_(const MhiTxBuildResult& result, const Mh
 }
 
 bool MhiAcCtrl::read_and_sync_rx_frame_() {
-  if (this->rx_worker_enabled_) {
-    return this->decode_cataloged_frames_();
-  }
-
   uint8_t buffer[kMhiMaxFrameBytes]{};
   MhiFrameBuffer frame{};
 
@@ -885,8 +970,11 @@ bool MhiAcCtrl::read_and_sync_rx_frame_() {
 }
 
 bool MhiAcCtrl::ingest_rx_frame_(const MhiFrameBuffer& frame) {
-  portENTER_CRITICAL(&this->frame_catalog_mux_);
+  // Resolve command state before entering the frame-catalog critical section.
+  // A blocking FreeRTOS mutex must never be acquired while a spinlock is held.
   const bool store_command_candidate = this->command_confirmation_pending_();
+
+  portENTER_CRITICAL(&this->frame_catalog_mux_);
   const MhiCatalogIngestResult result = this->frame_catalog_.ingest_mosi_frame(
       frame.view(), ++this->frame_catalog_sequence_, millis(), store_command_candidate);
   portEXIT_CRITICAL(&this->frame_catalog_mux_);
@@ -1305,8 +1393,8 @@ bool MhiAcCtrl::accept_extended_feedback_(const MhiDecodedStatus& decoded_status
   return true;
 }
 bool MhiAcCtrl::extended_feedback_matches_pending_(const MhiDecodedStatus& decoded_status) const {
-  const uint32_t pending_mask = this->command_confirmation_.pending_mask();
-  const auto& intent = this->command_confirmation_.pending_intent();
+  const uint32_t pending_mask = this->command_coordinator_.pending_mask();
+  const auto& intent = this->command_coordinator_.pending_intent();
 
   if ((pending_mask & MHI_COMMAND_HORIZONTAL_VANE) != 0U) {
     if (!decoded_status.has_horizontal_vane) {
@@ -1367,11 +1455,21 @@ void MhiAcCtrl::log_rejected_opdata_(const char* field, float value, const MhiFr
 }
 
 void MhiAcCtrl::update_command_confirmation_(const MhiStatusState& status) {
-  uint32_t confirmed_mask = this->command_confirmation_.observe_status(status);
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
+  }
+
+  uint32_t confirmed_mask = this->command_coordinator_.observe_status(status);
 
   if (this->settled_extended_confirmation_mask_ != 0U) {
-    confirmed_mask |= this->command_confirmation_.settle_pending_mask(this->settled_extended_confirmation_mask_);
+    confirmed_mask |= this->command_coordinator_.settle_pending_mask(this->settled_extended_confirmation_mask_);
     this->settled_extended_confirmation_mask_ = 0U;
+  }
+
+  const uint32_t pending_mask = this->command_coordinator_.pending_mask();
+
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreGive(this->command_mutex_);
   }
 
   if (confirmed_mask == 0U) {
@@ -1381,8 +1479,9 @@ void MhiAcCtrl::update_command_confirmation_(const MhiStatusState& status) {
   const uint32_t now = millis();
   this->diagnostics_.stats().on_command_confirmed(confirmed_mask, now);
 
-  if (this->command_confirmation_.pending_mask() == 0U) {
+  if (pending_mask == 0U) {
     this->clear_command_candidate_();
+    this->notify_command_worker_();
   }
 
   if ((confirmed_mask & kNoPendingExtendedFeedbackMask) != 0U) {
@@ -1392,12 +1491,18 @@ void MhiAcCtrl::update_command_confirmation_(const MhiStatusState& status) {
   }
 
   ESP_LOGI(DIAG_TAG, "command: confirmed mask=0x%08lx pending=0x%08lx", static_cast<unsigned long>(confirmed_mask),
-           static_cast<unsigned long>(this->command_confirmation_.pending_mask()));
+           static_cast<unsigned long>(pending_mask));
 }
 
 void MhiAcCtrl::check_command_confirmation_timeout_() {
   const uint32_t now = millis();
-  const uint32_t timeout_mask = this->command_confirmation_.expire(now);
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
+  }
+  const uint32_t timeout_mask = this->command_coordinator_.expire(now);
+  if (this->command_mutex_ != nullptr) {
+    xSemaphoreGive(this->command_mutex_);
+  }
 
   if (timeout_mask == 0U) {
     return;
@@ -1405,13 +1510,14 @@ void MhiAcCtrl::check_command_confirmation_timeout_() {
 
   this->diagnostics_.stats().on_command_confirmation_timeout(timeout_mask, now);
   this->clear_command_candidate_();
+  this->notify_command_worker_();
 
   ESP_LOGW(DIAG_TAG, "command: confirmation timeout mask=0x%08lx", static_cast<unsigned long>(timeout_mask));
 }
 
 void MhiAcCtrl::suppress_duplicate_pending_commands_() {
   auto& command = this->state_.command();
-  const uint32_t duplicate_mask = this->command_confirmation_.duplicate_pending_mask(command);
+  const uint32_t duplicate_mask = this->command_coordinator_.duplicate_pending_mask(command);
 
   if (duplicate_mask == 0U) {
     return;

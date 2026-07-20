@@ -78,16 +78,23 @@ rx_driver: rmt_cs_spi
 tx_driver: none
 ```
 
-### Worker restriction
+### Command-worker compatibility
 
-The full-duplex backend currently requires:
+All transport selections support the same command-facing contract. The selected backend remains responsible for real-time TX:
 
 ```yaml
-rx_worker: false
-tx_worker: false
+command_worker: false
 ```
 
-The generic workers are not part of the validated `rmt_cs_spi` path. Reopen worker support only after the transport completes long-duration hardware validation.
+is the synchronous fallback, while:
+
+```yaml
+command_worker: true
+```
+
+enables the first-stage event-driven command coordinator. For split drivers, completion is reported after `fast_gpio_tx` returns. For `rmt_cs_spi`, completion is reported after the SPI owner task receives the completed transaction result.
+
+The command worker does not drive MISO, wait on SCK edges, or own SPI. Classified RX processing will be added to this same worker later. The legacy `rx_worker` and `tx_worker` settings have been removed.
 
 ## Driver summary
 
@@ -159,8 +166,7 @@ Recommended ESP32-S3 split configuration:
 ```yaml
 rx_driver: rmt_spi_rx
 rmt_spi_frame_gap_us: 1000
-rx_worker: false
-tx_worker: false
+command_worker: false
 ```
 
 ### `rmt_cs_spi`
@@ -179,15 +185,14 @@ Trade-offs:
 - Experimental and currently under long-duration soak testing.
 - ESP32-S3 and ESP-IDF only.
 - Owns the complete bus transport and cannot be mixed with another TX driver.
-- Current worker implementations are intentionally disabled for this path.
+- The new command worker is optional and does not change SPI ownership or bus timing.
 
 Configuration:
 
 ```yaml
 rx_driver: rmt_cs_spi
 rmt_spi_frame_gap_us: 1000
-rx_worker: false
-tx_worker: false
+command_worker: false
 ```
 
 ### `fast_gpio_tx`
@@ -273,7 +278,7 @@ This setting applies to the software FastGPIO timing path. Leave it at the defau
 
 ### `tx_background_interval_ms`
 
-Default with workers disabled:
+Default for both synchronous and command-worker modes:
 
 ```yaml
 tx_background_interval_ms: 250
@@ -283,24 +288,32 @@ This controls background TX attempts. Command frames bypass the normal backgroun
 
 Increase it when background requests create unnecessary TX pressure. Reducing it increases bus activity and can expose FastGPIO TX timing limitations.
 
-### Workers
+### Command worker
 
-Current general recommendation:
+Default:
 
 ```yaml
-rx_worker: false
-tx_worker: false
+command_worker: false
 ```
 
-The existing workers are polling-based. Better loop timing counters do not prove a healthier transport; previous worker tests have shown command-confirmation and opdata regressions even when RX counters looked clean.
+First-stage test configuration:
 
-Judge any worker experiment by functional outcomes:
+```yaml
+command_worker: true
+```
 
-- Commands confirm.
-- Confirmation timeouts remain zero.
+The worker prepares command envelopes and coordinates staging, actual TX completion, and semantic confirmation. Background and command frames remain transmitted by the selected transport. The first-stage implementation leaves RX decoding in the main loop.
+
+Judge the command-worker path by functional outcomes:
+
+- Commands are not marked pending confirmation before actual TX completion.
+- Commands confirm and `command_confirmation_timeouts` remains zero.
 - Opdata continues to publish.
 - Home Assistant state matches the physical unit.
-- Completed-frame overwrite and drop counters remain zero.
+- Transport overwrite, queue, and drop counters remain clean.
+- `command_worker: false` remains a reliable fallback.
+
+The staged rollout and later classified-RX integration are documented in [`COMMAND_WORKER_V2_PLAN.md`](COMMAND_WORKER_V2_PLAN.md).
 
 ## Diagnostics
 
@@ -311,7 +324,7 @@ Use that guide for:
 - Common protocol-health counters
 - `rmt_spi_rx` and `rmt_cs_spi` transport counters
 - Command-confirmation and opdata checks
-- Loop and worker measurements
+- Loop and command-worker measurements
 - Soak-test evidence and troubleshooting
 
 ## Driver maturity statuses
@@ -339,7 +352,7 @@ AC model
 frame size
 SCK/MOSI/MISO pins
 RX selection and effective TX
-worker settings
+command-worker settings
 tuning overrides
 test duration
 commands tested

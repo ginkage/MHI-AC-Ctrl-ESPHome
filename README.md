@@ -8,7 +8,7 @@ This is not a clean-room protocol project. It builds on the original community M
 
 ## Current status
 
-The currently validated runtime targets are the original **ESP32** and **ESP32-S3**, both using ESP-IDF. Keep both workers disabled unless specifically testing worker behaviour.
+The currently validated runtime targets are the original **ESP32** and **ESP32-S3**, both using ESP-IDF. Keep `command_worker` disabled unless specifically testing the new command pipeline.
 
 - `fast_gpio_rx` with `fast_gpio_tx` remains the conservative stable baseline.
 - `external_clock_rx` with `fast_gpio_tx` is the stable non-S3 path currently running on an M5Stack Atom based on the original ESP32.
@@ -33,14 +33,14 @@ Implemented functionality includes 20-byte and 33-byte frames, command confirmat
 
 `Stable` means the driver combination has completed hardware validation and little to no transport-level change is expected. `In testing` means the implementation is functional but still undergoing soak or compatibility testing. `In development` means it is not ready for normal use.
 
-Workers were disabled for the stable and in-testing configurations above.
+`command_worker` was disabled for the stable and in-testing transport results above.
 
 ### Hardware driver guide
 
 | ESP chip | Validated hardware | Recommended RX selection | Effective TX | Status | Notes |
 |---|---|---|---|---|---|
 | ESP32 | M5Stack Atom (original ESP32) | `external_clock_rx` | `fast_gpio_tx` | **Stable** | Current running non-S3 configuration. Use `fast_gpio_rx` as the conservative fallback. |
-| ESP32-S3 | M5Stack Atom S3 current ESP32-S3 test unit | `rmt_spi_rx`; `rmt_cs_spi` for active testing | `fast_gpio_tx`; integrated TX for `rmt_cs_spi` | **Stable** for `rmt_spi_rx`; **In testing** for `rmt_cs_spi` | `rmt_spi_rx` has completed extended soak testing. `rmt_cs_spi` is in the current longer soak. |
+| ESP32-S3 | Current ESP32-S3 test unit; board/module model still to be recorded | `rmt_spi_rx`; `rmt_cs_spi` for active testing | `fast_gpio_tx`; integrated TX for `rmt_cs_spi` | **Stable** for `rmt_spi_rx`; **In testing** for `rmt_cs_spi` | `rmt_spi_rx` has completed extended soak testing. `rmt_cs_spi` is in the current longer soak. |
 | ESP32-C3 | No runtime-validated board yet | `fast_gpio_rx` | `fast_gpio_tx` | **In development** | Compile coverage only. Single-core runtime behaviour has not been validated. |
 
 Add tested boards or modules to the matching chip row as results become available. Do not add a new row for every board; each ESP chip version should have one consolidated row.
@@ -68,8 +68,7 @@ MhiAcCtrl:
   miso_pin: 39
   rx_driver: rmt_spi_rx
   rmt_spi_frame_gap_us: 1000
-  rx_worker: false
-  tx_worker: false
+  command_worker: false
 ```
 
 Experimental full-duplex ESP32-S3 configuration:
@@ -83,8 +82,7 @@ MhiAcCtrl:
   miso_pin: 39
   rx_driver: rmt_cs_spi
   rmt_spi_frame_gap_us: 1000
-  rx_worker: false
-  tx_worker: false
+  command_worker: false
 ```
 
 `rmt_cs_spi` owns RX and TX, so it rejects any `tx_driver` override. For split drivers, the previous explicit configuration remains valid:
@@ -143,16 +141,11 @@ Optional fields:
 ```text
 rx_driver
 tx_driver
-rx_worker
-tx_worker
-rx_worker_start_delay_ms
-rx_worker_stack_size
-rx_worker_priority
-rx_worker_core_id
-tx_worker_start_delay_ms
-tx_worker_stack_size
-tx_worker_priority
-tx_worker_core_id
+command_worker
+command_worker_start_delay_ms
+command_worker_stack_size
+command_worker_priority
+command_worker_core_id
 tx_background_interval_ms
 frame_start_idle_ms
 rmt_spi_frame_gap_us
@@ -182,16 +175,21 @@ For a unit that alternates between `20.25°C` and `20.75°C`, the default `1.0°
 
 ## Worker mode
 
-Workers are experimental and disabled by default:
+The new command pipeline is optional and disabled by default:
 
 ```yaml
-rx_worker: false
-tx_worker: false
+command_worker: false
 ```
 
-All driver combinations listed as validated in this README were tested with workers disabled. `rmt_cs_spi` currently rejects worker enablement. Do not enable workers for a normal installation; worker redesign and validation will resume after the full-duplex transport soak is complete.
+When enabled, one event-driven worker prepares immutable command frames and coordinates their lifecycle. The selected transport still owns all real-time TX timing. Confirmation begins only after the transport reports that a command frame was actually clocked onto the bus.
 
-See [`DRIVER_SELECTION.md`](DRIVER_SELECTION.md#workers) for the technical background and functional validation criteria.
+```yaml
+command_worker: true
+```
+
+The first testing point deliberately keeps RX synchronisation and decoding in the ESPHome main loop. Classified RX processing will be added to the same worker in a later stage; separate `rx_worker` and `tx_worker` settings are no longer used.
+
+See [`COMMAND_WORKER_V2_PLAN.md`](COMMAND_WORKER_V2_PLAN.md) for the migration sequence and hardware acceptance gates. See [`DIAGNOSTICS.md`](DIAGNOSTICS.md#command-worker-diagnostics) for the counters to monitor.
 
 ## Frame size
 
@@ -429,7 +427,7 @@ See [`DIAGNOSTICS.md`](DIAGNOSTICS.md) for:
 - Common protocol-health counters
 - Driver-specific SPI, RMT, buffering, and TX counters
 - Command-confirmation interpretation
-- Loop and worker measurements
+- Loop and command-worker measurements
 - Soak-test recording requirements
 - Troubleshooting workflows
 
@@ -459,7 +457,7 @@ Hardware and soak-test validation criteria are documented in [`DIAGNOSTICS.md`](
 
 ## Troubleshooting
 
-Driver, protocol, command-confirmation, opdata, loop-time, and worker troubleshooting has moved to [`DIAGNOSTICS.md`](DIAGNOSTICS.md#troubleshooting).
+Driver, protocol, command-confirmation, opdata, loop-time, and command-worker troubleshooting has moved to [`DIAGNOSTICS.md`](DIAGNOSTICS.md#troubleshooting).
 
 ## Development notes
 
@@ -473,6 +471,8 @@ mhi_frame_catalog.*
 mhi_status_decoder.*
 mhi_opdata_decoder.*
 mhi_tx_builder.*
+mhi_tx_contract.h
+mhi_command_coordinator.*
 mhi_command_confirmation.*
 mhi_publish_bridge.*
 mhi_transport_manager.*
@@ -521,7 +521,7 @@ Run lint:
 - Treat `rx_driver` as the primary selector and auto-resolve TX for split drivers.
 - Preserve explicit `tx_driver` support for existing split configurations and RX-only diagnostics.
 - Give full-duplex transports exclusive ownership of RX and TX.
-- Keep workers opt-in, experimental, and disabled for validated transport configurations.
+- Keep `command_worker` opt-in while the new command-completion lifecycle is under hardware validation.
 - Use latest-state catalogue slots instead of general status FIFOs.
 - Keep transport changes separate from protocol, decoder, and sensor-parity changes.
 
@@ -530,7 +530,7 @@ Run lint:
 - Complete the long-duration ESP32-S3 soak for `rmt_cs_spi`.
 - Compare full-duplex stability, command confirmation, opdata flow, and loop timing against `rmt_spi_rx` plus `fast_gpio_tx`.
 - Keep the stable default unchanged until the full-duplex path completes hardware validation.
-- Reopen the worker path as an event-driven design only after the transport result is established.
+- Validate the command-completion pipeline, then add classified RX processing to the same event-driven worker.
 - Investigate opdata catalogue slot pressure and rejected keys independently of transport work.
 - Add hardware rows to the compatibility table only after compile, command, opdata, and soak evidence is available.
 

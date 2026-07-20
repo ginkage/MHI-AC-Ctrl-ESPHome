@@ -24,8 +24,7 @@ MhiAcCtrl:
   miso_pin: 39
   rx_driver: rmt_spi_rx
   rmt_spi_frame_gap_us: 1000
-  rx_worker: false
-  tx_worker: false
+  command_worker: false
 
 climate:
   - platform: MhiAcCtrl

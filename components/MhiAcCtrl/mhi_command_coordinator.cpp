@@ -40,8 +40,9 @@ bool MhiCommandCoordinator::prepare_next(MhiCommandState& command, MhiTxRuntime&
   return true;
 }
 
-void MhiCommandCoordinator::on_stage_result(const MhiTxEnvelope& envelope, const MhiCommandState& command_before_build,
-                                            MhiCommandState& command, bool staged) {
+void MhiCommandCoordinator::on_stage_result(const MhiTxEnvelope& envelope,
+                                            const MhiCommandState& command_before_build, MhiCommandState& command,
+                                            bool staged) {
   if (!envelope.is_command()) {
     return;
   }
@@ -79,40 +80,39 @@ bool MhiCommandCoordinator::on_tx_completion(const MhiTxCompletion& completion, 
 
 void MhiCommandCoordinator::restore_command_mask_(MhiCommandState& destination, const MhiCommandState& source,
                                                   uint32_t mask) {
-  // Preserve any newer request queued while the older envelope was staged or in flight.
-  if ((mask & MHI_COMMAND_POWER) != 0U && !destination.power_set) {
+  if ((mask & MHI_COMMAND_POWER) != 0U) {
     destination.power_set = source.power_set;
     destination.power = source.power;
   }
-  if ((mask & MHI_COMMAND_MODE) != 0U && !destination.mode_set) {
+  if ((mask & MHI_COMMAND_MODE) != 0U) {
     destination.mode_set = source.mode_set;
     destination.mode = source.mode;
   }
-  if ((mask & MHI_COMMAND_FAN) != 0U && !destination.fan_set) {
+  if ((mask & MHI_COMMAND_FAN) != 0U) {
     destination.fan_set = source.fan_set;
     destination.fan = source.fan;
   }
-  if ((mask & MHI_COMMAND_TARGET_TEMP) != 0U && !destination.target_temp_set) {
+  if ((mask & MHI_COMMAND_TARGET_TEMP) != 0U) {
     destination.target_temp_set = source.target_temp_set;
     destination.target_temp_c = source.target_temp_c;
   }
-  if ((mask & MHI_COMMAND_VERTICAL_VANE) != 0U && !destination.vertical_vane_set) {
+  if ((mask & MHI_COMMAND_VERTICAL_VANE) != 0U) {
     destination.vertical_vane_set = source.vertical_vane_set;
     destination.vertical_vane = source.vertical_vane;
   }
-  if ((mask & MHI_COMMAND_HORIZONTAL_VANE) != 0U && !destination.horizontal_vane_set) {
+  if ((mask & MHI_COMMAND_HORIZONTAL_VANE) != 0U) {
     destination.horizontal_vane_set = source.horizontal_vane_set;
     destination.horizontal_vane = source.horizontal_vane;
   }
-  if ((mask & MHI_COMMAND_THREE_D_AUTO) != 0U && !destination.three_d_auto_set) {
+  if ((mask & MHI_COMMAND_THREE_D_AUTO) != 0U) {
     destination.three_d_auto_set = source.three_d_auto_set;
     destination.three_d_auto = source.three_d_auto;
   }
-  if ((mask & MHI_COMMAND_ROOM_TEMP_OVERRIDE) != 0U && !destination.room_temp_override_set) {
+  if ((mask & MHI_COMMAND_ROOM_TEMP_OVERRIDE) != 0U) {
     destination.room_temp_override_set = source.room_temp_override_set;
     destination.room_temp_override_raw = source.room_temp_override_raw;
   }
-  if ((mask & MHI_COMMAND_ERROR_OPDATA_REQUEST) != 0U && !destination.error_opdata_request) {
+  if ((mask & MHI_COMMAND_ERROR_OPDATA_REQUEST) != 0U) {
     destination.error_opdata_request = source.error_opdata_request;
   }
 }

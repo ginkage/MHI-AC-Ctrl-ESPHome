@@ -53,6 +53,7 @@ bool MhiRmtCsSpiTransport::setup(const MhiTransportPins& pins) {
   portENTER_CRITICAL(&mux_);
   completed_frames_.clear();
   tx_mailbox_.clear();
+  tx_completions_.reset();
   marker_sequence_ = 0U;
   marker_frame_end_us_ = 0U;
   rmt_boundaries_ = 0U;
@@ -203,20 +204,31 @@ std::size_t MhiRmtCsSpiTransport::read(uint8_t* dst, std::size_t max_len) {
 #endif
 }
 
-bool MhiRmtCsSpiTransport::send(const uint8_t* data, std::size_t len) {
+bool MhiRmtCsSpiTransport::send(const MhiTxEnvelope& envelope) {
 #if !MHI_RMT_CS_SPI_SUPPORTED
-  (void)data;
-  (void)len;
+  (void)envelope;
   return false;
 #else
-  if (!ready_.load(std::memory_order_acquire) || data == nullptr || len != config_.frame_size_hint) {
+  if (!ready_.load(std::memory_order_acquire) || !envelope.valid() || envelope.len != config_.frame_size_hint) {
     return false;
   }
 
   portENTER_CRITICAL(&mux_);
-  const bool staged = tx_mailbox_.stage(data, len);
+  const bool staged = tx_mailbox_.stage(envelope);
   portEXIT_CRITICAL(&mux_);
   return staged;
+#endif
+}
+
+bool MhiRmtCsSpiTransport::take_tx_completion(MhiTxCompletion& completion) {
+#if !MHI_RMT_CS_SPI_SUPPORTED
+  (void)completion;
+  return false;
+#else
+  portENTER_CRITICAL(&mux_);
+  const bool available = tx_completions_.pop(completion);
+  portEXIT_CRITICAL(&mux_);
+  return available;
 #endif
 }
 
@@ -451,11 +463,10 @@ bool MhiRmtCsSpiTransport::queue_transaction_(TransactionSlot& slot) {
 
   std::memset(slot.rx_buffer, 0, kDmaTransferBytes);
   std::memset(slot.tx_buffer, 0, kDmaTransferBytes);
-  slot.tx_len = 0U;
-  slot.tx_generation = 0U;
+  slot.tx_envelope = {};
 
   portENTER_CRITICAL(&mux_);
-  tx_mailbox_.take(slot.tx_buffer, kDmaTransferBytes, slot.tx_len, slot.tx_generation);
+  tx_mailbox_.take(slot.tx_buffer, kDmaTransferBytes, slot.tx_envelope);
   portEXIT_CRITICAL(&mux_);
 
   slot.transaction = {};
@@ -466,10 +477,23 @@ bool MhiRmtCsSpiTransport::queue_transaction_(TransactionSlot& slot) {
 
   const esp_err_t result = spi_slave_queue_trans(host_, &slot.transaction, pdMS_TO_TICKS(20));
   if (result != ESP_OK) {
+    MhiTxCompletion completion{};
+    if (slot.tx_envelope.is_command()) {
+      completion.generation = slot.tx_envelope.generation;
+      completion.kind = slot.tx_envelope.kind;
+      completion.command_mask = slot.tx_envelope.command_mask;
+      completion.intent = slot.tx_envelope.intent;
+      completion.success = false;
+      completion.completed_at_ms = millis();
+    }
+
     portENTER_CRITICAL(&mux_);
     transaction_queue_errors_++;
-    if (slot.tx_len > 0U) {
+    if (slot.tx_envelope.valid()) {
       tx_failures_++;
+      if (slot.tx_envelope.is_command()) {
+        tx_completions_.push(completion);
+      }
     }
     portEXIT_CRITICAL(&mux_);
     ESP_LOGE(TAG, "spi_slave_queue_trans failed: %s", esp_err_to_name(result));
@@ -549,6 +573,17 @@ void MhiRmtCsSpiTransport::process_completed_transaction_(spi_slave_transaction_
 
   uint32_t sequence = 0U;
   uint32_t frame_end_us = 0U;
+  const bool command_completion = slot->tx_envelope.is_command();
+  MhiTxCompletion completion{};
+
+  if (command_completion) {
+    completion.generation = slot->tx_envelope.generation;
+    completion.kind = slot->tx_envelope.kind;
+    completion.command_mask = slot->tx_envelope.command_mask;
+    completion.intent = slot->tx_envelope.intent;
+    completion.success = valid_frame_len && received_bytes == slot->tx_envelope.len;
+    completion.completed_at_ms = millis();
+  }
 
   portENTER_CRITICAL(&mux_);
   sequence = marker_sequence_;
@@ -570,11 +605,16 @@ void MhiRmtCsSpiTransport::process_completed_transaction_(spi_slave_transaction_
     invalid_length_transactions_++;
   }
 
-  if (slot->tx_len > 0U) {
-    if (valid_frame_len && received_bytes == slot->tx_len) {
+  if (slot->tx_envelope.valid()) {
+    const bool tx_success = valid_frame_len && received_bytes == slot->tx_envelope.len;
+    if (tx_success) {
       completed_tx_frames_++;
     } else {
       tx_failures_++;
+    }
+
+    if (command_completion) {
+      tx_completions_.push(completion);
     }
   }
   portEXIT_CRITICAL(&mux_);
@@ -648,13 +688,13 @@ void MhiRmtCsSpiTransport::cleanup_() {
       slot.tx_buffer = nullptr;
     }
     slot.transaction = {};
-    slot.tx_len = 0U;
-    slot.tx_generation = 0U;
+    slot.tx_envelope = {};
   }
 
   portENTER_CRITICAL(&mux_);
   completed_frames_.clear();
   tx_mailbox_.clear();
+  tx_completions_.reset();
   marker_sequence_ = 0U;
   marker_frame_end_us_ = 0U;
   portEXIT_CRITICAL(&mux_);

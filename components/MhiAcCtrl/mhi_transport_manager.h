@@ -15,6 +15,7 @@
 #include "mhi_rx_driver.h"
 #include "mhi_transport_pins.h"
 #include "mhi_tx_driver.h"
+#include "mhi_tx_contract.h"
 
 #ifdef USE_ESP_IDF
 #include <sdkconfig.h>
@@ -70,13 +71,13 @@ class MhiTransportManager {
   void loop();
 
   std::size_t read_rx(uint8_t* dst, std::size_t max_len);
-  std::size_t read_rx_for_worker(uint8_t* dst, std::size_t max_len);
 
-  // Queueing and flushing are split so future TX ownership can move out of
-  // the main loop without changing TX frame construction. send_tx() remains a
-  // compatibility wrapper for queue + optional auto-flush.
-  bool queue_tx(const uint8_t* data, std::size_t len);
-  bool send_tx(const uint8_t* data, std::size_t len);
+  // Stages an immutable TX envelope. Real-time transmission remains owned by
+  // the selected transport. Completion is reported only after the frame was
+  // actually clocked onto the bus.
+  bool queue_tx(const MhiTxEnvelope& envelope);
+  bool take_tx_completion(MhiTxCompletion& completion);
+  bool has_pending_tx() const;
   bool flush_tx_on_bus_marker();
   void set_auto_tx_flush(bool enabled) {
     auto_tx_flush_ = enabled;
@@ -106,7 +107,7 @@ class MhiTransportManager {
   void resolve_drivers();
   void update_duplex_diagnostics_();
   std::size_t read_rx_raw_(uint8_t* dst, std::size_t max_len);
-  void queue_pending_tx_(const uint8_t* data, std::size_t len);
+  void queue_pending_tx_(const MhiTxEnvelope& envelope);
   bool pending_tx_available_() const;
   void clear_pending_tx_();
   bool flush_pending_tx_on_bus_marker_();
@@ -148,8 +149,8 @@ class MhiTransportManager {
   bool auto_tx_flush_{true};
 
   portMUX_TYPE tx_mux_ = portMUX_INITIALIZER_UNLOCKED;
-  std::array<uint8_t, kMhiMaxFrameBytes> pending_tx_frame_{};
-  std::size_t pending_tx_len_{0U};
+  MhiTxEnvelope pending_tx_envelope_{};
+  MhiTxCompletionQueue<8U> tx_completions_{};
   bool pending_tx_{false};
   bool tx_in_progress_{false};
   uint32_t pending_tx_generation_{0U};
