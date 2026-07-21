@@ -42,11 +42,18 @@ int main() {
   command_coordinator_assigns_increasing_generations();
   tx_completion_queue_preserves_order_and_reports_overwrite();
 
+  worker_decoded_store_latest_status_overwrites_stale_status();
+  worker_decoded_store_keeps_command_candidate_separate();
+  worker_decoded_store_merges_distinct_opdata_fields();
+  worker_decoded_store_overwrites_only_repeated_opdata_field();
+  worker_decoded_store_unknown_ring_is_bounded();
+
   frame_classifier_classifies_status_opdata_and_extended_status();
   frame_catalog_overwrites_repeated_status_with_latest();
   frame_catalog_keeps_opdata_slots_separate_by_key();
   frame_catalog_keeps_command_candidate_side_slot_latest_only();
   frame_catalog_reports_unknown_frames();
+  frame_catalog_reuses_consumed_opdata_slots();
 
   fan_profile_defaults_to_four_speed();
   fan_profile_three_speed_collapses_code_zero_to_low();

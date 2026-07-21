@@ -187,7 +187,7 @@ When enabled, one worker prepares immutable command frames, coordinates their li
 command_worker: true
 ```
 
-For `external_clock_rx`, `rmt_spi_rx`, and `rmt_cs_spi`, the worker now performs RX draining, frame synchronisation, and classification into the bounded frame catalog. Decoding and all ESPHome entity publication remain in the main loop. `fast_gpio_rx` remains a main-loop RX path because its `read()` operation performs synchronous clock sampling.
+For `external_clock_rx`, `rmt_spi_rx`, and `rmt_cs_spi`, the worker performs RX draining, frame synchronisation, classification, and protocol decoding. Decoded status and opdata are committed to bounded latest-value snapshots. The ESPHome main loop applies those snapshots and performs all entity publication. `fast_gpio_rx` remains a main-loop RX path because its `read()` operation performs synchronous clock sampling.
 
 Separate `rx_worker` and `tx_worker` settings are no longer used.
 
@@ -532,7 +532,7 @@ Run lint:
 - Complete the long-duration ESP32-S3 soak for `rmt_cs_spi`.
 - Compare full-duplex stability, command confirmation, opdata flow, and loop timing against `rmt_spi_rx` plus `fast_gpio_tx`.
 - Keep the stable default unchanged until the full-duplex path completes hardware validation.
-- Validate the combined command and classified-RX worker, then move decoded snapshots behind a bounded main-loop publication handoff.
+- Validate the combined command and classified-RX worker with bounded decoded snapshots and main-loop publication.
 - Investigate opdata catalogue slot pressure and rejected keys independently of transport work.
 - Add hardware rows to the compatibility table only after compile, command, opdata, and soak evidence is available.
 

@@ -27,6 +27,7 @@
 #include "mhi_status_decoder.h"
 #include "mhi_tx_builder.h"
 #include "mhi_worker_policy.h"
+#include "mhi_worker_decoded_store.h"
 
 #define EXPECT_TRUE(expr)                                                                            \
   do {                                                                                               \
@@ -224,11 +225,19 @@ void command_coordinator_restores_failed_field_without_losing_new_unrelated_comm
 void command_coordinator_assigns_increasing_generations();
 void tx_completion_queue_preserves_order_and_reports_overwrite();
 
+
+void worker_decoded_store_latest_status_overwrites_stale_status();
+void worker_decoded_store_keeps_command_candidate_separate();
+void worker_decoded_store_merges_distinct_opdata_fields();
+void worker_decoded_store_overwrites_only_repeated_opdata_field();
+void worker_decoded_store_unknown_ring_is_bounded();
+
 void frame_classifier_classifies_status_opdata_and_extended_status();
 void frame_catalog_overwrites_repeated_status_with_latest();
 void frame_catalog_keeps_opdata_slots_separate_by_key();
 void frame_catalog_keeps_command_candidate_side_slot_latest_only();
 void frame_catalog_reports_unknown_frames();
+void frame_catalog_reuses_consumed_opdata_slots();
 
 void status_decoder_decodes_core_fields();
 void status_decoder_decodes_33_byte_vane_feedback();

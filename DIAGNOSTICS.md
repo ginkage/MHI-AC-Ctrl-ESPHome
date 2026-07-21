@@ -201,6 +201,12 @@ Interpretation:
 | `rx_chunks` | Transport chunks drained by the worker | Tracks queue/DMA handoff activity |
 | `rx_frames` | Valid frames synchronised and catalogued by the worker | Should broadly track common `valid_frames` |
 | `rx_max_batch` | Largest number of valid frames processed in one poll | Normally small; sustained growth indicates worker starvation |
+| `worker_decode status/extended` | Decoded status writes and latest-value overwrites | Overwrites are expected when repeated status arrives before main-loop apply |
+| `worker_decode candidates` | Generation-sensitive command confirmation snapshots | Should increase while commands are awaiting confirmation |
+| `worker_decode opdata_merges` | Decoded opdata frames merged into the pending snapshot | Should track active opdata traffic |
+| `worker_decode opdata_field_overwrites` | Repeated semantic opdata fields replaced before main-loop apply | Acceptable when bounded; different fields remain preserved |
+| `worker_decode unknown` | Bounded unknown-frame ring writes/overwrites | Overwrites are diagnostic only and must not affect status or opdata |
+| `worker_decode publish_batches` | Main-loop decoded snapshot batches applied | Should increase while the bus is active |
 
 A valid first-stage test must demonstrate all of the following:
 
@@ -213,7 +219,7 @@ A valid first-stage test must demonstrate all of the following:
 - Transport overwrite, queue, and drop counters remain clean.
 - `command_worker: false` remains a working synchronous fallback.
 
-For queue-backed RX drivers, RX draining, synchronisation, and classification now run in the same worker. Decoding and ESPHome publication remain in the main loop. `fast_gpio_rx` remains entirely main-loop driven.
+For queue-backed RX drivers, RX draining, synchronisation, classification, and protocol decoding run in the same worker. The main loop consumes bounded decoded snapshots and remains the only context that mutates published state or calls ESPHome publication APIs. `fast_gpio_rx` remains entirely main-loop driven.
 
 ## `rmt_spi_rx` diagnostics
 

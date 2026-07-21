@@ -159,3 +159,25 @@ void frame_catalog_reports_unknown_frames() {
 }
 
 }  // namespace mhi_unit_tests
+
+namespace mhi_unit_tests {
+
+void frame_catalog_reuses_consumed_opdata_slots() {
+  MhiFrameCatalog catalog{};
+  catalog.reset();
+
+  for (uint32_t i = 0U; i < 48U; i++) {
+    const uint8_t group = static_cast<uint8_t>(i + 1U);
+    auto frame = make_legacy_opdata_frame(0x00U, group, 0x10U, static_cast<uint8_t>(i));
+    const auto result = catalog.ingest_mosi_frame(frame.view(), i + 1U, i * 10U);
+    EXPECT_TRUE(result.stored);
+
+    MhiCatalogedFrame out{};
+    EXPECT_TRUE(catalog.take_next_opdata(out));
+    EXPECT_EQ(out.sequence, i + 1U);
+  }
+
+  EXPECT_EQ(catalog.stats().dropped_opdata_slots_full, 0U);
+}
+
+}  // namespace mhi_unit_tests

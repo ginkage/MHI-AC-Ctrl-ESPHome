@@ -30,6 +30,7 @@
 #include "mhi_status_decoder.h"
 #include "mhi_transport_manager.h"
 #include "mhi_tx_builder.h"
+#include "mhi_worker_decoded_store.h"
 
 namespace esphome {
 namespace mhi_ac_ctrl {
@@ -348,7 +349,11 @@ class MhiAcCtrl : public Component {
   bool service_classified_rx_pipeline_();
   bool ingest_rx_frame_(const MhiFrameBuffer& frame);
   bool decode_cataloged_frames_();
+  bool decode_cataloged_frames_to_worker_store_();
   bool decode_cataloged_frame_(const MhiCatalogedFrame& cataloged_frame);
+  bool decode_cataloged_frame_to_worker_store_(const MhiCatalogedFrame& cataloged_frame,
+                                               bool command_candidate = false);
+  bool apply_worker_decoded_snapshots_();
   bool take_latest_extended_status_(MhiCatalogedFrame& out);
   bool take_latest_status_(MhiCatalogedFrame& out);
   bool take_latest_command_candidate_(MhiCatalogedFrame& out);
@@ -415,6 +420,8 @@ class MhiAcCtrl : public Component {
   MhiFrameSync frame_sync_{};
   MhiFrameCatalog frame_catalog_{};
   portMUX_TYPE frame_catalog_mux_ = portMUX_INITIALIZER_UNLOCKED;
+  MhiWorkerDecodedStore worker_decoded_store_{};
+  portMUX_TYPE worker_decoded_store_mux_ = portMUX_INITIALIZER_UNLOCKED;
   MhiTransportManager transport_{};
   MhiDiagnostics diagnostics_{};
 

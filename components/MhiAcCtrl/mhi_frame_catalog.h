@@ -9,7 +9,7 @@
 namespace esphome {
 namespace mhi_ac_ctrl {
 
-constexpr std::size_t kMhiCatalogOpDataSlots = 16U;
+constexpr std::size_t kMhiCatalogOpDataSlots = 32U;
 
 struct MhiCatalogStats {
   uint32_t ingested_frames{0};

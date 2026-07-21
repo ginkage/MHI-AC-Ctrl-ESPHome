@@ -25,6 +25,7 @@ CXX="${CXX:-g++}"
   tests/unit/test_duplex_tx_mailbox.cpp \
   tests/unit/test_command_coordinator.cpp \
   tests/unit/test_worker_policy.cpp \
+  tests/unit/test_worker_decoded_store.cpp \
   tests/unit/test_frame_catalog.cpp \
   tests/unit/test_fan_profile.cpp \
   tests/unit/test_status_decoder.cpp \
@@ -48,6 +49,7 @@ CXX="${CXX:-g++}"
   components/MhiAcCtrl/mhi_status_decoder.cpp \
   components/MhiAcCtrl/mhi_stats.cpp \
   components/MhiAcCtrl/mhi_tx_builder.cpp \
+  components/MhiAcCtrl/mhi_worker_decoded_store.cpp \
   -o "${BUILD_DIR}/mhi_protocol_tests"
 
 "${BUILD_DIR}/mhi_protocol_tests"
