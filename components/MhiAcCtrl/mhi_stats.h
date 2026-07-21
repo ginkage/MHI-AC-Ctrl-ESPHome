@@ -3,6 +3,11 @@
 #include <cstddef>
 #include <cstdint>
 
+#ifdef USE_ESP_IDF
+#include <freertos/FreeRTOS.h>
+#include <freertos/portmacro.h>
+#endif
+
 namespace esphome {
 namespace mhi_ac_ctrl {
 
@@ -131,10 +136,16 @@ class MhiStats {
   MhiStatsSnapshot snapshot() const;
 
  private:
+  void lock_() const;
+  void unlock_() const;
+
   static uint32_t updated_average(uint32_t current_average, uint32_t sample_count, uint32_t sample_us);
   static void update_timing_sample(uint32_t sample_us, uint32_t sample_count, uint32_t& last_us, uint32_t& avg_us,
                                    uint32_t& max_us);
 
+#ifdef USE_ESP_IDF
+  mutable portMUX_TYPE mux_ = portMUX_INITIALIZER_UNLOCKED;
+#endif
   MhiStatsSnapshot stats_{};
 };
 

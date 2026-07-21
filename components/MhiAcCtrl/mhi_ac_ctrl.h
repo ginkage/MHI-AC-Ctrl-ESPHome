@@ -5,6 +5,7 @@
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 
+#include <atomic>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -344,6 +345,7 @@ class MhiAcCtrl : public Component {
   void refresh_publish_targets_();
   void record_tx_build_result_(const MhiTxBuildResult& result, const MhiFrameBuffer& frame, bool sent);
   bool read_and_sync_rx_frame_();
+  bool service_classified_rx_pipeline_();
   bool ingest_rx_frame_(const MhiFrameBuffer& frame);
   bool decode_cataloged_frames_();
   bool decode_cataloged_frame_(const MhiCatalogedFrame& cataloged_frame);
@@ -360,6 +362,7 @@ class MhiAcCtrl : public Component {
   void command_worker_task_loop_();
   void notify_command_worker_();
   void service_command_pipeline_();
+  bool worker_handles_rx_() const;
   void drain_tx_completions_();
   bool decode_frame_(const MhiFrameBuffer& frame);
   bool apply_status_update_(const MhiDecodedStatus& decoded_status, const MhiFrameBuffer& frame);
@@ -437,19 +440,25 @@ class MhiAcCtrl : public Component {
   uint32_t frame_catalog_sequence_{0U};
 
   bool command_worker_enabled_{false};
-  volatile bool command_worker_running_{false};
-  volatile bool command_worker_stop_requested_{false};
-  volatile bool command_worker_started_{false};
+  bool command_worker_classified_rx_enabled_{false};
+  std::atomic<bool> command_worker_running_{false};
+  std::atomic<bool> command_worker_stop_requested_{false};
+  std::atomic<bool> command_worker_started_{false};
   TaskHandle_t command_worker_task_{nullptr};
   uint32_t command_worker_start_delay_ms_{0U};
   uint32_t command_worker_stack_size_{6144U};
   uint32_t command_worker_priority_{4U};
   int command_worker_core_id_{-1};
-  volatile uint32_t command_worker_wakes_{0U};
-  volatile uint32_t command_worker_service_runs_{0U};
-  volatile uint32_t command_worker_idle_timeouts_{0U};
-  volatile uint32_t command_worker_frames_staged_{0U};
-  volatile uint32_t command_worker_completions_{0U};
+  std::atomic<uint32_t> command_worker_wakes_{0U};
+  std::atomic<uint32_t> command_worker_service_runs_{0U};
+  std::atomic<uint32_t> command_worker_idle_polls_{0U};
+  std::atomic<uint32_t> command_worker_frames_staged_{0U};
+  std::atomic<uint32_t> command_worker_completions_{0U};
+  std::atomic<uint32_t> command_worker_rx_polls_{0U};
+  std::atomic<uint32_t> command_worker_rx_batches_{0U};
+  std::atomic<uint32_t> command_worker_rx_chunks_{0U};
+  std::atomic<uint32_t> command_worker_rx_frames_{0U};
+  std::atomic<uint32_t> command_worker_rx_max_batch_{0U};
 
   bool pending_extended_feedback_candidate_{false};
   bool pending_extended_feedback_swing_{false};

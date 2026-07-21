@@ -171,25 +171,36 @@ The first-stage command worker is experimental and disabled by default. It prepa
 Monitor:
 
 ```text
-command_worker enabled / running
+command_worker enabled / running / classified_rx
 command_worker wakes
 command_worker service_runs
-command_worker idle_timeouts
+command_worker idle_polls
 command_worker frames_staged
 command_worker completions
+command_worker rx_polls
+command_worker rx_batches
+command_worker rx_chunks
+command_worker rx_frames
+command_worker rx_max_batch
 ```
 
 Interpretation:
 
 | Counter | Meaning | Healthy expectation |
 |---|---|---|
-| `enabled` | Configured command-worker state | Matches YAML |
+| `enabled` | Configured worker state | Matches YAML |
 | `running` | FreeRTOS task is active | `YES` when enabled |
-| `wakes` | Notifications consumed by the worker | Increases with command changes and completed command transactions |
-| `service_runs` | Command-pipeline service passes | Increases as work or scheduled background TX is processed |
-| `idle_timeouts` | Timed wakes used to service background TX scheduling | May increase; should not correlate with functional regression |
+| `classified_rx` | Worker owns RX draining/synchronisation/classification | `YES` for queue-backed RX drivers; `NO` for `fast_gpio_rx` |
+| `wakes` | Explicit notifications consumed by the worker | Increases with command changes and completed command transactions |
+| `service_runs` | Combined command/RX service passes | Increases while the worker is active |
+| `idle_polls` | Timed polls without an explicit notification | May increase steadily; should not correlate with drops or regressions |
 | `frames_staged` | Frames accepted by the selected transport | Increases with commands and background requests |
 | `completions` | Command frames reported complete after a real bus transaction | Increases only for command-bearing TX envelopes |
+| `rx_polls` | Worker RX polling passes | Increases only when `classified_rx=YES` |
+| `rx_batches` | Polls that produced at least one valid frame | Should increase continuously on an active bus |
+| `rx_chunks` | Transport chunks drained by the worker | Tracks queue/DMA handoff activity |
+| `rx_frames` | Valid frames synchronised and catalogued by the worker | Should broadly track common `valid_frames` |
+| `rx_max_batch` | Largest number of valid frames processed in one poll | Normally small; sustained growth indicates worker starvation |
 
 A valid first-stage test must demonstrate all of the following:
 
@@ -202,7 +213,7 @@ A valid first-stage test must demonstrate all of the following:
 - Transport overwrite, queue, and drop counters remain clean.
 - `command_worker: false` remains a working synchronous fallback.
 
-RX synchronisation and decoding remain in the main loop at this testing point. Later classified RX processing will be added to the same worker rather than reintroducing separate RX and TX workers.
+For queue-backed RX drivers, RX draining, synchronisation, and classification now run in the same worker. Decoding and ESPHome publication remain in the main loop. `fast_gpio_rx` remains entirely main-loop driven.
 
 ## `rmt_spi_rx` diagnostics
 

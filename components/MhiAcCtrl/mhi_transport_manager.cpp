@@ -351,7 +351,7 @@ bool MhiTransportManager::queue_tx(const MhiTxEnvelope& envelope) {
       completion.kind = envelope.kind;
       completion.command_mask = envelope.command_mask;
       completion.intent = envelope.intent;
-      completion.success = true;
+      completion.success = false;
       completion.completed_at_ms = millis();
       portENTER_CRITICAL(&tx_mux_);
       tx_completions_.push(completion);

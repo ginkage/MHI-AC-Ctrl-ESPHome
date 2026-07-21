@@ -8,7 +8,7 @@ This is not a clean-room protocol project. It builds on the original community M
 
 ## Current status
 
-The currently validated runtime targets are the original **ESP32** and **ESP32-S3**, both using ESP-IDF. Keep `command_worker` disabled unless specifically testing the new command pipeline.
+The currently validated runtime targets are the original **ESP32** and **ESP32-S3**, both using ESP-IDF. Keep `command_worker` disabled unless specifically testing the combined command and classified-RX pipeline.
 
 - `fast_gpio_rx` with `fast_gpio_tx` remains the conservative stable baseline.
 - `external_clock_rx` with `fast_gpio_tx` is the stable non-S3 path currently running on an M5Stack Atom based on the original ESP32.
@@ -181,13 +181,17 @@ The new command pipeline is optional and disabled by default:
 command_worker: false
 ```
 
-When enabled, one event-driven worker prepares immutable command frames and coordinates their lifecycle. The selected transport still owns all real-time TX timing. Confirmation begins only after the transport reports that a command frame was actually clocked onto the bus.
+When enabled, one worker prepares immutable command frames, coordinates their lifecycle, and drains queue-backed RX transports. The selected transport still owns all real-time TX timing. Confirmation begins only after the transport reports that a command frame was actually clocked onto the bus.
 
 ```yaml
 command_worker: true
 ```
 
-The first testing point deliberately keeps RX synchronisation and decoding in the ESPHome main loop. Classified RX processing will be added to the same worker in a later stage; separate `rx_worker` and `tx_worker` settings are no longer used.
+For `external_clock_rx`, `rmt_spi_rx`, and `rmt_cs_spi`, the worker now performs RX draining, frame synchronisation, and classification into the bounded frame catalog. Decoding and all ESPHome entity publication remain in the main loop. `fast_gpio_rx` remains a main-loop RX path because its `read()` operation performs synchronous clock sampling.
+
+Separate `rx_worker` and `tx_worker` settings are no longer used.
+
+See [`COMMAND_WORKER_V2_PLAN.md`](COMMAND_WORKER_V2_PLAN.md) for the migration sequence and hardware acceptance gates. See [`DIAGNOSTICS.md`](DIAGNOSTICS.md#command-worker-diagnostics) for the counters to monitor.
 
 ## Frame size
 
@@ -528,7 +532,7 @@ Run lint:
 - Complete the long-duration ESP32-S3 soak for `rmt_cs_spi`.
 - Compare full-duplex stability, command confirmation, opdata flow, and loop timing against `rmt_spi_rx` plus `fast_gpio_tx`.
 - Keep the stable default unchanged until the full-duplex path completes hardware validation.
-- Validate the command-completion pipeline, then add classified RX processing to the same event-driven worker.
+- Validate the combined command and classified-RX worker, then move decoded snapshots behind a bounded main-loop publication handoff.
 - Investigate opdata catalogue slot pressure and rejected keys independently of transport work.
 - Add hardware rows to the compatibility table only after compile, command, opdata, and soak evidence is available.
 

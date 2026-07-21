@@ -313,7 +313,7 @@ Judge the command-worker path by functional outcomes:
 - Transport overwrite, queue, and drop counters remain clean.
 - `command_worker: false` remains a reliable fallback.
 
-The staged rollout and later classified-RX integration are documented in [`COMMAND_WORKER_V2_PLAN.md`](COMMAND_WORKER_V2_PLAN.md).
+The staged rollout and classified-RX integration are documented in [`COMMAND_WORKER_V2_PLAN.md`](COMMAND_WORKER_V2_PLAN.md). When `command_worker: true`, queue-backed RX drivers (`external_clock_rx`, `rmt_spi_rx`, and `rmt_cs_spi`) are drained and classified by that worker; `fast_gpio_rx` remains in the main loop.
 
 ## Diagnostics
 

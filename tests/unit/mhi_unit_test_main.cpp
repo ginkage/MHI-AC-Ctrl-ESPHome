@@ -130,5 +130,8 @@ int main() {
   fixture_opdata_current_decodes();
 
   std::cout << "MHI protocol unit tests passed\n";
+  worker_policy_allows_queue_backed_rx_drivers();
+  worker_policy_keeps_synchronous_rx_in_main_loop();
+
   return 0;
 }

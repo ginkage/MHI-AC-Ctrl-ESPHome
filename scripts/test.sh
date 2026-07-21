@@ -24,6 +24,7 @@ CXX="${CXX:-g++}"
   tests/unit/test_frame_queue.cpp \
   tests/unit/test_duplex_tx_mailbox.cpp \
   tests/unit/test_command_coordinator.cpp \
+  tests/unit/test_worker_policy.cpp \
   tests/unit/test_frame_catalog.cpp \
   tests/unit/test_fan_profile.cpp \
   tests/unit/test_status_decoder.cpp \

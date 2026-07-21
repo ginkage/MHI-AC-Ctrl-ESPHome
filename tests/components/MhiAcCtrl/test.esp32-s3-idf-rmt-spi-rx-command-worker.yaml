@@ -1,0 +1,34 @@
+esphome:
+  name: mhi-redux-rmt-spi-rx-w
+  friendly_name: MHI Redux RMT SPI RX Worker Compile Test
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+
+logger:
+  level: DEBUG
+
+external_components:
+  - source:
+      type: local
+      path: ../../../components
+    components: [MhiAcCtrl]
+
+MhiAcCtrl:
+  id: mhi_ac
+  frame_size: 33
+  sck_pin: 8
+  mosi_pin: 38
+  miso_pin: 39
+  rx_driver: rmt_spi_rx
+  tx_driver: fast_gpio_tx
+  rmt_spi_frame_gap_us: 1000
+  command_worker: true
+  command_worker_start_delay_ms: 0
+
+climate:
+  - platform: MhiAcCtrl
+    mhi_ac_ctrl_id: mhi_ac
+    name: MHI Climate

@@ -16,6 +16,7 @@
 #include "mhi_transport_pins.h"
 #include "mhi_tx_contract.h"
 #include "mhi_tx_driver.h"
+#include "mhi_worker_policy.h"
 
 #ifdef USE_ESP_IDF
 #include <sdkconfig.h>
@@ -98,6 +99,10 @@ class MhiTransportManager {
 
   bool rx_ready() const {
     return rx_ready_;
+  }
+
+  bool rx_supports_classified_worker() const {
+    return rx_ready_ && mhi_rx_driver_supports_classified_worker(this->rx_name());
   }
   bool tx_ready() const {
     return tx_ready_;
