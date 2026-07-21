@@ -544,6 +544,7 @@ This project builds on prior MHI reverse-engineering and ESPHome integration wor
 - Upstream ESPHome project base: [ginkage/MHI-AC-Ctrl-ESPHome](https://github.com/ginkage/MHI-AC-Ctrl-ESPHome)
 - Bus capture and trace reference: [absalom-muc/MHI-AC-Trace](https://github.com/absalom-muc/MHI-AC-Trace)
 - FastGPIO inspiration/reference work: [RobertJansen1/MHI-AC-Ctrl-ESPHome esp32_errors branch](https://github.com/RobertJansen1/MHI-AC-Ctrl-ESPHome/tree/esp32_errors)
+- RMT-derived chip-select and ESP32 SPI slave approach : [hberntsen/mhi-ac-ctrl-esp32](https://github.com/hberntsen/mhi-ac-ctrl-esp32)
 - Original reverse-engineering lineage and MHI protocol work from the wider `MHI-AC-Ctrl` community
 
 ## License
