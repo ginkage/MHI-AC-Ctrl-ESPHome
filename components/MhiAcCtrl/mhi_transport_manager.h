@@ -14,8 +14,8 @@
 #include "mhi_fast_gpio_rx_driver.h"
 #include "mhi_rx_driver.h"
 #include "mhi_transport_pins.h"
-#include "mhi_tx_driver.h"
 #include "mhi_tx_contract.h"
+#include "mhi_tx_driver.h"
 
 #ifdef USE_ESP_IDF
 #include <sdkconfig.h>

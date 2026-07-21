@@ -26,14 +26,14 @@ uint32_t merge_command_patch(MhiCommandState& destination, const MhiCommandState
     destination.target_temp_c = patch.target_temp_c;
     merged_mask |= MHI_COMMAND_TARGET_TEMP;
   }
-  if (patch.vertical_vane_set && (allowed_mask & MHI_COMMAND_VERTICAL_VANE) != 0U &&
-      patch.vertical_vane >= 1U && patch.vertical_vane <= 5U) {
+  if (patch.vertical_vane_set && (allowed_mask & MHI_COMMAND_VERTICAL_VANE) != 0U && patch.vertical_vane >= 1U &&
+      patch.vertical_vane <= 5U) {
     destination.vertical_vane_set = true;
     destination.vertical_vane = patch.vertical_vane;
     merged_mask |= MHI_COMMAND_VERTICAL_VANE;
   }
-  if (patch.horizontal_vane_set && (allowed_mask & MHI_COMMAND_HORIZONTAL_VANE) != 0U &&
-      patch.horizontal_vane >= 1U && patch.horizontal_vane <= 8U) {
+  if (patch.horizontal_vane_set && (allowed_mask & MHI_COMMAND_HORIZONTAL_VANE) != 0U && patch.horizontal_vane >= 1U &&
+      patch.horizontal_vane <= 8U) {
     destination.horizontal_vane_set = true;
     destination.horizontal_vane = patch.horizontal_vane;
     merged_mask |= MHI_COMMAND_HORIZONTAL_VANE;

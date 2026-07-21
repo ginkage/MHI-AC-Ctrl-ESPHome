@@ -65,8 +65,7 @@ void MhiAcCtrl::apply_external_room_temperature_(float value) {
   this->last_external_room_temperature_c_ = value;
   this->notify_command_worker_();
 
-  ESP_LOGD(DIAG_TAG, "external room temperature staged: %.2fC raw=0x%02x", value,
-           static_cast<unsigned int>(raw));
+  ESP_LOGD(DIAG_TAG, "external room temperature staged: %.2fC raw=0x%02x", value, static_cast<unsigned int>(raw));
 }
 
 void MhiAcCtrl::clear_external_room_temperature_() {
@@ -139,8 +138,8 @@ uint32_t MhiAcCtrl::request_command_patch(const MhiCommandState& patch) {
 
   if ((allowed_mask & MHI_COMMAND_HORIZONTAL_VANE) != 0U) {
     const bool duplicate_queued = command.horizontal_vane_set && command.horizontal_vane == patch.horizontal_vane;
-    const bool duplicate_pending = (pending_mask & MHI_COMMAND_HORIZONTAL_VANE) != 0U &&
-                                   pending_intent.horizontal_vane == patch.horizontal_vane;
+    const bool duplicate_pending =
+        (pending_mask & MHI_COMMAND_HORIZONTAL_VANE) != 0U && pending_intent.horizontal_vane == patch.horizontal_vane;
     const uint32_t other_extended_mask = queued_mask | pending_mask | allowed_mask;
     const bool three_d_busy = (other_extended_mask & MHI_COMMAND_THREE_D_AUTO) != 0U;
     const bool already_confirmed =
@@ -153,8 +152,8 @@ uint32_t MhiAcCtrl::request_command_patch(const MhiCommandState& patch) {
 
   if ((allowed_mask & MHI_COMMAND_THREE_D_AUTO) != 0U) {
     const bool duplicate_queued = command.three_d_auto_set && command.three_d_auto == patch.three_d_auto;
-    const bool duplicate_pending = (pending_mask & MHI_COMMAND_THREE_D_AUTO) != 0U &&
-                                   pending_intent.three_d_auto == patch.three_d_auto;
+    const bool duplicate_pending =
+        (pending_mask & MHI_COMMAND_THREE_D_AUTO) != 0U && pending_intent.three_d_auto == patch.three_d_auto;
     const uint32_t other_extended_mask = queued_mask | pending_mask | allowed_mask;
     const bool horizontal_busy = (other_extended_mask & MHI_COMMAND_HORIZONTAL_VANE) != 0U;
     const bool already_confirmed =
@@ -676,17 +675,15 @@ void MhiAcCtrl::start_command_worker_() {
   BaseType_t created = pdFALSE;
   if (this->command_worker_core_id_ >= 0) {
     created = xTaskCreatePinnedToCore(&MhiAcCtrl::command_worker_task_entry_, "mhi_command_worker", stack_size, this,
-                                      priority, &task_handle,
-                                      static_cast<BaseType_t>(this->command_worker_core_id_));
+                                      priority, &task_handle, static_cast<BaseType_t>(this->command_worker_core_id_));
   } else {
     created = xTaskCreate(&MhiAcCtrl::command_worker_task_entry_, "mhi_command_worker", stack_size, this, priority,
                           &task_handle);
   }
 
   if (created != pdPASS || task_handle == nullptr) {
-    ESP_LOGE(TAG, "Command worker start failed: stack=%lu priority=%lu core=%d",
-             static_cast<unsigned long>(stack_size), static_cast<unsigned long>(this->command_worker_priority_),
-             this->command_worker_core_id_);
+    ESP_LOGE(TAG, "Command worker start failed: stack=%lu priority=%lu core=%d", static_cast<unsigned long>(stack_size),
+             static_cast<unsigned long>(this->command_worker_priority_), this->command_worker_core_id_);
     this->command_worker_enabled_ = false;
     this->command_worker_task_ = nullptr;
     return;

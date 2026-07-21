@@ -40,9 +40,8 @@ bool MhiCommandCoordinator::prepare_next(MhiCommandState& command, MhiTxRuntime&
   return true;
 }
 
-void MhiCommandCoordinator::on_stage_result(const MhiTxEnvelope& envelope,
-                                            const MhiCommandState& command_before_build, MhiCommandState& command,
-                                            bool staged) {
+void MhiCommandCoordinator::on_stage_result(const MhiTxEnvelope& envelope, const MhiCommandState& command_before_build,
+                                            MhiCommandState& command, bool staged) {
   if (!envelope.is_command()) {
     return;
   }
