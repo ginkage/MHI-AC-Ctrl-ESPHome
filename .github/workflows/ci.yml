@@ -2,7 +2,6 @@ name: CI
 
 on:
   pull_request:
-  push:
     branches:
       - master
   workflow_dispatch:
@@ -64,8 +63,8 @@ jobs:
       - name: Run unit tests
         run: ./scripts/test.sh
 
-  compile-tests:
-    name: compile-tests
+  esphome-tests:
+    name: esphome-tests
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -77,11 +76,21 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-ci.txt
 
       - name: Install ESPHome
         run: |
           python -m pip install --upgrade pip
-          python -m pip install "esphome==${ESPHOME_VERSION}"
+          python -m pip install --requirement requirements-ci.txt
 
-      - name: Run ESPHome compile matrix
-        run: ./scripts/compile-tests.sh
+      - name: Validate all configurations
+        run: ./scripts/compile-tests.sh validate
+
+      - name: Compile representative configurations
+        if: github.event_name == 'pull_request'
+        run: ./scripts/compile-tests.sh smoke
+
+      - name: Compile complete matrix
+        if: github.event_name == 'workflow_dispatch'
+        run: ./scripts/compile-tests.sh full\
