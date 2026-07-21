@@ -34,6 +34,10 @@ int main() {
   command_coordinator_blocks_prepare_while_in_flight_or_confirming();
   command_coordinator_preserves_newer_same_field_after_tx_failure();
   command_coordinator_preserves_newer_same_field_after_stage_rejection();
+  command_patch_merges_combined_climate_fields();
+  command_coordinator_encodes_combined_climate_patch_in_one_envelope();
+  command_patch_applies_allowed_fields_without_losing_existing_state();
+  command_patch_rejects_invalid_vanes_but_keeps_valid_fields();
   command_coordinator_restores_failed_field_without_losing_new_unrelated_command();
   command_coordinator_assigns_increasing_generations();
   tx_completion_queue_preserves_order_and_reports_overwrite();

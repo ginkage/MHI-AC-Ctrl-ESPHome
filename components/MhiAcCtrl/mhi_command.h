@@ -151,5 +151,12 @@ struct MhiCommandState {
   }
 };
 
+// Merge the selected fields from a command patch into the destination state.
+// The patch uses the existing *_set flags as field-presence markers.
+// allowed_mask lets the caller reject invalid or duplicate fields before the
+// merge while still applying the rest of the batch atomically.
+uint32_t merge_command_patch(MhiCommandState& destination, const MhiCommandState& patch,
+                             uint32_t allowed_mask = 0xFFFFFFFFUL);
+
 }  // namespace mhi_ac_ctrl
 }  // namespace esphome

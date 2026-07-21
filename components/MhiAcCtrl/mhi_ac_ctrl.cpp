@@ -110,161 +110,135 @@ void MhiAcCtrl::check_external_room_temperature_timeout_() {
   ESP_LOGD(DIAG_TAG, "external room temperature timed out after %ds", this->room_temp_api_timeout_s_);
 }
 
-void MhiAcCtrl::request_power_command(bool power) {
+uint32_t MhiAcCtrl::request_command_patch(const MhiCommandState& patch) {
+  const uint32_t requested_mask = patch.pending_command_mask();
+  if (requested_mask == 0U) {
+    return 0U;
+  }
+
+  uint32_t allowed_mask = requested_mask;
+  if (patch.vertical_vane_set && (patch.vertical_vane < 1U || patch.vertical_vane > 5U)) {
+    allowed_mask &= ~MHI_COMMAND_VERTICAL_VANE;
+    ESP_LOGW(DIAG_TAG, "command: unsupported vertical vane request value=%u",
+             static_cast<unsigned int>(patch.vertical_vane));
+  }
+  if (patch.horizontal_vane_set && (patch.horizontal_vane < 1U || patch.horizontal_vane > 8U)) {
+    allowed_mask &= ~MHI_COMMAND_HORIZONTAL_VANE;
+    ESP_LOGW(DIAG_TAG, "command: unsupported horizontal vane request value=%u",
+             static_cast<unsigned int>(patch.horizontal_vane));
+  }
+
   if (this->command_mutex_ != nullptr) {
     xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
   }
+
   auto& command = this->state_.command();
-  command.power_set = true;
-  command.power = power;
+  const uint32_t queued_mask = command.pending_command_mask();
+  const uint32_t pending_mask = this->command_coordinator_.pending_mask();
+  const auto pending_intent = this->command_coordinator_.pending_intent();
+
+  if ((allowed_mask & MHI_COMMAND_HORIZONTAL_VANE) != 0U) {
+    const bool duplicate_queued = command.horizontal_vane_set && command.horizontal_vane == patch.horizontal_vane;
+    const bool duplicate_pending = (pending_mask & MHI_COMMAND_HORIZONTAL_VANE) != 0U &&
+                                   pending_intent.horizontal_vane == patch.horizontal_vane;
+    const uint32_t other_extended_mask = queued_mask | pending_mask | allowed_mask;
+    const bool three_d_busy = (other_extended_mask & MHI_COMMAND_THREE_D_AUTO) != 0U;
+    const bool already_confirmed =
+        !three_d_busy && this->confirmed_extended_louver_matches_horizontal_(patch.horizontal_vane);
+
+    if (duplicate_queued || duplicate_pending || already_confirmed) {
+      allowed_mask &= ~MHI_COMMAND_HORIZONTAL_VANE;
+    }
+  }
+
+  if ((allowed_mask & MHI_COMMAND_THREE_D_AUTO) != 0U) {
+    const bool duplicate_queued = command.three_d_auto_set && command.three_d_auto == patch.three_d_auto;
+    const bool duplicate_pending = (pending_mask & MHI_COMMAND_THREE_D_AUTO) != 0U &&
+                                   pending_intent.three_d_auto == patch.three_d_auto;
+    const uint32_t other_extended_mask = queued_mask | pending_mask | allowed_mask;
+    const bool horizontal_busy = (other_extended_mask & MHI_COMMAND_HORIZONTAL_VANE) != 0U;
+    const bool already_confirmed =
+        !horizontal_busy && this->confirmed_extended_louver_matches_three_d_auto_(patch.three_d_auto);
+
+    if (duplicate_queued || duplicate_pending || already_confirmed) {
+      allowed_mask &= ~MHI_COMMAND_THREE_D_AUTO;
+    }
+  }
+
+  const uint32_t accepted_mask = merge_command_patch(command, patch, allowed_mask);
+
   if (this->command_mutex_ != nullptr) {
     xSemaphoreGive(this->command_mutex_);
   }
-  this->notify_command_worker_();
+
+  if (accepted_mask != 0U) {
+    this->notify_command_worker_();
+  }
+
+  return accepted_mask;
+}
+
+void MhiAcCtrl::request_power_command(bool power) {
+  MhiCommandState patch{};
+  patch.power_set = true;
+  patch.power = power;
+  this->request_command_patch(patch);
 }
 
 void MhiAcCtrl::request_mode_command(uint8_t mode) {
-  if (this->command_mutex_ != nullptr) {
-    xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
-  }
-  auto& command = this->state_.command();
-  command.mode_set = true;
-  command.mode = mode;
-  if (this->command_mutex_ != nullptr) {
-    xSemaphoreGive(this->command_mutex_);
-  }
-  this->notify_command_worker_();
+  MhiCommandState patch{};
+  patch.mode_set = true;
+  patch.mode = mode;
+  this->request_command_patch(patch);
 }
 
 void MhiAcCtrl::request_fan_command(uint8_t fan) {
-  if (this->command_mutex_ != nullptr) {
-    xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
-  }
-  auto& command = this->state_.command();
-  command.fan_set = true;
-  command.fan = fan;
-  if (this->command_mutex_ != nullptr) {
-    xSemaphoreGive(this->command_mutex_);
-  }
-  this->notify_command_worker_();
+  MhiCommandState patch{};
+  patch.fan_set = true;
+  patch.fan = fan;
+  this->request_command_patch(patch);
 }
 
 void MhiAcCtrl::request_target_temperature_command(float target_temp_c) {
-  if (this->command_mutex_ != nullptr) {
-    xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
-  }
-  auto& command = this->state_.command();
-  command.target_temp_set = true;
-  command.target_temp_c = target_temp_c;
-  if (this->command_mutex_ != nullptr) {
-    xSemaphoreGive(this->command_mutex_);
-  }
-  this->notify_command_worker_();
+  MhiCommandState patch{};
+  patch.target_temp_set = true;
+  patch.target_temp_c = target_temp_c;
+  this->request_command_patch(patch);
 }
 
 void MhiAcCtrl::request_vertical_vane_command(uint8_t vertical_vane) {
-  if (vertical_vane < 1U || vertical_vane > 5U) {
-    return;
-  }
-  if (this->command_mutex_ != nullptr) {
-    xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
-  }
-  auto& command = this->state_.command();
-  command.vertical_vane_set = true;
-  command.vertical_vane = vertical_vane;
-  if (this->command_mutex_ != nullptr) {
-    xSemaphoreGive(this->command_mutex_);
-  }
-  this->notify_command_worker_();
+  MhiCommandState patch{};
+  patch.vertical_vane_set = true;
+  patch.vertical_vane = vertical_vane;
+  this->request_command_patch(patch);
 }
 
 bool MhiAcCtrl::request_horizontal_vane_command(uint8_t horizontal_vane) {
-  if (horizontal_vane < 1U || horizontal_vane > 8U) {
-    ESP_LOGW(DIAG_TAG, "command: unsupported horizontal vane request value=%u",
-             static_cast<unsigned int>(horizontal_vane));
-    return false;
-  }
+  MhiCommandState patch{};
+  patch.horizontal_vane_set = true;
+  patch.horizontal_vane = horizontal_vane;
+  const bool accepted = (this->request_command_patch(patch) & MHI_COMMAND_HORIZONTAL_VANE) != 0U;
 
-  if (this->command_mutex_ != nullptr) {
-    xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
-  }
-
-  auto& command = this->state_.command();
-  const uint32_t queued_mask = command.pending_command_mask();
-  const uint32_t pending_mask = this->command_coordinator_.pending_mask();
-  const auto pending_intent = this->command_coordinator_.pending_intent();
-
-  bool accepted = true;
-  if (command.horizontal_vane_set && command.horizontal_vane == horizontal_vane) {
-    accepted = false;
-  } else if ((pending_mask & MHI_COMMAND_HORIZONTAL_VANE) != 0U &&
-             pending_intent.horizontal_vane == horizontal_vane) {
-    accepted = false;
-  } else {
-    const bool extended_louver_busy = ((queued_mask | pending_mask) & kNoPendingExtendedFeedbackMask) != 0U;
-    if (!extended_louver_busy && this->confirmed_extended_louver_matches_horizontal_(horizontal_vane)) {
-      accepted = false;
-    }
-  }
-
-  if (accepted) {
-    command.horizontal_vane_set = true;
-    command.horizontal_vane = horizontal_vane;
-  }
-
-  if (this->command_mutex_ != nullptr) {
-    xSemaphoreGive(this->command_mutex_);
-  }
-
-  if (!accepted) {
+  if (!accepted && horizontal_vane >= 1U && horizontal_vane <= 8U) {
     ESP_LOGD(DIAG_TAG, "command: duplicate or already-confirmed horizontal vane request ignored value=%u",
              static_cast<unsigned int>(horizontal_vane));
-    return false;
   }
 
-  this->notify_command_worker_();
-  return true;
+  return accepted;
 }
 
 bool MhiAcCtrl::request_three_d_auto_command(bool enabled) {
-  if (this->command_mutex_ != nullptr) {
-    xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
-  }
-
-  auto& command = this->state_.command();
-  const uint32_t queued_mask = command.pending_command_mask();
-  const uint32_t pending_mask = this->command_coordinator_.pending_mask();
-  const auto pending_intent = this->command_coordinator_.pending_intent();
-
-  bool accepted = true;
-  if (command.three_d_auto_set && command.three_d_auto == enabled) {
-    accepted = false;
-  } else if ((pending_mask & MHI_COMMAND_THREE_D_AUTO) != 0U && pending_intent.three_d_auto == enabled) {
-    accepted = false;
-  } else {
-    const bool extended_louver_busy = ((queued_mask | pending_mask) & kNoPendingExtendedFeedbackMask) != 0U;
-    if (!extended_louver_busy && this->confirmed_extended_louver_matches_three_d_auto_(enabled)) {
-      accepted = false;
-    }
-  }
-
-  if (accepted) {
-    command.three_d_auto_set = true;
-    command.three_d_auto = enabled;
-  }
-
-  if (this->command_mutex_ != nullptr) {
-    xSemaphoreGive(this->command_mutex_);
-  }
+  MhiCommandState patch{};
+  patch.three_d_auto_set = true;
+  patch.three_d_auto = enabled;
+  const bool accepted = (this->request_command_patch(patch) & MHI_COMMAND_THREE_D_AUTO) != 0U;
 
   if (!accepted) {
     ESP_LOGD(DIAG_TAG, "command: duplicate or already-confirmed 3D auto request ignored state=%s",
              enabled ? "ON" : "OFF");
-    return false;
   }
 
-  this->notify_command_worker_();
-  return true;
+  return accepted;
 }
 
 void MhiAcCtrl::refresh_publish_targets_() {

@@ -40,7 +40,7 @@ class MhiClimate : public climate::Climate, public Component, public Parented<Mh
   uint8_t mode_to_mhi_(climate::ClimateMode mode) const;
   bool fan_to_mhi_(climate::ClimateFanMode fan, uint8_t& out) const;
 
-  void apply_swing_command_(climate::ClimateSwingMode swing);
+  void apply_swing_command_(climate::ClimateSwingMode swing, MhiCommandState& patch);
 
   bool temperature_offset_enabled_{false};
   float temperature_offset_{0.0f};

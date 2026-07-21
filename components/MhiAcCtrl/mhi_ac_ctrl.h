@@ -324,6 +324,7 @@ class MhiAcCtrl : public Component {
     return this->state_;
   }
 
+  uint32_t request_command_patch(const MhiCommandState& patch);
   void request_power_command(bool power);
   void request_mode_command(uint8_t mode);
   void request_fan_command(uint8_t fan);

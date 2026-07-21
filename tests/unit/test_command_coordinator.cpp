@@ -361,7 +361,6 @@ void command_coordinator_preserves_newer_same_field_after_tx_failure() {
   EXPECT_EQ(command.fan, 6U);
 }
 
-
 void command_coordinator_preserves_newer_same_field_after_stage_rejection() {
   MhiCommandCoordinator coordinator{};
   MhiCommandState command{};
@@ -381,6 +380,114 @@ void command_coordinator_preserves_newer_same_field_after_stage_rejection() {
   EXPECT_TRUE(command.target_temp_set);
   expect_near(command.target_temp_c, 24.0F);
   EXPECT_FALSE(coordinator.has_command_in_flight());
+}
+
+void command_patch_merges_combined_climate_fields() {
+  MhiCommandState destination{};
+  MhiCommandState patch{};
+  patch.power_set = true;
+  patch.power = true;
+  patch.mode_set = true;
+  patch.mode = 4U;
+  patch.fan_set = true;
+  patch.fan = 6U;
+  patch.target_temp_set = true;
+  patch.target_temp_c = 23.5F;
+  patch.vertical_vane_set = true;
+  patch.vertical_vane = 5U;
+  patch.horizontal_vane_set = true;
+  patch.horizontal_vane = 8U;
+
+  const uint32_t expected_mask = MHI_COMMAND_POWER | MHI_COMMAND_MODE | MHI_COMMAND_FAN |
+                                 MHI_COMMAND_TARGET_TEMP | MHI_COMMAND_VERTICAL_VANE |
+                                 MHI_COMMAND_HORIZONTAL_VANE;
+  EXPECT_EQ(merge_command_patch(destination, patch), expected_mask);
+  EXPECT_EQ(destination.pending_command_mask(), expected_mask);
+  EXPECT_TRUE(destination.power);
+  EXPECT_EQ(destination.mode, 4U);
+  EXPECT_EQ(destination.fan, 6U);
+  expect_near(destination.target_temp_c, 23.5F);
+  EXPECT_EQ(destination.vertical_vane, 5U);
+  EXPECT_EQ(destination.horizontal_vane, 8U);
+}
+
+void command_coordinator_encodes_combined_climate_patch_in_one_envelope() {
+  MhiCommandCoordinator coordinator{};
+  MhiCommandState command{};
+  MhiCommandState patch{};
+  MhiTxRuntime runtime{};
+  MhiTxBuildConfig config{};
+  MhiCommandState before{};
+  config.frame_size = kMhiFrame33Bytes;
+
+  patch.power_set = true;
+  patch.power = true;
+  patch.mode_set = true;
+  patch.mode = 4U;
+  patch.fan_set = true;
+  patch.fan = 6U;
+  patch.target_temp_set = true;
+  patch.target_temp_c = 22.5F;
+  patch.vertical_vane_set = true;
+  patch.vertical_vane = 5U;
+  patch.horizontal_vane_set = true;
+  patch.horizontal_vane = 8U;
+
+  const uint32_t expected_mask = MHI_COMMAND_POWER | MHI_COMMAND_MODE | MHI_COMMAND_FAN |
+                                 MHI_COMMAND_TARGET_TEMP | MHI_COMMAND_VERTICAL_VANE |
+                                 MHI_COMMAND_HORIZONTAL_VANE;
+  EXPECT_EQ(merge_command_patch(command, patch), expected_mask);
+
+  const MhiTxEnvelope envelope = prepare_command_envelope(coordinator, command, runtime, config, before);
+  EXPECT_EQ(envelope.command_mask, expected_mask);
+  EXPECT_EQ(envelope.intent.mask, expected_mask);
+  EXPECT_TRUE(envelope.intent.power);
+  EXPECT_EQ(envelope.intent.mode, 4U);
+  EXPECT_EQ(envelope.intent.fan, 6U);
+  expect_near(envelope.intent.target_temp_c, 22.5F);
+  EXPECT_EQ(envelope.intent.vertical_vane, 5U);
+  EXPECT_EQ(envelope.intent.horizontal_vane, 8U);
+}
+
+void command_patch_applies_allowed_fields_without_losing_existing_state() {
+  MhiCommandState destination{};
+  destination.power_set = true;
+  destination.power = true;
+
+  MhiCommandState patch{};
+  patch.mode_set = true;
+  patch.mode = 2U;
+  patch.fan_set = true;
+  patch.fan = 4U;
+  patch.horizontal_vane_set = true;
+  patch.horizontal_vane = 8U;
+
+  const uint32_t allowed_mask = MHI_COMMAND_MODE | MHI_COMMAND_FAN;
+  EXPECT_EQ(merge_command_patch(destination, patch, allowed_mask), allowed_mask);
+  EXPECT_TRUE(destination.power_set);
+  EXPECT_TRUE(destination.power);
+  EXPECT_TRUE(destination.mode_set);
+  EXPECT_EQ(destination.mode, 2U);
+  EXPECT_TRUE(destination.fan_set);
+  EXPECT_EQ(destination.fan, 4U);
+  EXPECT_FALSE(destination.horizontal_vane_set);
+}
+
+void command_patch_rejects_invalid_vanes_but_keeps_valid_fields() {
+  MhiCommandState destination{};
+  MhiCommandState patch{};
+  patch.target_temp_set = true;
+  patch.target_temp_c = 21.0F;
+  patch.vertical_vane_set = true;
+  patch.vertical_vane = 0U;
+  patch.horizontal_vane_set = true;
+  patch.horizontal_vane = 9U;
+
+  EXPECT_EQ(merge_command_patch(destination, patch), static_cast<uint32_t>(MHI_COMMAND_TARGET_TEMP));
+  EXPECT_TRUE(destination.target_temp_set);
+  expect_near(destination.target_temp_c, 21.0F);
+  EXPECT_FALSE(destination.vertical_vane_set);
+  EXPECT_FALSE(destination.horizontal_vane_set);
 }
 
 void command_coordinator_restores_failed_field_without_losing_new_unrelated_command() {
