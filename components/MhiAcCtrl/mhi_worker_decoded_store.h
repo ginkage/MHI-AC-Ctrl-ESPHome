@@ -46,6 +46,8 @@ struct MhiWorkerDecodedStoreStats {
   uint32_t unknown_writes{0};
   uint32_t unknown_overwrites{0};
   uint32_t publish_batches{0};
+  uint32_t pending_high_water{0};
+  uint32_t unknown_high_water{0};
 };
 
 class MhiWorkerDecodedStore {
@@ -68,11 +70,14 @@ class MhiWorkerDecodedStore {
     stats_.publish_batches++;
   }
 
+  std::size_t pending_count() const;
+
   const MhiWorkerDecodedStoreStats& stats() const {
     return stats_;
   }
 
  private:
+  void update_backlog_high_water_();
   static void write_status_slot_(MhiDecodedStatusSnapshot& slot, const MhiDecodedStatus& decoded,
                                  const MhiFrameBuffer& frame, uint32_t sequence, uint32_t now_ms, uint32_t& writes,
                                  uint32_t& overwrites);

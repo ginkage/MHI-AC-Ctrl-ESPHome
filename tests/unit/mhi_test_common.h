@@ -227,7 +227,7 @@ void command_coordinator_supersedes_pending_confirmation_with_newer_value();
 void command_coordinator_does_not_confirm_old_value_when_newer_request_is_queued();
 void command_coordinator_retries_only_remaining_fields_and_caps_attempts();
 void command_coordinator_reports_staged_timeout_once();
-void tx_completion_queue_preserves_order_and_reports_overwrite();
+void tx_completion_queue_preserves_order_and_rejects_overflow();
 
 
 void worker_decoded_store_latest_status_overwrites_stale_status();

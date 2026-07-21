@@ -46,6 +46,8 @@ class MhiAcCtrl : public Component {
   void setup() override;
   void loop() override;
   void dump_config() override;
+  void on_shutdown() override;
+  bool teardown() override;
 
   void set_frame_size(int frame_size) {
     this->frame_size_ = frame_size;
@@ -466,6 +468,12 @@ class MhiAcCtrl : public Component {
   std::atomic<uint32_t> command_worker_rx_chunks_{0U};
   std::atomic<uint32_t> command_worker_rx_frames_{0U};
   std::atomic<uint32_t> command_worker_rx_max_batch_{0U};
+  std::atomic<uint32_t> command_worker_last_runtime_us_{0U};
+  std::atomic<uint32_t> command_worker_max_runtime_us_{0U};
+  std::atomic<uint32_t> command_worker_max_notify_batch_{0U};
+  std::atomic<uint32_t> command_worker_stack_high_water_bytes_{0U};
+  std::atomic<bool> shutting_down_{false};
+  bool transport_shutdown_{false};
 
   bool pending_extended_feedback_candidate_{false};
   bool pending_extended_feedback_swing_{false};

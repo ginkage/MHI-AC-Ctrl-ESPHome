@@ -39,6 +39,24 @@ class IMhiDuplexTransport {
   virtual uint32_t tx_failures() const {
     return 0U;
   }
+  virtual std::size_t tx_completion_queue_depth() const {
+    return 0U;
+  }
+  virtual std::size_t tx_completion_queue_high_water() const {
+    return 0U;
+  }
+  virtual uint32_t tx_completion_queue_dropped() const {
+    return 0U;
+  }
+  virtual std::size_t rx_queue_depth() const {
+    return 0U;
+  }
+  virtual std::size_t rx_queue_high_water() const {
+    return 0U;
+  }
+  virtual uint32_t rx_queue_overwritten() const {
+    return 0U;
+  }
 
   virtual ~IMhiDuplexTransport() = default;
 };

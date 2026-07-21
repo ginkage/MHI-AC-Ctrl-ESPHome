@@ -70,6 +70,7 @@ class MhiTransportManager {
 
   bool setup();
   void loop();
+  void shutdown();
 
   std::size_t read_rx(uint8_t* dst, std::size_t max_len);
 
@@ -80,6 +81,12 @@ class MhiTransportManager {
   bool take_tx_completion(MhiTxCompletion& completion);
   bool has_pending_tx() const;
   bool flush_tx_on_bus_marker();
+  std::size_t tx_completion_queue_depth() const;
+  std::size_t tx_completion_queue_high_water() const;
+  uint32_t tx_completion_queue_dropped() const;
+  std::size_t rx_queue_depth() const;
+  std::size_t rx_queue_high_water() const;
+  uint32_t rx_queue_overwritten() const;
   void set_auto_tx_flush(bool enabled) {
     auto_tx_flush_ = enabled;
   }

@@ -32,6 +32,22 @@ void MhiWorkerDecodedStore::reset() {
   }
 }
 
+std::size_t MhiWorkerDecodedStore::pending_count() const {
+  return static_cast<std::size_t>(latest_status_.valid) + static_cast<std::size_t>(latest_extended_status_.valid) +
+         static_cast<std::size_t>(latest_command_candidate_.valid) + static_cast<std::size_t>(opdata_.valid) +
+         unknown_size_;
+}
+
+void MhiWorkerDecodedStore::update_backlog_high_water_() {
+  const std::size_t pending = this->pending_count();
+  if (pending > stats_.pending_high_water) {
+    stats_.pending_high_water = static_cast<uint32_t>(pending);
+  }
+  if (unknown_size_ > stats_.unknown_high_water) {
+    stats_.unknown_high_water = static_cast<uint32_t>(unknown_size_);
+  }
+}
+
 void MhiWorkerDecodedStore::write_status_slot_(MhiDecodedStatusSnapshot& slot, const MhiDecodedStatus& decoded,
                                                const MhiFrameBuffer& frame, uint32_t sequence, uint32_t now_ms,
                                                uint32_t& writes, uint32_t& overwrites) {
@@ -61,6 +77,7 @@ void MhiWorkerDecodedStore::store_status(const MhiDecodedStatus& decoded, const 
     write_status_slot_(latest_command_candidate_, decoded, frame, sequence, now_ms, stats_.command_candidate_writes,
                        stats_.command_candidate_overwrites);
   }
+  this->update_backlog_high_water_();
 }
 
 uint32_t MhiWorkerDecodedStore::merge_opdata_fields_(MhiDecodedOpData& destination, const MhiDecodedOpData& source) {
@@ -123,6 +140,7 @@ void MhiWorkerDecodedStore::merge_opdata(const MhiDecodedOpData& decoded, const 
   opdata_.last_update_ms = now_ms;
   opdata_.last_frame = frame;
   stats_.opdata_merges++;
+  this->update_backlog_high_water_();
 }
 
 void MhiWorkerDecodedStore::store_unknown(const MhiFrameBuffer& frame, uint32_t sequence, uint32_t now_ms) {
@@ -140,6 +158,7 @@ void MhiWorkerDecodedStore::store_unknown(const MhiFrameBuffer& frame, uint32_t 
   unknown_ring_[index].last_update_ms = now_ms;
   unknown_ring_[index].frame = frame;
   stats_.unknown_writes++;
+  this->update_backlog_high_water_();
 }
 
 bool MhiWorkerDecodedStore::take_command_candidate(MhiDecodedStatusSnapshot& out) {

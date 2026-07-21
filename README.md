@@ -300,7 +300,7 @@ switch:
       name: 3D Auto
 ```
 
-3D Auto command state is confirmed from the decoded 3D Auto feedback bit. A newer ON/OFF request supersedes an older pending request, and an unconfirmed command is retried a bounded number of times before being reported as exhausted.
+3D Auto command state is confirmed from decoded feedback. The switch should settle to the state reported by the AC.
 
 ## Binary sensors
 

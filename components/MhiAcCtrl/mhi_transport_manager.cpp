@@ -289,6 +289,24 @@ void MhiTransportManager::loop() {
   }
 }
 
+void MhiTransportManager::shutdown() {
+  if (duplex_ != nullptr) {
+    duplex_->shutdown();
+  } else if (rx_ != nullptr) {
+    rx_->shutdown();
+  }
+
+  portENTER_CRITICAL(&tx_mux_);
+  pending_tx_ = false;
+  tx_in_progress_ = false;
+  pending_tx_envelope_ = {};
+  tx_completions_.reset();
+  portEXIT_CRITICAL(&tx_mux_);
+
+  rx_ready_ = false;
+  tx_ready_ = false;
+}
+
 std::size_t MhiTransportManager::read_rx(uint8_t* dst, std::size_t max_len) {
   const std::size_t len = this->read_rx_raw_(dst, max_len);
 
@@ -354,8 +372,11 @@ bool MhiTransportManager::queue_tx(const MhiTxEnvelope& envelope) {
       completion.success = false;
       completion.completed_at_ms = millis();
       portENTER_CRITICAL(&tx_mux_);
-      tx_completions_.push(completion);
+      const bool stored = tx_completions_.push(completion);
       portEXIT_CRITICAL(&tx_mux_);
+      if (!stored && diagnostics_ != nullptr) {
+        diagnostics_->stats().on_tx_failure();
+      }
     }
     return true;
   }
@@ -374,6 +395,48 @@ bool MhiTransportManager::take_tx_completion(MhiTxCompletion& completion) {
   const bool available = tx_completions_.pop(completion);
   portEXIT_CRITICAL(&tx_mux_);
   return available;
+}
+
+std::size_t MhiTransportManager::tx_completion_queue_depth() const {
+  if (duplex_ != nullptr) {
+    return duplex_->tx_completion_queue_depth();
+  }
+  portENTER_CRITICAL(const_cast<portMUX_TYPE*>(&tx_mux_));
+  const std::size_t value = tx_completions_.size();
+  portEXIT_CRITICAL(const_cast<portMUX_TYPE*>(&tx_mux_));
+  return value;
+}
+
+std::size_t MhiTransportManager::tx_completion_queue_high_water() const {
+  if (duplex_ != nullptr) {
+    return duplex_->tx_completion_queue_high_water();
+  }
+  portENTER_CRITICAL(const_cast<portMUX_TYPE*>(&tx_mux_));
+  const std::size_t value = tx_completions_.high_water_mark();
+  portEXIT_CRITICAL(const_cast<portMUX_TYPE*>(&tx_mux_));
+  return value;
+}
+
+uint32_t MhiTransportManager::tx_completion_queue_dropped() const {
+  if (duplex_ != nullptr) {
+    return duplex_->tx_completion_queue_dropped();
+  }
+  portENTER_CRITICAL(const_cast<portMUX_TYPE*>(&tx_mux_));
+  const uint32_t value = tx_completions_.dropped();
+  portEXIT_CRITICAL(const_cast<portMUX_TYPE*>(&tx_mux_));
+  return value;
+}
+
+std::size_t MhiTransportManager::rx_queue_depth() const {
+  return duplex_ == nullptr ? 0U : duplex_->rx_queue_depth();
+}
+
+std::size_t MhiTransportManager::rx_queue_high_water() const {
+  return duplex_ == nullptr ? 0U : duplex_->rx_queue_high_water();
+}
+
+uint32_t MhiTransportManager::rx_queue_overwritten() const {
+  return duplex_ == nullptr ? 0U : duplex_->rx_queue_overwritten();
 }
 
 bool MhiTransportManager::has_pending_tx() const {
@@ -554,8 +617,9 @@ bool MhiTransportManager::flush_pending_tx_on_bus_marker_() {
 
   portENTER_CRITICAL(&tx_mux_);
   tx_in_progress_ = false;
+  bool completion_stored = true;
   if (envelope.is_command()) {
-    tx_completions_.push(completion);
+    completion_stored = tx_completions_.push(completion);
   }
 
   if (ok) {
@@ -564,6 +628,9 @@ bool MhiTransportManager::flush_pending_tx_on_bus_marker_() {
     }
     tx_backoff_until_ms_ = 0U;
     portEXIT_CRITICAL(&tx_mux_);
+    if (!completion_stored && diagnostics_ != nullptr) {
+      diagnostics_->stats().on_tx_failure();
+    }
     return true;
   }
 
@@ -571,6 +638,10 @@ bool MhiTransportManager::flush_pending_tx_on_bus_marker_() {
     tx_backoff_until_ms_ = millis() + tx_failure_backoff_ms_;
   }
   portEXIT_CRITICAL(&tx_mux_);
+
+  if (!completion_stored && diagnostics_ != nullptr) {
+    diagnostics_->stats().on_tx_failure();
+  }
 
   ESP_LOGD(TAG, "TX frame missed armed bus marker sequence=%lu age=%luus len=%u backoff=%lums",
            static_cast<unsigned long>(marker.sequence), static_cast<unsigned long>(marker_age_us),

@@ -21,6 +21,7 @@ void worker_decoded_store_latest_status_overwrites_stale_status() {
   EXPECT_FALSE(store.take_status(out));
   EXPECT_EQ(store.stats().status_writes, 2U);
   EXPECT_EQ(store.stats().status_overwrites, 1U);
+  EXPECT_EQ(store.stats().pending_high_water, 1U);
 }
 
 void worker_decoded_store_keeps_command_candidate_separate() {
@@ -106,6 +107,8 @@ void worker_decoded_store_unknown_ring_is_bounded() {
   EXPECT_EQ(count, static_cast<uint32_t>(kMhiWorkerUnknownRingCapacity));
   EXPECT_EQ(first_sequence, 3U);
   EXPECT_EQ(store.stats().unknown_overwrites, 2U);
+  EXPECT_EQ(store.stats().unknown_high_water, static_cast<uint32_t>(kMhiWorkerUnknownRingCapacity));
+  EXPECT_EQ(store.stats().pending_high_water, static_cast<uint32_t>(kMhiWorkerUnknownRingCapacity));
 }
 
 }  // namespace mhi_unit_tests

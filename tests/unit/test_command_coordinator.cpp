@@ -537,7 +537,7 @@ void command_coordinator_assigns_increasing_generations() {
   EXPECT_EQ(second.command_mask, static_cast<uint32_t>(MHI_COMMAND_MODE));
 }
 
-void tx_completion_queue_preserves_order_and_reports_overwrite() {
+void tx_completion_queue_preserves_order_and_rejects_overflow() {
   MhiTxCompletionQueue<2U> queue{};
   MhiTxCompletion one{};
   MhiTxCompletion two{};
@@ -546,17 +546,18 @@ void tx_completion_queue_preserves_order_and_reports_overwrite() {
   two.generation = 2U;
   three.generation = 3U;
 
-  queue.push(one);
-  queue.push(two);
-  queue.push(three);
-  EXPECT_EQ(queue.overwritten(), 1U);
+  EXPECT_TRUE(queue.push(one));
+  EXPECT_TRUE(queue.push(two));
+  EXPECT_FALSE(queue.push(three));
+  EXPECT_EQ(queue.dropped(), 1U);
+  EXPECT_EQ(queue.high_water_mark(), 2U);
   EXPECT_EQ(queue.size(), 2U);
 
   MhiTxCompletion out{};
   EXPECT_TRUE(queue.pop(out));
-  EXPECT_EQ(out.generation, 2U);
+  EXPECT_EQ(out.generation, 1U);
   EXPECT_TRUE(queue.pop(out));
-  EXPECT_EQ(out.generation, 3U);
+  EXPECT_EQ(out.generation, 2U);
   EXPECT_FALSE(queue.pop(out));
 }
 

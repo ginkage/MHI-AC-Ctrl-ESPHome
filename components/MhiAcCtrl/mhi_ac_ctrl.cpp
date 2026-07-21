@@ -300,6 +300,12 @@ void MhiAcCtrl::setup() {
   this->command_worker_rx_chunks_.store(0U, std::memory_order_relaxed);
   this->command_worker_rx_frames_.store(0U, std::memory_order_relaxed);
   this->command_worker_rx_max_batch_.store(0U, std::memory_order_relaxed);
+  this->command_worker_last_runtime_us_.store(0U, std::memory_order_relaxed);
+  this->command_worker_max_runtime_us_.store(0U, std::memory_order_relaxed);
+  this->command_worker_max_notify_batch_.store(0U, std::memory_order_relaxed);
+  this->command_worker_stack_high_water_bytes_.store(0U, std::memory_order_relaxed);
+  this->shutting_down_.store(false, std::memory_order_release);
+  this->transport_shutdown_ = false;
 
   if (this->command_mutex_ == nullptr) {
     this->command_mutex_ = xSemaphoreCreateMutex();
@@ -356,7 +362,37 @@ void MhiAcCtrl::setup() {
   ESP_LOGCONFIG(TAG, "TX mode: transport-owned real-time transmission");
 }
 
+void MhiAcCtrl::on_shutdown() {
+  this->shutting_down_.store(true, std::memory_order_release);
+  this->stop_command_worker_();
+}
+
+bool MhiAcCtrl::teardown() {
+  this->shutting_down_.store(true, std::memory_order_release);
+  this->stop_command_worker_();
+
+  if (this->command_worker_running_.load(std::memory_order_acquire) ||
+      this->command_worker_started_.load(std::memory_order_acquire)) {
+    return false;
+  }
+
+  if (!this->transport_shutdown_) {
+    this->transport_.shutdown();
+    this->transport_shutdown_ = true;
+  }
+
+  if (this->command_mutex_ != nullptr) {
+    vSemaphoreDelete(this->command_mutex_);
+    this->command_mutex_ = nullptr;
+  }
+  return true;
+}
+
 void MhiAcCtrl::loop() {
+  if (this->shutting_down_.load(std::memory_order_acquire)) {
+    return;
+  }
+
   const uint32_t loop_start_us = micros();
   bool state_changed = false;
   uint32_t section_start_us = loop_start_us;
@@ -621,7 +657,8 @@ void MhiAcCtrl::log_runtime_diagnostics_() {
 
   ESP_LOGI(DIAG_TAG,
            "runtime: worker_decode status=%lu/%lu extended=%lu/%lu candidates=%lu/%lu "
-           "opdata_merges=%lu opdata_field_overwrites=%lu unknown=%lu/%lu publish_batches=%lu",
+           "opdata_merges=%lu opdata_field_overwrites=%lu unknown=%lu/%lu publish_batches=%lu "
+           "pending_high_water=%lu unknown_high_water=%lu",
            static_cast<unsigned long>(worker_store_stats.status_writes),
            static_cast<unsigned long>(worker_store_stats.status_overwrites),
            static_cast<unsigned long>(worker_store_stats.extended_status_writes),
@@ -632,7 +669,9 @@ void MhiAcCtrl::log_runtime_diagnostics_() {
            static_cast<unsigned long>(worker_store_stats.opdata_field_overwrites),
            static_cast<unsigned long>(worker_store_stats.unknown_writes),
            static_cast<unsigned long>(worker_store_stats.unknown_overwrites),
-           static_cast<unsigned long>(worker_store_stats.publish_batches));
+           static_cast<unsigned long>(worker_store_stats.publish_batches),
+           static_cast<unsigned long>(worker_store_stats.pending_high_water),
+           static_cast<unsigned long>(worker_store_stats.unknown_high_water));
 
   ESP_LOGI(DIAG_TAG,
            "runtime: tx_priority command_attempts=%lu background_attempts=%lu background_failures=%lu "
@@ -646,7 +685,7 @@ void MhiAcCtrl::log_runtime_diagnostics_() {
   ESP_LOGI(DIAG_TAG,
            "runtime: command_worker enabled=%s running=%s classified_rx=%s wakes=%lu service_runs=%lu idle_polls=%lu "
            "frames_staged=%lu completions=%lu rx_polls=%lu rx_batches=%lu rx_chunks=%lu rx_frames=%lu "
-           "rx_max_batch=%lu",
+           "rx_max_batch=%lu runtime_us=%lu/%lu notify_max=%lu stack_free_min=%lu",
            this->command_worker_enabled_ ? "YES" : "NO",
            this->command_worker_running_.load(std::memory_order_acquire) ? "YES" : "NO",
            this->worker_handles_rx_() ? "YES" : "NO",
@@ -659,7 +698,21 @@ void MhiAcCtrl::log_runtime_diagnostics_() {
            static_cast<unsigned long>(this->command_worker_rx_batches_.load(std::memory_order_relaxed)),
            static_cast<unsigned long>(this->command_worker_rx_chunks_.load(std::memory_order_relaxed)),
            static_cast<unsigned long>(this->command_worker_rx_frames_.load(std::memory_order_relaxed)),
-           static_cast<unsigned long>(this->command_worker_rx_max_batch_.load(std::memory_order_relaxed)));
+           static_cast<unsigned long>(this->command_worker_rx_max_batch_.load(std::memory_order_relaxed)),
+           static_cast<unsigned long>(this->command_worker_last_runtime_us_.load(std::memory_order_relaxed)),
+           static_cast<unsigned long>(this->command_worker_max_runtime_us_.load(std::memory_order_relaxed)),
+           static_cast<unsigned long>(this->command_worker_max_notify_batch_.load(std::memory_order_relaxed)),
+           static_cast<unsigned long>(this->command_worker_stack_high_water_bytes_.load(std::memory_order_relaxed)));
+
+  ESP_LOGI(DIAG_TAG,
+           "runtime: transport_queues rx_depth=%u rx_high_water=%u rx_overwritten=%lu completion_depth=%u "
+           "completion_high_water=%u completion_dropped=%lu",
+           static_cast<unsigned int>(this->transport_.rx_queue_depth()),
+           static_cast<unsigned int>(this->transport_.rx_queue_high_water()),
+           static_cast<unsigned long>(this->transport_.rx_queue_overwritten()),
+           static_cast<unsigned int>(this->transport_.tx_completion_queue_depth()),
+           static_cast<unsigned int>(this->transport_.tx_completion_queue_high_water()),
+           static_cast<unsigned long>(this->transport_.tx_completion_queue_dropped()));
 
   ESP_LOGI(DIAG_TAG, "runtime: loop_us last=%lu avg=%lu max=%lu over_budget=%lu budget=%lu last_over_budget_age_ms=%lu",
            static_cast<unsigned long>(stats.loop_last_us), static_cast<unsigned long>(stats.loop_avg_us),
@@ -806,9 +859,31 @@ void MhiAcCtrl::command_worker_task_loop_() {
       break;
     }
 
-    this->command_worker_service_runs_.fetch_add(1U, std::memory_order_relaxed);
+    if (notified > 0U) {
+      uint32_t previous_notify_max = this->command_worker_max_notify_batch_.load(std::memory_order_relaxed);
+      while (notified > previous_notify_max && !this->command_worker_max_notify_batch_.compare_exchange_weak(
+                                                   previous_notify_max, notified, std::memory_order_relaxed)) {
+      }
+    }
+
+    const uint32_t service_start_us = micros();
+    const uint32_t service_run = this->command_worker_service_runs_.fetch_add(1U, std::memory_order_relaxed) + 1U;
     const bool rx_activity = this->service_classified_rx_pipeline_();
     this->service_command_pipeline_();
+    const uint32_t service_runtime_us = elapsed_us_(service_start_us);
+    this->command_worker_last_runtime_us_.store(service_runtime_us, std::memory_order_relaxed);
+    uint32_t previous_runtime_max = this->command_worker_max_runtime_us_.load(std::memory_order_relaxed);
+    while (service_runtime_us > previous_runtime_max &&
+           !this->command_worker_max_runtime_us_.compare_exchange_weak(previous_runtime_max, service_runtime_us,
+                                                                       std::memory_order_relaxed)) {
+    }
+
+#if INCLUDE_uxTaskGetStackHighWaterMark == 1
+    if ((service_run & 0x3FU) == 0U) {
+      this->command_worker_stack_high_water_bytes_.store(static_cast<uint32_t>(uxTaskGetStackHighWaterMark(nullptr)),
+                                                         std::memory_order_relaxed);
+    }
+#endif
 
     if (rx_activity) {
       this->enable_loop_soon_any_context();
@@ -821,7 +896,9 @@ void MhiAcCtrl::command_worker_task_loop_() {
 }
 
 void MhiAcCtrl::notify_command_worker_() {
-  if (!this->command_worker_enabled_ || this->command_worker_task_ == nullptr) {
+  const bool stopping = this->command_worker_stop_requested_.load(std::memory_order_acquire);
+  if ((!stopping && this->shutting_down_.load(std::memory_order_acquire)) || !this->command_worker_enabled_ ||
+      this->command_worker_task_ == nullptr) {
     return;
   }
 

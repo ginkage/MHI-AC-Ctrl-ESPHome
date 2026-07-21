@@ -70,6 +70,12 @@ class MhiRmtCsSpiTransport final : public IMhiDuplexTransport {
 
   uint32_t completed_tx_frames() const override;
   uint32_t tx_failures() const override;
+  std::size_t tx_completion_queue_depth() const override;
+  std::size_t tx_completion_queue_high_water() const override;
+  uint32_t tx_completion_queue_dropped() const override;
+  std::size_t rx_queue_depth() const override;
+  std::size_t rx_queue_high_water() const override;
+  uint32_t rx_queue_overwritten() const override;
 
  private:
   static constexpr std::size_t kTransactionQueueDepth = 1U;

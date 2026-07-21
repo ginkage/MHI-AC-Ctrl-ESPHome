@@ -44,7 +44,7 @@ int main() {
   command_coordinator_does_not_confirm_old_value_when_newer_request_is_queued();
   command_coordinator_retries_only_remaining_fields_and_caps_attempts();
   command_coordinator_reports_staged_timeout_once();
-  tx_completion_queue_preserves_order_and_reports_overwrite();
+  tx_completion_queue_preserves_order_and_rejects_overflow();
 
   worker_decoded_store_latest_status_overwrites_stale_status();
   worker_decoded_store_keeps_command_candidate_separate();

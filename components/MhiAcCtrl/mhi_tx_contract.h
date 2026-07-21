@@ -65,19 +65,26 @@ class MhiTxCompletionQueue {
   void reset() {
     head_ = 0U;
     size_ = 0U;
-    overwritten_ = 0U;
+    high_water_mark_ = 0U;
+    dropped_ = 0U;
   }
 
-  void push(const MhiTxCompletion& completion) {
+  bool push(const MhiTxCompletion& completion) {
+    // A command completion is a lifecycle event, not a latest-value snapshot.
+    // Never overwrite an older completion: reject the new entry and surface the
+    // invariant failure through diagnostics instead.
     if (size_ == Capacity) {
-      head_ = (head_ + 1U) % Capacity;
-      size_--;
-      overwritten_++;
+      dropped_++;
+      return false;
     }
 
     const std::size_t tail = (head_ + size_) % Capacity;
     entries_[tail] = completion;
     size_++;
+    if (size_ > high_water_mark_) {
+      high_water_mark_ = size_;
+    }
+    return true;
   }
 
   bool pop(MhiTxCompletion& completion) {
@@ -95,15 +102,24 @@ class MhiTxCompletionQueue {
     return size_;
   }
 
-  uint32_t overwritten() const {
-    return overwritten_;
+  constexpr std::size_t capacity() const {
+    return Capacity;
+  }
+
+  std::size_t high_water_mark() const {
+    return high_water_mark_;
+  }
+
+  uint32_t dropped() const {
+    return dropped_;
   }
 
  private:
   std::array<MhiTxCompletion, Capacity> entries_{};
   std::size_t head_{0U};
   std::size_t size_{0U};
-  uint32_t overwritten_{0U};
+  std::size_t high_water_mark_{0U};
+  uint32_t dropped_{0U};
 };
 
 }  // namespace mhi_ac_ctrl

@@ -127,6 +127,9 @@ void MhiRmtCsSpiTransport::loop() {
   uint32_t overwritten_tx = 0U;
   std::size_t queued_frames = 0U;
   std::size_t max_buffered_frames = 0U;
+  std::size_t completion_depth = 0U;
+  std::size_t completion_high_water = 0U;
+  uint32_t completion_dropped = 0U;
 
   portENTER_CRITICAL(&mux_);
   boundaries = rmt_boundaries_;
@@ -144,12 +147,16 @@ void MhiRmtCsSpiTransport::loop() {
   overwritten_tx = tx_mailbox_.overwritten_frames();
   queued_frames = completed_frames_.size();
   max_buffered_frames = completed_frames_.high_water_mark();
+  completion_depth = tx_completions_.size();
+  completion_high_water = tx_completions_.high_water_mark();
+  completion_dropped = tx_completions_.dropped();
   portEXIT_CRITICAL(&mux_);
 
   ESP_LOGI(TAG,
            "runtime: boundaries=%lu completed=%lu tx_completed=%lu tx_failures=%lu frame20=%lu frame33=%lu "
            "invalid_len=%lu result_errors=%lu queue_errors=%lu rmt_rearm_errors=%lu buffered_frames=%u "
-           "max_buffered=%u rx_overwritten=%lu tx_overwritten=%lu dropped=%lu task_running=%s",
+           "max_buffered=%u rx_overwritten=%lu tx_overwritten=%lu dropped=%lu completion=%u/%u/%lu "
+           "task_running=%s",
            static_cast<unsigned long>(boundaries), static_cast<unsigned long>(completed_transactions),
            static_cast<unsigned long>(completed_tx_frames), static_cast<unsigned long>(tx_failures),
            static_cast<unsigned long>(frames_20), static_cast<unsigned long>(frames_33),
@@ -158,6 +165,8 @@ void MhiRmtCsSpiTransport::loop() {
            static_cast<unsigned long>(rearm_errors), static_cast<unsigned int>(queued_frames),
            static_cast<unsigned int>(max_buffered_frames), static_cast<unsigned long>(overwritten_rx),
            static_cast<unsigned long>(overwritten_tx), static_cast<unsigned long>(dropped_frames),
+           static_cast<unsigned int>(completion_depth), static_cast<unsigned int>(completion_high_water),
+           static_cast<unsigned long>(completion_dropped),
            task_running_.load(std::memory_order_acquire) ? "YES" : "NO");
 #endif
 }
@@ -251,6 +260,72 @@ uint32_t MhiRmtCsSpiTransport::tx_failures() const {
   uint32_t value = 0U;
   portENTER_CRITICAL(const_cast<portMUX_TYPE*>(&mux_));
   value = tx_failures_;
+  portEXIT_CRITICAL(const_cast<portMUX_TYPE*>(&mux_));
+  return value;
+#endif
+}
+
+std::size_t MhiRmtCsSpiTransport::tx_completion_queue_depth() const {
+#if !MHI_RMT_CS_SPI_SUPPORTED
+  return 0U;
+#else
+  portENTER_CRITICAL(const_cast<portMUX_TYPE*>(&mux_));
+  const std::size_t value = tx_completions_.size();
+  portEXIT_CRITICAL(const_cast<portMUX_TYPE*>(&mux_));
+  return value;
+#endif
+}
+
+std::size_t MhiRmtCsSpiTransport::tx_completion_queue_high_water() const {
+#if !MHI_RMT_CS_SPI_SUPPORTED
+  return 0U;
+#else
+  portENTER_CRITICAL(const_cast<portMUX_TYPE*>(&mux_));
+  const std::size_t value = tx_completions_.high_water_mark();
+  portEXIT_CRITICAL(const_cast<portMUX_TYPE*>(&mux_));
+  return value;
+#endif
+}
+
+uint32_t MhiRmtCsSpiTransport::tx_completion_queue_dropped() const {
+#if !MHI_RMT_CS_SPI_SUPPORTED
+  return 0U;
+#else
+  portENTER_CRITICAL(const_cast<portMUX_TYPE*>(&mux_));
+  const uint32_t value = tx_completions_.dropped();
+  portEXIT_CRITICAL(const_cast<portMUX_TYPE*>(&mux_));
+  return value;
+#endif
+}
+
+std::size_t MhiRmtCsSpiTransport::rx_queue_depth() const {
+#if !MHI_RMT_CS_SPI_SUPPORTED
+  return 0U;
+#else
+  portENTER_CRITICAL(const_cast<portMUX_TYPE*>(&mux_));
+  const std::size_t value = completed_frames_.size();
+  portEXIT_CRITICAL(const_cast<portMUX_TYPE*>(&mux_));
+  return value;
+#endif
+}
+
+std::size_t MhiRmtCsSpiTransport::rx_queue_high_water() const {
+#if !MHI_RMT_CS_SPI_SUPPORTED
+  return 0U;
+#else
+  portENTER_CRITICAL(const_cast<portMUX_TYPE*>(&mux_));
+  const std::size_t value = completed_frames_.high_water_mark();
+  portEXIT_CRITICAL(const_cast<portMUX_TYPE*>(&mux_));
+  return value;
+#endif
+}
+
+uint32_t MhiRmtCsSpiTransport::rx_queue_overwritten() const {
+#if !MHI_RMT_CS_SPI_SUPPORTED
+  return 0U;
+#else
+  portENTER_CRITICAL(const_cast<portMUX_TYPE*>(&mux_));
+  const uint32_t value = completed_frames_.overwritten_frames();
   portEXIT_CRITICAL(const_cast<portMUX_TYPE*>(&mux_));
   return value;
 #endif
@@ -491,8 +566,8 @@ bool MhiRmtCsSpiTransport::queue_transaction_(TransactionSlot& slot) {
     transaction_queue_errors_++;
     if (slot.tx_envelope.valid()) {
       tx_failures_++;
-      if (slot.tx_envelope.is_command()) {
-        tx_completions_.push(completion);
+      if (slot.tx_envelope.is_command() && !tx_completions_.push(completion)) {
+        tx_failures_++;
       }
     }
     portEXIT_CRITICAL(&mux_);
@@ -614,7 +689,9 @@ void MhiRmtCsSpiTransport::process_completed_transaction_(spi_slave_transaction_
     }
 
     if (command_completion) {
-      tx_completions_.push(completion);
+      if (!tx_completions_.push(completion)) {
+        tx_failures_++;
+      }
     }
   }
   portEXIT_CRITICAL(&mux_);

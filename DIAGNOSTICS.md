@@ -74,34 +74,17 @@ Monitor:
 ```text
 command_confirmations
 command_confirmation_timeouts
-command_retries
-command_retry_exhaustions
-command_staged_timeouts
 pending_confirmation_mask
 last_confirmed_mask
 last_timeout_mask
-last_retry_mask
-last_exhausted_mask
-last_staged_timeout_mask
 ```
 
 Healthy behaviour:
 
 - `command_confirmations` increases after confirmable commands.
+- `command_confirmation_timeouts` remains zero.
 - `pending_confirmation_mask` returns to zero after the AC reports the requested state.
 - Home Assistant settles to the decoded AC state.
-- `command_confirmation_timeouts` normally remains zero, but a timeout may now trigger a bounded retry of only the remaining fields.
-
-Runtime logs distinguish:
-
-```text
-command: confirmation timeout ... retry=...
-command: confirmation exhausted after 3 attempts ...
-command: staged but not transmitted ... waiting for AC bus clock
-command: superseded pending confirmation ...
-```
-
-A retry warning is not the same as final command failure. An exhausted command, repeated retry cycle, or persistent non-zero pending mask requires investigation.
 
 A command test is not successful merely because a TX frame was sent. The physical unit must change and the returned status must confirm the change.
 
