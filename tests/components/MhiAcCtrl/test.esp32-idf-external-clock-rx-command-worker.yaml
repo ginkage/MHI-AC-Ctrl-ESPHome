@@ -1,5 +1,5 @@
 esphome:
-  name: mhi-redux-esp32-external-clock-worker
+  name: mhi-redux-esp32-external-cw
   friendly_name: MHI Redux ESP32 External Clock Command Worker Compile
   includes:
     - ../../../components/MhiAcCtrl/firmware_identity.h
