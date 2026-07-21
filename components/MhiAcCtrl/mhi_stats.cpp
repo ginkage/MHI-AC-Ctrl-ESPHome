@@ -193,6 +193,30 @@ void MhiStats::on_command_confirmation_timeout(uint32_t command_mask, uint32_t n
   this->unlock_();
 }
 
+void MhiStats::on_command_retry(uint32_t command_mask, uint32_t now_ms) {
+  this->lock_();
+  stats_.command_retries++;
+  stats_.last_command_retry_ms = now_ms;
+  stats_.last_command_retry_mask = command_mask;
+  this->unlock_();
+}
+
+void MhiStats::on_command_retry_exhausted(uint32_t command_mask, uint32_t now_ms) {
+  this->lock_();
+  stats_.command_retry_exhaustions++;
+  stats_.last_command_retry_exhaustion_ms = now_ms;
+  stats_.last_command_retry_exhaustion_mask = command_mask;
+  this->unlock_();
+}
+
+void MhiStats::on_command_staged_timeout(uint32_t command_mask, uint32_t now_ms) {
+  this->lock_();
+  stats_.command_staged_timeouts++;
+  stats_.last_command_staged_timeout_ms = now_ms;
+  stats_.last_command_staged_timeout_mask = command_mask;
+  this->unlock_();
+}
+
 void MhiStats::on_loop_timing(uint32_t loop_us, uint32_t transport_loop_us, uint32_t tx_stage_us,
                               uint32_t rx_read_sync_us, uint32_t publish_us, uint32_t command_housekeeping_us,
                               uint32_t budget_us, uint32_t now_ms) {

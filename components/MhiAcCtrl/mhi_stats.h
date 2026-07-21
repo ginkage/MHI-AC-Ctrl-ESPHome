@@ -33,6 +33,9 @@ struct MhiStatsSnapshot {
 
   uint32_t command_confirmations{0};
   uint32_t command_confirmation_timeouts{0};
+  uint32_t command_retries{0};
+  uint32_t command_retry_exhaustions{0};
+  uint32_t command_staged_timeouts{0};
 
   uint32_t loop_iterations{0};
   uint32_t loop_over_budget{0};
@@ -72,12 +75,18 @@ struct MhiStatsSnapshot {
   uint32_t last_unsupported_command_ms{0};
   uint32_t last_command_confirmation_ms{0};
   uint32_t last_command_confirmation_timeout_ms{0};
+  uint32_t last_command_retry_ms{0};
+  uint32_t last_command_retry_exhaustion_ms{0};
+  uint32_t last_command_staged_timeout_ms{0};
   uint32_t last_loop_over_budget_ms{0};
 
   uint32_t last_tx_command_mask{0};
   uint32_t last_unsupported_command_mask{0};
   uint32_t last_confirmed_command_mask{0};
   uint32_t last_command_confirmation_timeout_mask{0};
+  uint32_t last_command_retry_mask{0};
+  uint32_t last_command_retry_exhaustion_mask{0};
+  uint32_t last_command_staged_timeout_mask{0};
 
   uint8_t last_error_code{0};
 
@@ -124,6 +133,9 @@ class MhiStats {
 
   void on_command_confirmed(uint32_t command_mask, uint32_t now_ms);
   void on_command_confirmation_timeout(uint32_t command_mask, uint32_t now_ms);
+  void on_command_retry(uint32_t command_mask, uint32_t now_ms);
+  void on_command_retry_exhausted(uint32_t command_mask, uint32_t now_ms);
+  void on_command_staged_timeout(uint32_t command_mask, uint32_t now_ms);
 
   void on_loop_timing(uint32_t loop_us, uint32_t transport_loop_us, uint32_t tx_stage_us, uint32_t rx_read_sync_us,
                       uint32_t publish_us, uint32_t command_housekeeping_us, uint32_t budget_us, uint32_t now_ms);

@@ -223,6 +223,10 @@ void command_patch_applies_allowed_fields_without_losing_existing_state();
 void command_patch_rejects_invalid_vanes_but_keeps_valid_fields();
 void command_coordinator_restores_failed_field_without_losing_new_unrelated_command();
 void command_coordinator_assigns_increasing_generations();
+void command_coordinator_supersedes_pending_confirmation_with_newer_value();
+void command_coordinator_does_not_confirm_old_value_when_newer_request_is_queued();
+void command_coordinator_retries_only_remaining_fields_and_caps_attempts();
+void command_coordinator_reports_staged_timeout_once();
 void tx_completion_queue_preserves_order_and_reports_overwrite();
 
 
@@ -291,7 +295,8 @@ void command_confirmation_detects_duplicate_pending_commands();
 void command_confirmation_confirms_horizontal_vane_feedback();
 void command_confirmation_confirms_horizontal_swing_feedback();
 void command_confirmation_confirms_3d_auto_feedback();
-void command_confirmation_requires_preserved_horizontal_context_for_3d_auto();
+void command_confirmation_accepts_3d_auto_when_louver_context_changes();
+void command_confirmation_supersedes_older_pending_value();
 void command_confirmation_uses_longer_timeout_for_extended_louver_commands();
 void command_confirmation_reports_pending_age_for_settle_window();
 void command_confirmation_can_settle_extended_louver_pending_mask();

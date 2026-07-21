@@ -9,6 +9,9 @@ void MhiCommandCoordinator::reset() {
   command_in_flight_ = false;
   in_flight_envelope_ = {};
   in_flight_command_before_build_ = {};
+  in_flight_staged_ms_ = 0U;
+  staged_timeout_reported_ = false;
+  this->reset_attempts_();
 }
 
 bool MhiCommandCoordinator::prepare_next(MhiCommandState& command, MhiTxRuntime& runtime,
@@ -41,7 +44,7 @@ bool MhiCommandCoordinator::prepare_next(MhiCommandState& command, MhiTxRuntime&
 }
 
 void MhiCommandCoordinator::on_stage_result(const MhiTxEnvelope& envelope, const MhiCommandState& command_before_build,
-                                            MhiCommandState& command, bool staged) {
+                                            MhiCommandState& command, bool staged, uint32_t staged_at_ms) {
   if (!envelope.is_command()) {
     return;
   }
@@ -54,6 +57,9 @@ void MhiCommandCoordinator::on_stage_result(const MhiTxEnvelope& envelope, const
   command_in_flight_ = true;
   in_flight_envelope_ = envelope;
   in_flight_command_before_build_ = command_before_build;
+  in_flight_attempt_ = next_attempt_;
+  in_flight_staged_ms_ = staged_at_ms;
+  staged_timeout_reported_ = false;
 }
 
 bool MhiCommandCoordinator::on_tx_completion(const MhiTxCompletion& completion, MhiCommandState& command) {
@@ -66,7 +72,19 @@ bool MhiCommandCoordinator::on_tx_completion(const MhiTxCompletion& completion, 
   }
 
   if (completion.success) {
-    confirmation_.stage(in_flight_envelope_.intent, in_flight_envelope_.command_mask, completion.completed_at_ms);
+    uint32_t confirm_mask = in_flight_envelope_.command_mask;
+
+    // If a newer request for the same field arrived while this frame was in
+    // flight, do not let feedback for the old value block the newer command.
+    MhiCommandConfirmation in_flight_confirmation{};
+    in_flight_confirmation.stage(in_flight_envelope_.intent, confirm_mask, completion.completed_at_ms);
+    confirm_mask &= ~in_flight_confirmation.supersede(command);
+
+    confirmation_.stage(in_flight_envelope_.intent, confirm_mask, completion.completed_at_ms);
+    confirmation_attempt_ = in_flight_attempt_;
+    if (!confirmation_.has_pending()) {
+      this->reset_attempts_();
+    }
   } else {
     restore_command_mask_(command, in_flight_command_before_build_, in_flight_envelope_.command_mask);
   }
@@ -74,7 +92,72 @@ bool MhiCommandCoordinator::on_tx_completion(const MhiTxCompletion& completion, 
   command_in_flight_ = false;
   in_flight_envelope_ = {};
   in_flight_command_before_build_ = {};
+  in_flight_attempt_ = 0U;
+  in_flight_staged_ms_ = 0U;
+  staged_timeout_reported_ = false;
   return true;
+}
+
+uint32_t MhiCommandCoordinator::observe_status(const MhiStatusState& status) {
+  const uint32_t confirmed = confirmation_.observe_status(status);
+  if (!confirmation_.has_pending()) {
+    this->reset_attempts_();
+  }
+  return confirmed;
+}
+
+uint32_t MhiCommandCoordinator::settle_pending_mask(uint32_t mask) {
+  const uint32_t settled = confirmation_.settle_pending_mask(mask);
+  if (!confirmation_.has_pending()) {
+    this->reset_attempts_();
+  }
+  return settled;
+}
+
+uint32_t MhiCommandCoordinator::supersede_pending(const MhiCommandState& patch) {
+  const uint32_t superseded = confirmation_.supersede(patch);
+  if (!confirmation_.has_pending()) {
+    this->reset_attempts_();
+  }
+  return superseded;
+}
+
+MhiCommandTimeoutResult MhiCommandCoordinator::expire(uint32_t now_ms, MhiCommandState& command) {
+  MhiCommandTimeoutResult result{};
+  const MhiCommandExpiration expiration = confirmation_.expire(now_ms);
+  if (!expiration.expired()) {
+    return result;
+  }
+
+  result.timed_out_mask = expiration.mask;
+  result.attempt = confirmation_attempt_ == 0U ? 1U : confirmation_attempt_;
+  const uint32_t already_queued = command.pending_command_mask() & expiration.mask;
+  result.superseded_mask = already_queued;
+
+  if (result.attempt < kMhiMaxCommandAttempts) {
+    result.retry_mask = restore_intent_mask_(command, expiration.intent, expiration.mask & ~already_queued);
+    result.superseded_mask |= expiration.mask & ~(result.retry_mask | result.superseded_mask);
+    if (result.retry_mask != 0U) {
+      next_attempt_ = static_cast<uint8_t>(result.attempt + 1U);
+    } else {
+      this->reset_attempts_();
+    }
+  } else {
+    result.exhausted_mask = expiration.mask & ~already_queued;
+    this->reset_attempts_();
+  }
+
+  return result;
+}
+
+uint32_t MhiCommandCoordinator::staged_timeout_mask(uint32_t now_ms, uint32_t timeout_ms) {
+  if (!command_in_flight_ || staged_timeout_reported_ || in_flight_staged_ms_ == 0U || now_ms < in_flight_staged_ms_ ||
+      (now_ms - in_flight_staged_ms_) < timeout_ms) {
+    return 0U;
+  }
+
+  staged_timeout_reported_ = true;
+  return in_flight_envelope_.command_mask;
 }
 
 void MhiCommandCoordinator::restore_command_mask_(MhiCommandState& destination, const MhiCommandState& source,
@@ -114,6 +197,54 @@ void MhiCommandCoordinator::restore_command_mask_(MhiCommandState& destination, 
   if ((mask & MHI_COMMAND_ERROR_OPDATA_REQUEST) != 0U) {
     destination.error_opdata_request = source.error_opdata_request;
   }
+}
+
+uint32_t MhiCommandCoordinator::restore_intent_mask_(MhiCommandState& destination, const MhiCommandIntent& intent,
+                                                     uint32_t mask) {
+  uint32_t restored = 0U;
+
+  if ((mask & MHI_COMMAND_POWER) != 0U && !destination.power_set) {
+    destination.power_set = true;
+    destination.power = intent.power;
+    restored |= MHI_COMMAND_POWER;
+  }
+  if ((mask & MHI_COMMAND_MODE) != 0U && !destination.mode_set) {
+    destination.mode_set = true;
+    destination.mode = intent.mode;
+    restored |= MHI_COMMAND_MODE;
+  }
+  if ((mask & MHI_COMMAND_FAN) != 0U && !destination.fan_set) {
+    destination.fan_set = true;
+    destination.fan = intent.fan;
+    restored |= MHI_COMMAND_FAN;
+  }
+  if ((mask & MHI_COMMAND_TARGET_TEMP) != 0U && !destination.target_temp_set) {
+    destination.target_temp_set = true;
+    destination.target_temp_c = intent.target_temp_c;
+    restored |= MHI_COMMAND_TARGET_TEMP;
+  }
+  if ((mask & MHI_COMMAND_VERTICAL_VANE) != 0U && !destination.vertical_vane_set) {
+    destination.vertical_vane_set = true;
+    destination.vertical_vane = intent.vertical_vane;
+    restored |= MHI_COMMAND_VERTICAL_VANE;
+  }
+  if ((mask & MHI_COMMAND_HORIZONTAL_VANE) != 0U && !destination.horizontal_vane_set) {
+    destination.horizontal_vane_set = true;
+    destination.horizontal_vane = intent.horizontal_vane;
+    restored |= MHI_COMMAND_HORIZONTAL_VANE;
+  }
+  if ((mask & MHI_COMMAND_THREE_D_AUTO) != 0U && !destination.three_d_auto_set) {
+    destination.three_d_auto_set = true;
+    destination.three_d_auto = intent.three_d_auto;
+    restored |= MHI_COMMAND_THREE_D_AUTO;
+  }
+
+  return restored;
+}
+
+void MhiCommandCoordinator::reset_attempts_() {
+  next_attempt_ = 1U;
+  confirmation_attempt_ = 0U;
 }
 
 }  // namespace mhi_ac_ctrl

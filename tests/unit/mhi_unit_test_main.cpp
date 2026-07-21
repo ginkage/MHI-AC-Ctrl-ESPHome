@@ -40,6 +40,10 @@ int main() {
   command_patch_rejects_invalid_vanes_but_keeps_valid_fields();
   command_coordinator_restores_failed_field_without_losing_new_unrelated_command();
   command_coordinator_assigns_increasing_generations();
+  command_coordinator_supersedes_pending_confirmation_with_newer_value();
+  command_coordinator_does_not_confirm_old_value_when_newer_request_is_queued();
+  command_coordinator_retries_only_remaining_fields_and_caps_attempts();
+  command_coordinator_reports_staged_timeout_once();
   tx_completion_queue_preserves_order_and_reports_overwrite();
 
   worker_decoded_store_latest_status_overwrites_stale_status();
@@ -117,7 +121,8 @@ int main() {
   command_confirmation_confirms_horizontal_vane_feedback();
   command_confirmation_confirms_horizontal_swing_feedback();
   command_confirmation_confirms_3d_auto_feedback();
-  command_confirmation_requires_preserved_horizontal_context_for_3d_auto();
+  command_confirmation_accepts_3d_auto_when_louver_context_changes();
+  command_confirmation_supersedes_older_pending_value();
   command_confirmation_uses_longer_timeout_for_extended_louver_commands();
   command_confirmation_reports_pending_age_for_settle_window();
   command_confirmation_can_settle_extended_louver_pending_mask();

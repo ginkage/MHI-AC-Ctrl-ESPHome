@@ -561,3 +561,127 @@ void tx_completion_queue_preserves_order_and_reports_overwrite() {
 }
 
 }  // namespace mhi_unit_tests
+
+namespace mhi_unit_tests {
+
+void command_coordinator_supersedes_pending_confirmation_with_newer_value() {
+  MhiCommandCoordinator coordinator{};
+  MhiCommandState command{};
+  MhiTxRuntime runtime{};
+  MhiTxBuildConfig config{};
+  MhiCommandState before{};
+
+  command.three_d_auto_set = true;
+  command.three_d_auto = true;
+  config.frame_size = kMhiFrame33Bytes;
+  config.has_extended_louver_state = true;
+
+  const MhiTxEnvelope first = prepare_command_envelope(coordinator, command, runtime, config, before);
+  coordinator.on_stage_result(first, before, command, true, 100U);
+  EXPECT_TRUE(coordinator.on_tx_completion(completion_for(first, true, 200U), command));
+  EXPECT_EQ(coordinator.pending_mask(), static_cast<uint32_t>(MHI_COMMAND_THREE_D_AUTO));
+
+  MhiCommandState patch{};
+  patch.three_d_auto_set = true;
+  patch.three_d_auto = false;
+  EXPECT_EQ(coordinator.supersede_pending(patch), static_cast<uint32_t>(MHI_COMMAND_THREE_D_AUTO));
+  EXPECT_FALSE(coordinator.has_pending_confirmation());
+
+  EXPECT_EQ(merge_command_patch(command, patch), static_cast<uint32_t>(MHI_COMMAND_THREE_D_AUTO));
+  const MhiTxEnvelope second = prepare_command_envelope(coordinator, command, runtime, config, before);
+  EXPECT_EQ(second.command_mask, static_cast<uint32_t>(MHI_COMMAND_THREE_D_AUTO));
+  EXPECT_FALSE(second.intent.three_d_auto);
+}
+
+void command_coordinator_does_not_confirm_old_value_when_newer_request_is_queued() {
+  MhiCommandCoordinator coordinator{};
+  MhiCommandState command{};
+  MhiTxRuntime runtime{};
+  MhiTxBuildConfig config{};
+  MhiCommandState before{};
+
+  command.target_temp_set = true;
+  command.target_temp_c = 22.0F;
+  const MhiTxEnvelope first = prepare_command_envelope(coordinator, command, runtime, config, before);
+  coordinator.on_stage_result(first, before, command, true, 100U);
+
+  command.target_temp_set = true;
+  command.target_temp_c = 24.0F;
+
+  EXPECT_TRUE(coordinator.on_tx_completion(completion_for(first, true, 200U), command));
+  EXPECT_FALSE(coordinator.has_pending_confirmation());
+  EXPECT_TRUE(command.target_temp_set);
+  expect_near(command.target_temp_c, 24.0F);
+
+  const MhiTxEnvelope second = prepare_command_envelope(coordinator, command, runtime, config, before);
+  EXPECT_EQ(second.command_mask, static_cast<uint32_t>(MHI_COMMAND_TARGET_TEMP));
+  expect_near(second.intent.target_temp_c, 24.0F);
+}
+
+void command_coordinator_retries_only_remaining_fields_and_caps_attempts() {
+  MhiCommandCoordinator coordinator{};
+  MhiCommandState command{};
+  MhiTxRuntime runtime{};
+  MhiTxBuildConfig config{};
+  MhiCommandState before{};
+
+  command.power_set = true;
+  command.power = true;
+  command.target_temp_set = true;
+  command.target_temp_c = 23.0F;
+
+  MhiTxEnvelope envelope = prepare_command_envelope(coordinator, command, runtime, config, before);
+  coordinator.on_stage_result(envelope, before, command, true, 100U);
+  EXPECT_TRUE(coordinator.on_tx_completion(completion_for(envelope, true, 200U), command));
+
+  MhiStatusState status{};
+  status.valid = true;
+  status.power = true;
+  status.target_temp_c = 18.0F;
+  EXPECT_EQ(coordinator.observe_status(status), static_cast<uint32_t>(MHI_COMMAND_POWER));
+  EXPECT_EQ(coordinator.pending_mask(), static_cast<uint32_t>(MHI_COMMAND_TARGET_TEMP));
+
+  MhiCommandTimeoutResult timeout = coordinator.expire(200U + kMhiCommandConfirmationTimeoutMs, command);
+  EXPECT_EQ(timeout.attempt, 1U);
+  EXPECT_EQ(timeout.retry_mask, static_cast<uint32_t>(MHI_COMMAND_TARGET_TEMP));
+  EXPECT_TRUE(command.target_temp_set);
+  expect_near(command.target_temp_c, 23.0F);
+
+  envelope = prepare_command_envelope(coordinator, command, runtime, config, before);
+  EXPECT_EQ(envelope.command_mask, static_cast<uint32_t>(MHI_COMMAND_TARGET_TEMP));
+  coordinator.on_stage_result(envelope, before, command, true, 10300U);
+  EXPECT_TRUE(coordinator.on_tx_completion(completion_for(envelope, true, 10400U), command));
+
+  timeout = coordinator.expire(10400U + kMhiCommandConfirmationTimeoutMs, command);
+  EXPECT_EQ(timeout.attempt, 2U);
+  EXPECT_EQ(timeout.retry_mask, static_cast<uint32_t>(MHI_COMMAND_TARGET_TEMP));
+
+  envelope = prepare_command_envelope(coordinator, command, runtime, config, before);
+  coordinator.on_stage_result(envelope, before, command, true, 20500U);
+  EXPECT_TRUE(coordinator.on_tx_completion(completion_for(envelope, true, 20600U), command));
+
+  timeout = coordinator.expire(20600U + kMhiCommandConfirmationTimeoutMs, command);
+  EXPECT_EQ(timeout.attempt, 3U);
+  EXPECT_EQ(timeout.retry_mask, 0U);
+  EXPECT_EQ(timeout.exhausted_mask, static_cast<uint32_t>(MHI_COMMAND_TARGET_TEMP));
+  EXPECT_FALSE(command.target_temp_set);
+}
+
+void command_coordinator_reports_staged_timeout_once() {
+  MhiCommandCoordinator coordinator{};
+  MhiCommandState command{};
+  MhiTxRuntime runtime{};
+  MhiTxBuildConfig config{};
+  MhiCommandState before{};
+
+  command.power_set = true;
+  command.power = true;
+  const MhiTxEnvelope envelope = prepare_command_envelope(coordinator, command, runtime, config, before);
+  coordinator.on_stage_result(envelope, before, command, true, 100U);
+
+  EXPECT_EQ(coordinator.staged_timeout_mask(2099U, 2000U), 0U);
+  EXPECT_EQ(coordinator.staged_timeout_mask(2100U, 2000U), static_cast<uint32_t>(MHI_COMMAND_POWER));
+  EXPECT_EQ(coordinator.staged_timeout_mask(5000U, 2000U), 0U);
+}
+
+}  // namespace mhi_unit_tests

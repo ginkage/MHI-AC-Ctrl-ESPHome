@@ -134,6 +134,9 @@ uint32_t MhiAcCtrl::request_command_patch(const MhiCommandState& patch) {
   }
 
   auto& command = this->state_.command();
+  MhiCommandState allowed_patch = patch;
+  allowed_patch.clear_pending_mask(requested_mask & ~allowed_mask);
+  const uint32_t superseded_mask = this->command_coordinator_.supersede_pending(allowed_patch);
   const uint32_t queued_mask = command.pending_command_mask();
   const uint32_t pending_mask = this->command_coordinator_.pending_mask();
   const auto pending_intent = this->command_coordinator_.pending_intent();
@@ -144,8 +147,8 @@ uint32_t MhiAcCtrl::request_command_patch(const MhiCommandState& patch) {
         (pending_mask & MHI_COMMAND_HORIZONTAL_VANE) != 0U && pending_intent.horizontal_vane == patch.horizontal_vane;
     const uint32_t other_extended_mask = queued_mask | pending_mask | allowed_mask;
     const bool three_d_busy = (other_extended_mask & MHI_COMMAND_THREE_D_AUTO) != 0U;
-    const bool already_confirmed =
-        !three_d_busy && this->confirmed_extended_louver_matches_horizontal_(patch.horizontal_vane);
+    const bool already_confirmed = (superseded_mask & MHI_COMMAND_HORIZONTAL_VANE) == 0U && !three_d_busy &&
+                                   this->confirmed_extended_louver_matches_horizontal_(patch.horizontal_vane);
 
     if (duplicate_queued || duplicate_pending || already_confirmed) {
       allowed_mask &= ~MHI_COMMAND_HORIZONTAL_VANE;
@@ -158,8 +161,8 @@ uint32_t MhiAcCtrl::request_command_patch(const MhiCommandState& patch) {
         (pending_mask & MHI_COMMAND_THREE_D_AUTO) != 0U && pending_intent.three_d_auto == patch.three_d_auto;
     const uint32_t other_extended_mask = queued_mask | pending_mask | allowed_mask;
     const bool horizontal_busy = (other_extended_mask & MHI_COMMAND_HORIZONTAL_VANE) != 0U;
-    const bool already_confirmed =
-        !horizontal_busy && this->confirmed_extended_louver_matches_three_d_auto_(patch.three_d_auto);
+    const bool already_confirmed = (superseded_mask & MHI_COMMAND_THREE_D_AUTO) == 0U && !horizontal_busy &&
+                                   this->confirmed_extended_louver_matches_three_d_auto_(patch.three_d_auto);
 
     if (duplicate_queued || duplicate_pending || already_confirmed) {
       allowed_mask &= ~MHI_COMMAND_THREE_D_AUTO;
@@ -172,7 +175,12 @@ uint32_t MhiAcCtrl::request_command_patch(const MhiCommandState& patch) {
     xSemaphoreGive(this->command_mutex_);
   }
 
-  if (accepted_mask != 0U) {
+  if (superseded_mask != 0U) {
+    ESP_LOGD(DIAG_TAG, "command: superseded pending confirmation mask=0x%08lx",
+             static_cast<unsigned long>(superseded_mask));
+  }
+
+  if (accepted_mask != 0U || superseded_mask != 0U) {
     this->notify_command_worker_();
   }
 
@@ -575,14 +583,21 @@ void MhiAcCtrl::log_runtime_diagnostics_() {
            static_cast<unsigned long>(diag.last_unsupported_command_age_ms));
 
   ESP_LOGI(DIAG_TAG,
-           "runtime: command_confirmations=%lu command_confirmation_timeouts=%lu pending_confirmation_mask=0x%08lx "
-           "last_confirmed_mask=0x%08lx last_timeout_mask=0x%08lx "
-           "last_confirmed_age_ms=%lu last_timeout_age_ms=%lu",
+           "runtime: command_confirmations=%lu confirmation_timeouts=%lu retries=%lu retry_exhaustions=%lu "
+           "staged_timeouts=%lu pending_confirmation_mask=0x%08lx last_confirmed_mask=0x%08lx "
+           "last_timeout_mask=0x%08lx last_retry_mask=0x%08lx last_exhausted_mask=0x%08lx "
+           "last_staged_timeout_mask=0x%08lx last_confirmed_age_ms=%lu last_timeout_age_ms=%lu",
            static_cast<unsigned long>(stats.command_confirmations),
            static_cast<unsigned long>(stats.command_confirmation_timeouts),
+           static_cast<unsigned long>(stats.command_retries),
+           static_cast<unsigned long>(stats.command_retry_exhaustions),
+           static_cast<unsigned long>(stats.command_staged_timeouts),
            static_cast<unsigned long>(this->command_coordinator_.pending_mask()),
            static_cast<unsigned long>(stats.last_confirmed_command_mask),
            static_cast<unsigned long>(stats.last_command_confirmation_timeout_mask),
+           static_cast<unsigned long>(stats.last_command_retry_mask),
+           static_cast<unsigned long>(stats.last_command_retry_exhaustion_mask),
+           static_cast<unsigned long>(stats.last_command_staged_timeout_mask),
            static_cast<unsigned long>(diag.last_command_confirmation_age_ms),
            static_cast<unsigned long>(diag.last_command_confirmation_timeout_age_ms));
 
@@ -859,7 +874,7 @@ void MhiAcCtrl::service_command_pipeline_() {
   if (this->command_mutex_ != nullptr) {
     xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
   }
-  this->command_coordinator_.on_stage_result(envelope, command_before_build, this->state_.command(), queued);
+  this->command_coordinator_.on_stage_result(envelope, command_before_build, this->state_.command(), queued, now);
   if (this->command_mutex_ != nullptr) {
     xSemaphoreGive(this->command_mutex_);
   }
@@ -1704,24 +1719,48 @@ void MhiAcCtrl::update_command_confirmation_(const MhiStatusState& status) {
 }
 
 void MhiAcCtrl::check_command_confirmation_timeout_() {
+  constexpr uint32_t kStagedCommandWarningMs = 2000U;
   const uint32_t now = millis();
   if (this->command_mutex_ != nullptr) {
     xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
   }
-  const uint32_t timeout_mask = this->command_coordinator_.expire(now);
+  const uint32_t staged_timeout_mask = this->command_coordinator_.staged_timeout_mask(now, kStagedCommandWarningMs);
+  const MhiCommandTimeoutResult timeout = this->command_coordinator_.expire(now, this->state_.command());
   if (this->command_mutex_ != nullptr) {
     xSemaphoreGive(this->command_mutex_);
   }
 
-  if (timeout_mask == 0U) {
+  if (staged_timeout_mask != 0U) {
+    this->diagnostics_.stats().on_command_staged_timeout(staged_timeout_mask, now);
+    ESP_LOGW(DIAG_TAG, "command: staged but not transmitted after %lums mask=0x%08lx; waiting for AC bus clock",
+             static_cast<unsigned long>(kStagedCommandWarningMs), static_cast<unsigned long>(staged_timeout_mask));
+  }
+
+  if (!timeout.timed_out()) {
     return;
   }
 
-  this->diagnostics_.stats().on_command_confirmation_timeout(timeout_mask, now);
+  this->diagnostics_.stats().on_command_confirmation_timeout(timeout.timed_out_mask, now);
   this->clear_command_candidate_();
-  this->notify_command_worker_();
 
-  ESP_LOGW(DIAG_TAG, "command: confirmation timeout mask=0x%08lx", static_cast<unsigned long>(timeout_mask));
+  if (timeout.retry_mask != 0U) {
+    this->diagnostics_.stats().on_command_retry(timeout.retry_mask, now);
+    this->notify_command_worker_();
+    ESP_LOGW(DIAG_TAG, "command: confirmation timeout attempt=%u mask=0x%08lx retry=0x%08lx superseded=0x%08lx",
+             static_cast<unsigned int>(timeout.attempt), static_cast<unsigned long>(timeout.timed_out_mask),
+             static_cast<unsigned long>(timeout.retry_mask), static_cast<unsigned long>(timeout.superseded_mask));
+    return;
+  }
+
+  if (timeout.exhausted_mask != 0U) {
+    this->diagnostics_.stats().on_command_retry_exhausted(timeout.exhausted_mask, now);
+    ESP_LOGW(DIAG_TAG, "command: confirmation exhausted after %u attempts mask=0x%08lx superseded=0x%08lx",
+             static_cast<unsigned int>(timeout.attempt), static_cast<unsigned long>(timeout.exhausted_mask),
+             static_cast<unsigned long>(timeout.superseded_mask));
+  } else {
+    ESP_LOGD(DIAG_TAG, "command: timed-out generation fully superseded mask=0x%08lx",
+             static_cast<unsigned long>(timeout.superseded_mask));
+  }
 }
 
 void MhiAcCtrl::suppress_duplicate_pending_commands_() {
