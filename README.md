@@ -8,12 +8,12 @@ This is not a clean-room protocol project. It builds on the original community M
 
 ## Current status
 
-The currently validated runtime targets are the original **ESP32** and **ESP32-S3**, both using ESP-IDF. Keep `command_worker` disabled unless specifically testing the combined command and classified-RX pipeline.
+The currently validated runtime targets are the original **ESP32** and **ESP32-S3**, both using ESP-IDF. The conservative default remains `command_worker: false`; the combined command and classified-RX worker is opt-in while protocol mapping verification continues.
 
 - `fast_gpio_rx` with `fast_gpio_tx` remains the conservative stable baseline.
 - `external_clock_rx` with `fast_gpio_tx` is the stable non-S3 path currently running on an M5Stack Atom based on the original ESP32.
 - `rmt_spi_rx` with `fast_gpio_tx` is the stable hardware-assisted split path on ESP32-S3. It completed a roughly 47.5-hour soak with clean RX protocol health.
-- `rmt_cs_spi` is the full-duplex ESP32-S3 path currently in testing. Initial hardware results are clean and longer soak testing is in progress.
+- `rmt_cs_spi` with `command_worker: true` completed an approximately 32-hour classified-worker soak on ESP32-S3. More than 2.3 million frames were received with zero checksum failures, sync losses, dropped bytes, RX overwrites, completion drops, SPI queue errors, or RMT rearm errors. The transport and worker architecture therefore pass the initial extended soak, but the driver remains **In testing** until semantic command/status mappings are verified.
 - ESP32-C3 remains in development with compile coverage only; runtime operation is not validated.
 
 Implemented functionality includes 20-byte and 33-byte frames, command confirmation, climate control, configurable fan profiles, vertical and horizontal vanes, 3D Auto, common status sensors, opdata sensors, and transport diagnostics.
@@ -29,18 +29,19 @@ Implemented functionality includes 20-byte and 33-byte frames, command confirmat
 | `fast_gpio_rx` | `fast_gpio_tx` | **Stable** |
 | `external_clock_rx` | `fast_gpio_tx` | **Stable** |
 | `rmt_spi_rx` | `fast_gpio_tx` | **Stable** |
-| `rmt_cs_spi` | Integrated full-duplex TX | **In testing** |
+| `rmt_cs_spi` | Integrated full-duplex TX | **In testing — extended worker soak passed; 3D Auto Confirmation Tracing outstanding** |
 
 `Stable` means the driver combination has completed hardware validation and little to no transport-level change is expected. `In testing` means the implementation is functional but still undergoing soak or compatibility testing. `In development` means it is not ready for normal use.
 
-`command_worker` was disabled for the stable and in-testing transport results above.
+The stable split-driver results were obtained with `command_worker` disabled. The extended `rmt_cs_spi` soak used `command_worker: true` with classified worker-side RX decode and main-loop publication.
+Future validation work is required before determining if this is a valid configuration.
 
 ### Hardware driver guide
 
 | ESP chip | Validated hardware | Recommended RX selection | Effective TX | Status | Notes |
 |---|---|---|---|---|---|
 | ESP32 | M5Stack Atom (original ESP32) | `external_clock_rx` | `fast_gpio_tx` | **Stable** | Current running non-S3 configuration. Use `fast_gpio_rx` as the conservative fallback. |
-| ESP32-S3 | Current ESP32-S3 test unit; board/module model still to be recorded | `rmt_spi_rx`; `rmt_cs_spi` for active testing | `fast_gpio_tx`; integrated TX for `rmt_cs_spi` | **Stable** for `rmt_spi_rx`; **In testing** for `rmt_cs_spi` | `rmt_spi_rx` has completed extended soak testing. `rmt_cs_spi` is in the current longer soak. |
+| ESP32-S3 | Current ESP32-S3 test unit; M5Stack Atom S3 Lite | `rmt_spi_rx`; `rmt_cs_spi` for active testing | `fast_gpio_tx`; integrated TX for `rmt_cs_spi` | **Stable** for `rmt_spi_rx`; **In testing** for `rmt_cs_spi` | `rmt_spi_rx` completed extended soak testing. `rmt_cs_spi` plus the classified worker completed an approximately 32-hour soak with clean transport health. Defect found in 3D Auto confirmation that is under investigation. |
 | ESP32-C3 | No runtime-validated board yet | `fast_gpio_rx` | `fast_gpio_tx` | **In development** | Compile coverage only. Single-core runtime behaviour has not been validated. |
 
 Add tested boards or modules to the matching chip row as results become available. Do not add a new row for every board; each ESP chip version should have one consolidated row.
@@ -71,7 +72,7 @@ MhiAcCtrl:
   command_worker: false
 ```
 
-Experimental full-duplex ESP32-S3 configuration:
+Full-duplex ESP32-S3 classified-worker test configuration:
 
 ```yaml
 MhiAcCtrl:
@@ -82,7 +83,8 @@ MhiAcCtrl:
   miso_pin: 39
   rx_driver: rmt_cs_spi
   rmt_spi_frame_gap_us: 1000
-  command_worker: false
+  command_worker: true
+  command_worker_start_delay_ms: 0
 ```
 
 `rmt_cs_spi` owns RX and TX, so it rejects any `tx_driver` override. For split drivers, the previous explicit configuration remains valid:
@@ -300,7 +302,7 @@ switch:
       name: 3D Auto
 ```
 
-3D Auto command state is confirmed from decoded feedback. The switch should settle to the state reported by the AC.
+3D Auto is currently experimental. The coordinator supports supersession and bounded retry, but the underlying DB16/DB17 command and feedback mapping is not yet considered proven. Hardware testing showed that an initial command could affect the unit while subsequent toggles did not behave consistently. Do not rely on this control until the raw-frame verification spike resolves whether 3D Auto is a persistent state bit, a momentary command, or a composite louver mode.
 
 ## Binary sensors
 
@@ -529,12 +531,13 @@ Run lint:
 
 ## Roadmap
 
-- Complete the long-duration ESP32-S3 soak for `rmt_cs_spi`.
-- Compare full-duplex stability, command confirmation, opdata flow, and loop timing against `rmt_spi_rx` plus `fast_gpio_tx`.
-- Keep the stable default unchanged until the full-duplex path completes hardware validation.
-- Validate the combined command and classified-RX worker with bounded decoded snapshots and main-loop publication.
-- Investigate opdata catalogue slot pressure and rejected keys independently of transport work.
-- Add hardware rows to the compatibility table only after compile, command, opdata, and soak evidence is available.
+- Treat the `rmt_cs_spi` plus classified-worker extended soak as passed and freeze the transport architecture unless a transport defect is reproduced.
+- Run the protocol-code verification spike.
+- Capture one-setting-at-a-time MISO command deltas and returned MOSI feedback for power, mode, setpoint, fan, vertical vane, horizontal vane, and 3D Auto.
+- Resolve the 3D Auto defect only after determining whether its DB16/DB17 representation is a persistent bit, a momentary trigger, or a composite louver state.
+- Keep the stable default unchanged until both transport validation and semantic mapping validation are complete.
+- Validate mappings on more than one AC model before promoting model-sensitive features to stable.
+- Add hardware rows to the compatibility table only after compile, command, opdata, soak, and mapping evidence is available.
 
 
 ## Credits
