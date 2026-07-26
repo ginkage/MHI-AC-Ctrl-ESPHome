@@ -157,19 +157,26 @@ void MhiFrameCatalog::copy_slot_(const MhiCatalogSlot& slot, MhiCatalogedFrame& 
 }
 
 MhiCatalogSlot* MhiFrameCatalog::find_or_allocate_opdata_slot_(uint16_t opdata_key) {
-  MhiCatalogSlot* empty = nullptr;
+  MhiCatalogSlot* reusable = nullptr;
 
   for (auto& slot : opdata_slots_) {
     if (slot.kind == MhiFrameKind::OPDATA && slot.opdata_key == opdata_key) {
       return &slot;
     }
 
-    if (empty == nullptr && slot.writes == 0U && !slot.valid) {
-      empty = &slot;
+    // A consumed slot is reusable even if it previously held a different key.
+    // The old implementation required writes == 0, permanently exhausting the
+    // catalogue after enough distinct opdata keys had been observed.
+    if (reusable == nullptr && !slot.valid) {
+      reusable = &slot;
     }
   }
 
-  return empty;
+  if (reusable != nullptr) {
+    *reusable = {};
+  }
+
+  return reusable;
 }
 
 MhiCatalogIngestResult MhiFrameCatalog::write_slot_(MhiCatalogSlot& slot, const MhiFrameView& frame, MhiFrameKind kind,
