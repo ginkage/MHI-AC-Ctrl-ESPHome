@@ -29,8 +29,6 @@ MhiAcCtrl:
   initial_vertical_vanes_position: 5
   initial_horizontal_vanes_position: 8
   room_temp_timeout: 60
-  room_temperature_publish_interval: 15s
-  room_temperature_immediate_delta: 1.0
   external_temperature_sensor: external_room_temperature
 
 climate:

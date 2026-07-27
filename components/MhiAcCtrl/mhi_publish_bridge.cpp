@@ -5,6 +5,11 @@
 namespace esphome {
 namespace mhi_ac_ctrl {
 
+namespace {
+constexpr float kClimateCurrentTempHighPriorityDeltaC = 0.5f;
+constexpr uint32_t kClimateCurrentTempLowPriorityIntervalMs = 15000U;
+}  // namespace
+
 void MhiPublishBridge::publish(const MhiStateStore& state) {
   this->publish_status(state.status());
   this->publish_opdata(state.opdata());
@@ -16,9 +21,6 @@ void MhiPublishBridge::publish_status(const MhiStatusState& status) {
   }
 
   const bool first_publish = !has_last_status_;
-  const bool has_room_temperature_target = targets_.climate != nullptr || targets_.room_temp_sensor != nullptr;
-  const bool publish_room_temperature =
-      has_room_temperature_target && this->should_publish_room_temperature_(status.room_temp_c, status.last_update_ms);
 
   if (targets_.climate != nullptr) {
     bool changed = first_publish;
@@ -35,7 +37,7 @@ void MhiPublishBridge::publish_status(const MhiStatusState& status) {
       changed = true;
     }
 
-    if (publish_room_temperature) {
+    if (this->should_publish_climate_current_temperature_(status.room_temp_c, first_publish, status.last_update_ms)) {
       targets_.climate->current_temperature = status.room_temp_c;
       changed = true;
     }
@@ -61,7 +63,8 @@ void MhiPublishBridge::publish_status(const MhiStatusState& status) {
     targets_.power_binary_sensor->publish_state(status.power);
   }
 
-  if (targets_.room_temp_sensor != nullptr && publish_room_temperature) {
+  if (targets_.room_temp_sensor != nullptr &&
+      (first_publish || float_changed(last_status_.room_temp_c, status.room_temp_c))) {
     targets_.room_temp_sensor->publish_state(status.room_temp_c);
   }
 
@@ -369,40 +372,44 @@ bool MhiPublishBridge::float_changed(float old_value, float new_value) {
   return old_value != new_value;
 }
 
-bool MhiPublishBridge::should_publish_room_temperature_(float decoded_temp, uint32_t now_ms) {
-  if (!this->has_published_room_temperature_) {
-    this->has_published_room_temperature_ = true;
-    this->published_room_temperature_c_ = decoded_temp;
-    this->last_room_temperature_publish_ms_ = now_ms;
+bool MhiPublishBridge::should_publish_climate_current_temperature_(float decoded_temp, bool first_publish,
+                                                                   uint32_t now_ms) {
+  if (first_publish || !this->has_climate_published_current_temp_) {
+    this->has_climate_published_current_temp_ = true;
+    this->climate_published_current_temp_ = decoded_temp;
+    this->last_climate_current_temp_publish_ms_ = now_ms;
     return true;
   }
 
-  if (!float_changed(this->published_room_temperature_c_, decoded_temp)) {
+  if (!float_changed(this->climate_published_current_temp_, decoded_temp)) {
     return false;
   }
 
-  const float delta = std::fabs(decoded_temp - this->published_room_temperature_c_);
-  if (delta >= this->room_temperature_immediate_delta_c_) {
-    this->published_room_temperature_c_ = decoded_temp;
-    this->last_room_temperature_publish_ms_ = now_ms;
+  const float delta = std::fabs(decoded_temp - this->climate_published_current_temp_);
+  if (delta >= kClimateCurrentTempHighPriorityDeltaC) {
+    this->climate_published_current_temp_ = decoded_temp;
+    this->last_climate_current_temp_publish_ms_ = now_ms;
     return true;
   }
 
-  if ((now_ms - this->last_room_temperature_publish_ms_) < this->room_temperature_publish_interval_ms_) {
+  const bool interval_elapsed =
+      now_ms != 0U && this->last_climate_current_temp_publish_ms_ != 0U &&
+      (now_ms - this->last_climate_current_temp_publish_ms_) >= kClimateCurrentTempLowPriorityIntervalMs;
+  if (!interval_elapsed) {
     return false;
   }
 
-  this->published_room_temperature_c_ = decoded_temp;
-  this->last_room_temperature_publish_ms_ = now_ms;
+  this->climate_published_current_temp_ = decoded_temp;
+  this->last_climate_current_temp_publish_ms_ = now_ms;
   return true;
 }
 
 void MhiPublishBridge::reset_publish_cache_() {
   this->has_last_status_ = false;
   this->has_last_opdata_ = false;
-  this->has_published_room_temperature_ = false;
-  this->published_room_temperature_c_ = 0.0f;
-  this->last_room_temperature_publish_ms_ = 0U;
+  this->has_climate_published_current_temp_ = false;
+  this->climate_published_current_temp_ = 0.0f;
+  this->last_climate_current_temp_publish_ms_ = 0U;
 }
 
 }  // namespace mhi_ac_ctrl

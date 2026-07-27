@@ -156,16 +156,6 @@ class MhiAcCtrl : public Component {
     this->room_temp_api_timeout_s_ = timeout_s;
   }
 
-  void set_room_temperature_publish_interval_ms(uint32_t interval_ms) {
-    this->room_temperature_publish_interval_ms_ = interval_ms;
-    this->publish_bridge_.set_room_temperature_publish_interval_ms(interval_ms);
-  }
-
-  void set_room_temperature_immediate_delta(float delta_c) {
-    this->room_temperature_immediate_delta_c_ = delta_c;
-    this->publish_bridge_.set_room_temperature_immediate_delta(delta_c);
-  }
-
   void set_external_room_temperature_sensor(sensor::Sensor* sensor) {
     this->external_room_temperature_sensor_ = sensor;
   }
@@ -412,8 +402,6 @@ class MhiAcCtrl : public Component {
 
   int frame_size_{20};
   int room_temp_api_timeout_s_{60};
-  uint32_t room_temperature_publish_interval_ms_{15000U};
-  float room_temperature_immediate_delta_c_{1.0f};
   bool room_temp_api_active_{false};
   uint32_t room_temp_api_timeout_start_ms_{0U};
   float last_external_room_temperature_c_{NAN};
