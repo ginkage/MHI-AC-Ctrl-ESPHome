@@ -292,6 +292,9 @@ void MhiAcCtrl::dump_config() {
   ESP_LOGCONFIG(TAG, "MHI AC Ctrl rewrite skeleton:");
   ESP_LOGCONFIG(TAG, "  Frame size: %d", this->frame_size_);
   ESP_LOGCONFIG(TAG, "  Room temp timeout: %ds", this->room_temp_api_timeout_s_);
+  ESP_LOGCONFIG(TAG, "  Room temperature publish interval: %lums",
+                static_cast<unsigned long>(this->room_temperature_publish_interval_ms_));
+  ESP_LOGCONFIG(TAG, "  Room temperature immediate delta: %.2fC", this->room_temperature_immediate_delta_c_);
   ESP_LOGCONFIG(TAG, "  External room temperature sensor: %s",
                 this->external_room_temperature_sensor_ != nullptr ? "YES" : "NO");
   ESP_LOGCONFIG(TAG, "  Pins: SCK=%d MOSI=%d MISO=%d", this->pins_.sck, this->pins_.mosi, this->pins_.miso);
