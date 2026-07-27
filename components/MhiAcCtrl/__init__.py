@@ -78,12 +78,8 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_EXTERNAL_TEMPERATURE_SENSOR): cv.use_id(sensor.Sensor),
             cv.Optional(CONF_FRAME_SIZE, default=20): cv.one_of(20, 33, int=True),
             cv.Optional(CONF_ROOM_TEMP_TIMEOUT, default=60): cv.int_range(min=0, max=3600),
-            cv.Optional(
-                CONF_ROOM_TEMPERATURE_PUBLISH_INTERVAL, default="15s"
-            ): cv.positive_time_period_milliseconds,
-            cv.Optional(CONF_ROOM_TEMPERATURE_IMMEDIATE_DELTA, default=1.0): cv.float_range(
-                min=0.0, max=10.0
-            ),
+            cv.Optional(CONF_ROOM_TEMPERATURE_PUBLISH_INTERVAL, default="15s"): cv.positive_time_period_milliseconds,
+            cv.Optional(CONF_ROOM_TEMPERATURE_IMMEDIATE_DELTA, default=1.0): cv.float_range(min=0.0, max=10.0),
             cv.Optional(CONF_VANES_UD): cv.int_range(min=0, max=5),
             cv.Optional(CONF_VANES_LR): cv.int_range(min=0, max=8),
             cv.Optional(CONF_SCK_PIN): cv.int_,
@@ -127,16 +123,8 @@ async def to_code(config):
 
     cg.add(var.set_frame_size(config[CONF_FRAME_SIZE]))
     cg.add(var.set_room_temp_api_timeout(config[CONF_ROOM_TEMP_TIMEOUT]))
-    cg.add(
-        var.set_room_temperature_publish_interval_ms(
-            config[CONF_ROOM_TEMPERATURE_PUBLISH_INTERVAL]
-        )
-    )
-    cg.add(
-        var.set_room_temperature_immediate_delta(
-            config[CONF_ROOM_TEMPERATURE_IMMEDIATE_DELTA]
-        )
-    )
+    cg.add(var.set_room_temperature_publish_interval_ms(config[CONF_ROOM_TEMPERATURE_PUBLISH_INTERVAL]))
+    cg.add(var.set_room_temperature_immediate_delta(config[CONF_ROOM_TEMPERATURE_IMMEDIATE_DELTA]))
     effective_tx_driver = resolve_tx_driver(config[CONF_RX_DRIVER], config.get(CONF_TX_DRIVER))
     cg.add(var.set_rx_driver(config[CONF_RX_DRIVER]))
     cg.add(var.set_tx_driver(effective_tx_driver))
