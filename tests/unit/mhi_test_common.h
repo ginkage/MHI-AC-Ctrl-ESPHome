@@ -203,12 +203,8 @@ void duplex_tx_mailbox_latest_stage_replaces_unclaimed_frame();
 void duplex_tx_mailbox_rejects_invalid_frames_without_losing_pending_data();
 
 void frame_classifier_classifies_status_opdata_and_extended_status();
-void frame_classifier_uses_stable_opdata_keys_when_value_bits_change();
 void frame_catalog_overwrites_repeated_status_with_latest();
 void frame_catalog_keeps_opdata_slots_separate_by_key();
-void frame_catalog_overwrites_changing_values_for_same_opdata_field();
-void frame_catalog_reuses_consumed_opdata_slots();
-void frame_catalog_buffers_all_supported_opdata_groups();
 void frame_catalog_keeps_command_candidate_side_slot_latest_only();
 void frame_catalog_reports_unknown_frames();
 

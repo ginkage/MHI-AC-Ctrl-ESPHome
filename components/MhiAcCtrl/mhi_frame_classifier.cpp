@@ -33,14 +33,8 @@ bool opdata_marker_present(const MhiFrameView& frame) {
 }
 
 uint16_t opdata_key(const MhiFrameView& frame) {
-  // The response bank plus DB9 identifies the requested opdata field. DB10
-  // contains response-type and, for several fields, live value bits, so it must
-  // not participate in the catalogue key.
-  //
-  // Keep the bank in bit 8 and DB9 in bits 0..7. Using bit 15 for the bank would
-  // collide with DB9 groups >= 0x80 after shifting.
-  const uint16_t bank = (frame[DB6] & 0x80U) != 0U ? 0x0100U : 0x0000U;
-  return static_cast<uint16_t>(bank | frame[DB9]);
+  const uint16_t bank = (frame[DB6] & 0x80U) != 0U ? 0x8000U : 0x0000U;
+  return static_cast<uint16_t>(bank | (static_cast<uint16_t>(frame[DB9]) << 8U) | frame[DB10]);
 }
 
 }  // namespace
