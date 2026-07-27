@@ -67,6 +67,10 @@ MhiAcCtrl:
   initial_vertical_vanes_position: 5
   initial_horizontal_vanes_position: 8
   room_temp_timeout: 60
+  # Rate-limit small indoor-unit room-temperature fluctuations for both the
+  # climate current temperature and the standalone room_temperature sensor.
+  room_temperature_publish_interval: 15s
+  room_temperature_immediate_delta: 1.0
 
 button:
   - platform: restart
