@@ -63,7 +63,6 @@ int main() {
   publish_bridge_rate_limits_low_priority_climate_current_temperature_change();
   publish_bridge_does_not_force_low_priority_current_temp_when_other_climate_fields_change();
   publish_bridge_publishes_high_priority_climate_current_temperature_change_immediately();
-  publish_bridge_uses_configured_room_temperature_limits();
 
   tx_builder_emits_valid_default_20_byte_frame();
   tx_builder_applies_pending_commands_once();

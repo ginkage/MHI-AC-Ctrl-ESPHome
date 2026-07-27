@@ -65,20 +65,6 @@ class MhiPublishBridge {
     this->reset_publish_cache_();
   }
 
-  void set_room_temperature_publish_interval_ms(uint32_t interval_ms) {
-    if (this->room_temperature_publish_interval_ms_ != interval_ms) {
-      this->room_temperature_publish_interval_ms_ = interval_ms;
-      this->reset_publish_cache_();
-    }
-  }
-
-  void set_room_temperature_immediate_delta(float delta_c) {
-    if (this->room_temperature_immediate_delta_c_ != delta_c) {
-      this->room_temperature_immediate_delta_c_ = delta_c;
-      this->reset_publish_cache_();
-    }
-  }
-
   void set_fan_profile(MhiFanProfile profile) {
     if (this->fan_profile_ != profile) {
       this->fan_profile_ = profile;
@@ -101,7 +87,7 @@ class MhiPublishBridge {
   void publish_status(const MhiStatusState& status);
   void publish_opdata(const MhiOpDataState& opdata);
 
-  bool should_publish_room_temperature_(float decoded_temp, uint32_t now_ms);
+  bool should_publish_climate_current_temperature_(float decoded_temp, bool first_publish, uint32_t now_ms);
   void reset_publish_cache_();
 
   MhiPublishTargets targets_{};
@@ -113,11 +99,9 @@ class MhiPublishBridge {
   MhiStatusState last_status_{};
   MhiOpDataState last_opdata_{};
 
-  uint32_t room_temperature_publish_interval_ms_{15000U};
-  float room_temperature_immediate_delta_c_{1.0f};
-  bool has_published_room_temperature_{false};
-  float published_room_temperature_c_{0.0f};
-  uint32_t last_room_temperature_publish_ms_{0U};
+  bool has_climate_published_current_temp_{false};
+  float climate_published_current_temp_{0.0f};
+  uint32_t last_climate_current_temp_publish_ms_{0};
 };
 
 }  // namespace mhi_ac_ctrl

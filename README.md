@@ -157,27 +157,9 @@ tx_background_interval_ms
 frame_start_idle_ms
 rmt_spi_frame_gap_us
 room_temp_timeout
-room_temperature_publish_interval
-room_temperature_immediate_delta
 external_temperature_sensor
 fan_profile
 ```
-
-## Room temperature publication rate limiting
-
-The indoor unit can report small room-temperature changes many times per second. The component applies one shared publication gate to both the climate entity's `Current Temperature` and the standalone `room_temperature` sensor.
-
-The defaults are:
-
-```yaml
-MhiAcCtrl:
-  room_temperature_publish_interval: 15s
-  room_temperature_immediate_delta: 1.0
-```
-
-The first reading is published immediately. Later changes smaller than `room_temperature_immediate_delta` are published no more than once per `room_temperature_publish_interval`. A change equal to or larger than the immediate delta is published without waiting. Other climate changes, such as mode, fan or target temperature, remain immediate and do not force a suppressed room-temperature value through.
-
-For a unit that alternates between `20.25°C` and `20.75°C`, the default `1.0°C` immediate delta rate limits the noise while still allowing a larger real change to be reported promptly. Set `room_temperature_immediate_delta: 0.0` to publish every changed reading immediately.
 
 ## Worker mode
 
