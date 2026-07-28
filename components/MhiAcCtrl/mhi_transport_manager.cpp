@@ -80,7 +80,8 @@ void MhiTransportManager::configure(int sck_pin, int mosi_pin, int miso_pin, con
 
   portENTER_CRITICAL(&tx_mux_);
   pending_tx_ = false;
-  pending_tx_len_ = 0U;
+  pending_tx_envelope_ = {};
+  tx_completions_.reset();
   tx_in_progress_ = false;
   pending_tx_generation_ = 0U;
   pending_tx_queued_after_marker_sequence_ = 0U;
@@ -288,6 +289,24 @@ void MhiTransportManager::loop() {
   }
 }
 
+void MhiTransportManager::shutdown() {
+  if (duplex_ != nullptr) {
+    duplex_->shutdown();
+  } else if (rx_ != nullptr) {
+    rx_->shutdown();
+  }
+
+  portENTER_CRITICAL(&tx_mux_);
+  pending_tx_ = false;
+  tx_in_progress_ = false;
+  pending_tx_envelope_ = {};
+  tx_completions_.reset();
+  portEXIT_CRITICAL(&tx_mux_);
+
+  rx_ready_ = false;
+  tx_ready_ = false;
+}
+
 std::size_t MhiTransportManager::read_rx(uint8_t* dst, std::size_t max_len) {
   const std::size_t len = this->read_rx_raw_(dst, max_len);
 
@@ -296,13 +315,6 @@ std::size_t MhiTransportManager::read_rx(uint8_t* dst, std::size_t max_len) {
   }
 
   return len;
-}
-
-std::size_t MhiTransportManager::read_rx_for_worker(uint8_t* dst, std::size_t max_len) {
-  // The RX worker may drain completed frames, but it must never enter the
-  // split transport's blocking TX shifter. Duplex TX is independently owned
-  // by the transport task.
-  return this->read_rx_raw_(dst, max_len);
 }
 
 std::size_t MhiTransportManager::read_rx_raw_(uint8_t* dst, std::size_t max_len) {
@@ -326,8 +338,8 @@ std::size_t MhiTransportManager::read_rx_raw_(uint8_t* dst, std::size_t max_len)
   return len;
 }
 
-bool MhiTransportManager::queue_tx(const uint8_t* data, std::size_t len) {
-  if (!tx_ready_ || data == nullptr || len == 0U || len > kMhiMaxFrameBytes) {
+bool MhiTransportManager::queue_tx(const MhiTxEnvelope& envelope) {
+  if (!tx_ready_ || !envelope.valid()) {
     if (diagnostics_ != nullptr) {
       diagnostics_->stats().on_tx_failure();
     }
@@ -335,7 +347,7 @@ bool MhiTransportManager::queue_tx(const uint8_t* data, std::size_t len) {
   }
 
   if (duplex_ != nullptr) {
-    const bool staged = duplex_->send(data, len);
+    const bool staged = duplex_->send(envelope);
     if (!staged && diagnostics_ != nullptr) {
       diagnostics_->stats().on_tx_failure();
     }
@@ -351,22 +363,91 @@ bool MhiTransportManager::queue_tx(const uint8_t* data, std::size_t len) {
 
 #if MHI_ENABLE_SPLIT_TX_DRIVER
   if (tx_ == &null_tx_) {
+    if (envelope.is_command()) {
+      MhiTxCompletion completion{};
+      completion.generation = envelope.generation;
+      completion.kind = envelope.kind;
+      completion.command_mask = envelope.command_mask;
+      completion.intent = envelope.intent;
+      completion.success = false;
+      completion.completed_at_ms = millis();
+      portENTER_CRITICAL(&tx_mux_);
+      const bool stored = tx_completions_.push(completion);
+      portEXIT_CRITICAL(&tx_mux_);
+      if (!stored && diagnostics_ != nullptr) {
+        diagnostics_->stats().on_tx_failure();
+      }
+    }
     return true;
   }
 #endif
 
-  this->queue_pending_tx_(data, len);
+  this->queue_pending_tx_(envelope);
   return true;
 }
 
-bool MhiTransportManager::send_tx(const uint8_t* data, std::size_t len) {
-  const bool queued = this->queue_tx(data, len);
-
-  if (queued && duplex_ == nullptr && auto_tx_flush_) {
-    this->flush_tx_on_bus_marker();
+bool MhiTransportManager::take_tx_completion(MhiTxCompletion& completion) {
+  if (duplex_ != nullptr) {
+    return duplex_->take_tx_completion(completion);
   }
 
-  return queued;
+  portENTER_CRITICAL(&tx_mux_);
+  const bool available = tx_completions_.pop(completion);
+  portEXIT_CRITICAL(&tx_mux_);
+  return available;
+}
+
+std::size_t MhiTransportManager::tx_completion_queue_depth() const {
+  if (duplex_ != nullptr) {
+    return duplex_->tx_completion_queue_depth();
+  }
+  portENTER_CRITICAL(const_cast<portMUX_TYPE*>(&tx_mux_));
+  const std::size_t value = tx_completions_.size();
+  portEXIT_CRITICAL(const_cast<portMUX_TYPE*>(&tx_mux_));
+  return value;
+}
+
+std::size_t MhiTransportManager::tx_completion_queue_high_water() const {
+  if (duplex_ != nullptr) {
+    return duplex_->tx_completion_queue_high_water();
+  }
+  portENTER_CRITICAL(const_cast<portMUX_TYPE*>(&tx_mux_));
+  const std::size_t value = tx_completions_.high_water_mark();
+  portEXIT_CRITICAL(const_cast<portMUX_TYPE*>(&tx_mux_));
+  return value;
+}
+
+uint32_t MhiTransportManager::tx_completion_queue_dropped() const {
+  if (duplex_ != nullptr) {
+    return duplex_->tx_completion_queue_dropped();
+  }
+  portENTER_CRITICAL(const_cast<portMUX_TYPE*>(&tx_mux_));
+  const uint32_t value = tx_completions_.dropped();
+  portEXIT_CRITICAL(const_cast<portMUX_TYPE*>(&tx_mux_));
+  return value;
+}
+
+std::size_t MhiTransportManager::rx_queue_depth() const {
+  return duplex_ == nullptr ? 0U : duplex_->rx_queue_depth();
+}
+
+std::size_t MhiTransportManager::rx_queue_high_water() const {
+  return duplex_ == nullptr ? 0U : duplex_->rx_queue_high_water();
+}
+
+uint32_t MhiTransportManager::rx_queue_overwritten() const {
+  return duplex_ == nullptr ? 0U : duplex_->rx_queue_overwritten();
+}
+
+bool MhiTransportManager::has_pending_tx() const {
+  if (duplex_ != nullptr) {
+    return false;
+  }
+
+  portENTER_CRITICAL(const_cast<portMUX_TYPE*>(&tx_mux_));
+  const bool pending = pending_tx_ || tx_in_progress_;
+  portEXIT_CRITICAL(const_cast<portMUX_TYPE*>(&tx_mux_));
+  return pending;
 }
 
 bool MhiTransportManager::flush_tx_on_bus_marker() {
@@ -432,12 +513,10 @@ const char* MhiTransportManager::tx_name() const {
   return tx_ == nullptr ? "none" : tx_->name();
 }
 
-void MhiTransportManager::queue_pending_tx_(const uint8_t* data, std::size_t len) {
+void MhiTransportManager::queue_pending_tx_(const MhiTxEnvelope& envelope) {
   portENTER_CRITICAL(&tx_mux_);
-  pending_tx_frame_.fill(0U);
-  std::memcpy(pending_tx_frame_.data(), data, std::min<std::size_t>(len, pending_tx_frame_.size()));
-  pending_tx_len_ = std::min<std::size_t>(len, pending_tx_frame_.size());
-  pending_tx_ = pending_tx_len_ > 0U;
+  pending_tx_envelope_ = envelope;
+  pending_tx_ = pending_tx_envelope_.valid();
   pending_tx_generation_++;
 
   const MhiBusMarker marker = rx_ == nullptr ? MhiBusMarker{} : rx_->bus_marker();
@@ -446,12 +525,12 @@ void MhiTransportManager::queue_pending_tx_(const uint8_t* data, std::size_t len
 }
 
 bool MhiTransportManager::pending_tx_available_() const {
-  return pending_tx_ && pending_tx_len_ > 0U;
+  return pending_tx_ && pending_tx_envelope_.valid();
 }
 
 void MhiTransportManager::clear_pending_tx_() {
   pending_tx_ = false;
-  pending_tx_len_ = 0U;
+  pending_tx_envelope_ = {};
 }
 
 bool MhiTransportManager::flush_pending_tx_on_bus_marker_() {
@@ -467,8 +546,7 @@ bool MhiTransportManager::flush_pending_tx_on_bus_marker_() {
   const uint32_t marker_age_us = elapsed_us(micros(), marker.frame_end_us);
   const uint32_t now_ms = millis();
 
-  std::array<uint8_t, kMhiMaxFrameBytes> frame{};
-  std::size_t sent_len = 0U;
+  MhiTxEnvelope envelope{};
   uint32_t send_generation = 0U;
 
   portENTER_CRITICAL(&tx_mux_);
@@ -492,7 +570,7 @@ bool MhiTransportManager::flush_pending_tx_on_bus_marker_() {
   if (marker_age_us > tx_marker_arm_max_age_us_) {
     if (marker.sequence != last_stale_bus_marker_sequence_) {
       last_stale_bus_marker_sequence_ = marker.sequence;
-      const std::size_t pending_len = pending_tx_len_;
+      const std::size_t pending_len = pending_tx_envelope_.len;
       portEXIT_CRITICAL(&tx_mux_);
       ESP_LOGVV(TAG, "TX armed marker expired before attempt: sequence=%lu age=%luus max=%luus len=%u",
                 static_cast<unsigned long>(marker.sequence), static_cast<unsigned long>(marker_age_us),
@@ -505,14 +583,13 @@ bool MhiTransportManager::flush_pending_tx_on_bus_marker_() {
   }
 
   last_consumed_bus_marker_sequence_ = marker.sequence;
-  sent_len = pending_tx_len_;
+  envelope = pending_tx_envelope_;
   send_generation = pending_tx_generation_;
-  frame = pending_tx_frame_;
   tx_in_progress_ = true;
 
   portEXIT_CRITICAL(&tx_mux_);
 
-  const bool ok = tx_->send(frame.data(), sent_len);
+  const bool ok = tx_->send(envelope.frame.data(), envelope.len);
 
 #if MHI_ENABLE_SPLIT_TX_DRIVER
   const bool tx_disabled = tx_ == &null_tx_;
@@ -528,8 +605,22 @@ bool MhiTransportManager::flush_pending_tx_on_bus_marker_() {
     }
   }
 
+  MhiTxCompletion completion{};
+  if (envelope.is_command()) {
+    completion.generation = envelope.generation;
+    completion.kind = envelope.kind;
+    completion.command_mask = envelope.command_mask;
+    completion.intent = envelope.intent;
+    completion.success = ok;
+    completion.completed_at_ms = millis();
+  }
+
   portENTER_CRITICAL(&tx_mux_);
   tx_in_progress_ = false;
+  bool completion_stored = true;
+  if (envelope.is_command()) {
+    completion_stored = tx_completions_.push(completion);
+  }
 
   if (ok) {
     if (pending_tx_generation_ == send_generation) {
@@ -537,6 +628,9 @@ bool MhiTransportManager::flush_pending_tx_on_bus_marker_() {
     }
     tx_backoff_until_ms_ = 0U;
     portEXIT_CRITICAL(&tx_mux_);
+    if (!completion_stored && diagnostics_ != nullptr) {
+      diagnostics_->stats().on_tx_failure();
+    }
     return true;
   }
 
@@ -545,9 +639,13 @@ bool MhiTransportManager::flush_pending_tx_on_bus_marker_() {
   }
   portEXIT_CRITICAL(&tx_mux_);
 
+  if (!completion_stored && diagnostics_ != nullptr) {
+    diagnostics_->stats().on_tx_failure();
+  }
+
   ESP_LOGD(TAG, "TX frame missed armed bus marker sequence=%lu age=%luus len=%u backoff=%lums",
            static_cast<unsigned long>(marker.sequence), static_cast<unsigned long>(marker_age_us),
-           static_cast<unsigned int>(sent_len), static_cast<unsigned long>(tx_failure_backoff_ms_));
+           static_cast<unsigned int>(envelope.len), static_cast<unsigned long>(tx_failure_backoff_ms_));
   return false;
 }
 

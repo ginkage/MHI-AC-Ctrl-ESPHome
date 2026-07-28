@@ -72,6 +72,9 @@ void diagnostics_snapshot_reports_command_confirmation_event_ages() {
 
   diagnostics.stats().on_command_confirmed(MHI_COMMAND_POWER, 2000U);
   diagnostics.stats().on_command_confirmation_timeout(MHI_COMMAND_VERTICAL_VANE, 2500U);
+  diagnostics.stats().on_command_retry(MHI_COMMAND_TARGET_TEMP, 2600U);
+  diagnostics.stats().on_command_retry_exhausted(MHI_COMMAND_THREE_D_AUTO, 2700U);
+  diagnostics.stats().on_command_staged_timeout(MHI_COMMAND_MODE, 2800U);
 
   const auto snapshot = diagnostics.snapshot(3000U);
 
@@ -79,6 +82,12 @@ void diagnostics_snapshot_reports_command_confirmation_event_ages() {
   EXPECT_EQ(snapshot.stats.command_confirmation_timeouts, 1U);
   EXPECT_EQ(snapshot.stats.last_confirmed_command_mask, static_cast<uint32_t>(MHI_COMMAND_POWER));
   EXPECT_EQ(snapshot.stats.last_command_confirmation_timeout_mask, static_cast<uint32_t>(MHI_COMMAND_VERTICAL_VANE));
+  EXPECT_EQ(snapshot.stats.command_retries, 1U);
+  EXPECT_EQ(snapshot.stats.command_retry_exhaustions, 1U);
+  EXPECT_EQ(snapshot.stats.command_staged_timeouts, 1U);
+  EXPECT_EQ(snapshot.stats.last_command_retry_mask, static_cast<uint32_t>(MHI_COMMAND_TARGET_TEMP));
+  EXPECT_EQ(snapshot.stats.last_command_retry_exhaustion_mask, static_cast<uint32_t>(MHI_COMMAND_THREE_D_AUTO));
+  EXPECT_EQ(snapshot.stats.last_command_staged_timeout_mask, static_cast<uint32_t>(MHI_COMMAND_MODE));
   EXPECT_EQ(snapshot.last_command_confirmation_age_ms, 1000U);
   EXPECT_EQ(snapshot.last_command_confirmation_timeout_age_ms, 500U);
 }

@@ -13,6 +13,15 @@ constexpr uint32_t kMhiCommandConfirmationTimeoutMs = 10000U;
 constexpr uint32_t kMhiExtendedLouverConfirmationTimeoutMs = 20000U;
 constexpr uint32_t kMhiExtendedLouverSettleDelayMs = 3000U;
 
+struct MhiCommandExpiration {
+  uint32_t mask{0U};
+  MhiCommandIntent intent{};
+
+  bool expired() const {
+    return mask != 0U;
+  }
+};
+
 class MhiCommandConfirmation {
  public:
   void reset() {
@@ -76,38 +85,64 @@ class MhiCommandConfirmation {
       }
     }
 
+    // 3D Auto can legitimately change the horizontal-louver context as part of
+    // the command. Confirm it from the decoded 3D Auto feedback bit itself;
+    // requiring the pre-command louver context caused accepted commands to
+    // remain pending until timeout.
     if ((this->pending_mask_ & MHI_COMMAND_THREE_D_AUTO) != 0U && status.has_3d_auto &&
         status.three_d_auto == this->pending_intent_.three_d_auto) {
-      if (!this->pending_intent_.has_extended_louver_context ||
-          this->extended_louver_context_matches(status, this->pending_intent_)) {
-        confirmed |= MHI_COMMAND_THREE_D_AUTO;
-      }
+      confirmed |= MHI_COMMAND_THREE_D_AUTO;
     }
 
-    this->pending_mask_ &= ~confirmed;
-    this->pending_intent_.mask = this->pending_mask_;
-
-    if (this->pending_mask_ == 0U) {
-      this->staged_ms_ = 0U;
-    }
-
+    this->clear_pending_mask_(confirmed);
     return confirmed;
   }
 
   uint32_t settle_pending_mask(uint32_t mask) {
     const uint32_t settled = this->pending_mask_ & mask;
-    if (settled == 0U) {
+    this->clear_pending_mask_(settled);
+    return settled;
+  }
+
+  // A newer request for the same field supersedes semantic confirmation of an
+  // older transmitted value. This lets the coordinator progress immediately
+  // to the newer generation instead of waiting for the old timeout.
+  uint32_t supersede(const MhiCommandState& patch) {
+    if (this->pending_mask_ == 0U) {
       return 0U;
     }
 
-    this->pending_mask_ &= ~settled;
-    this->pending_intent_.mask = this->pending_mask_;
+    uint32_t superseded = 0U;
 
-    if (this->pending_mask_ == 0U) {
-      this->staged_ms_ = 0U;
+    if ((this->pending_mask_ & MHI_COMMAND_POWER) != 0U && patch.power_set &&
+        patch.power != this->pending_intent_.power) {
+      superseded |= MHI_COMMAND_POWER;
+    }
+    if ((this->pending_mask_ & MHI_COMMAND_MODE) != 0U && patch.mode_set && patch.mode != this->pending_intent_.mode) {
+      superseded |= MHI_COMMAND_MODE;
+    }
+    if ((this->pending_mask_ & MHI_COMMAND_FAN) != 0U && patch.fan_set && patch.fan != this->pending_intent_.fan) {
+      superseded |= MHI_COMMAND_FAN;
+    }
+    if ((this->pending_mask_ & MHI_COMMAND_TARGET_TEMP) != 0U && patch.target_temp_set &&
+        !float_matches(patch.target_temp_c, this->pending_intent_.target_temp_c)) {
+      superseded |= MHI_COMMAND_TARGET_TEMP;
+    }
+    if ((this->pending_mask_ & MHI_COMMAND_VERTICAL_VANE) != 0U && patch.vertical_vane_set &&
+        patch.vertical_vane != this->pending_intent_.vertical_vane) {
+      superseded |= MHI_COMMAND_VERTICAL_VANE;
+    }
+    if ((this->pending_mask_ & MHI_COMMAND_HORIZONTAL_VANE) != 0U && patch.horizontal_vane_set &&
+        patch.horizontal_vane != this->pending_intent_.horizontal_vane) {
+      superseded |= MHI_COMMAND_HORIZONTAL_VANE;
+    }
+    if ((this->pending_mask_ & MHI_COMMAND_THREE_D_AUTO) != 0U && patch.three_d_auto_set &&
+        patch.three_d_auto != this->pending_intent_.three_d_auto) {
+      superseded |= MHI_COMMAND_THREE_D_AUTO;
     }
 
-    return settled;
+    this->clear_pending_mask_(superseded);
+    return superseded;
   }
 
   uint32_t pending_age_ms(uint32_t now_ms) const {
@@ -118,9 +153,10 @@ class MhiCommandConfirmation {
     return now_ms - this->staged_ms_;
   }
 
-  uint32_t expire(uint32_t now_ms) {
+  MhiCommandExpiration expire(uint32_t now_ms) {
+    MhiCommandExpiration expiration{};
     if (this->pending_mask_ == 0U || this->staged_ms_ == 0U || now_ms < this->staged_ms_) {
-      return 0U;
+      return expiration;
     }
 
     const uint32_t timeout_ms = (this->pending_mask_ & (MHI_COMMAND_HORIZONTAL_VANE | MHI_COMMAND_THREE_D_AUTO)) != 0U
@@ -128,12 +164,13 @@ class MhiCommandConfirmation {
                                     : kMhiCommandConfirmationTimeoutMs;
 
     if ((now_ms - this->staged_ms_) < timeout_ms) {
-      return 0U;
+      return expiration;
     }
 
-    const uint32_t timed_out = this->pending_mask_;
+    expiration.mask = this->pending_mask_;
+    expiration.intent = this->pending_intent_;
     this->reset();
-    return timed_out;
+    return expiration;
   }
 
   bool has_pending() const {
@@ -193,6 +230,18 @@ class MhiCommandConfirmation {
   }
 
  private:
+  void clear_pending_mask_(uint32_t mask) {
+    if (mask == 0U) {
+      return;
+    }
+
+    this->pending_mask_ &= ~mask;
+    this->pending_intent_.mask = this->pending_mask_;
+    if (this->pending_mask_ == 0U) {
+      this->staged_ms_ = 0U;
+    }
+  }
+
   static uint32_t confirmable_mask(const MhiCommandIntent& intent, uint32_t encoded_command_mask) {
     uint32_t mask =
         encoded_command_mask &
@@ -212,22 +261,6 @@ class MhiCommandConfirmation {
     }
 
     return mask;
-  }
-
-  static bool extended_louver_context_matches(const MhiStatusState& status, const MhiCommandIntent& intent) {
-    if (!status.has_horizontal_vane) {
-      return false;
-    }
-
-    if (intent.horizontal_vane == 8U) {
-      return status.horizontal_vane_swing;
-    }
-
-    if (intent.horizontal_vane >= 1U && intent.horizontal_vane <= 7U) {
-      return !status.horizontal_vane_swing && status.horizontal_vane == intent.horizontal_vane;
-    }
-
-    return false;
   }
 
   static bool fan_command_confirmable(uint8_t command_fan) {

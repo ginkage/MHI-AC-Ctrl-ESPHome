@@ -160,40 +160,66 @@ command
 
 Use these measurements to locate processing pressure, not as the sole definition of health.
 
-A worker or hardware backend can improve `loop_us` while introducing lost confirmations, stale data, or missing opdata. Functional behaviour remains the primary acceptance criterion.
+A command worker or hardware backend can improve `loop_us` while introducing lost confirmations, stale data, or missing opdata. Functional behaviour remains the primary acceptance criterion.
 
 For split FastGPIO configurations, long transport or TX sections may occur because software must follow the externally supplied MHI clock. Hardware-assisted backends should materially reduce this pressure.
 
-## Worker diagnostics
+## Command-worker diagnostics
 
-Workers are experimental and disabled for the validated configurations.
+The first-stage command worker is experimental and disabled by default. It prepares immutable command envelopes and coordinates staging, actual TX completion, and semantic confirmation. Real-time TX remains owned by the selected transport.
 
-When explicitly testing workers, monitor:
+Monitor:
 
 ```text
-rx_worker enabled / running
-rx_worker loops
-rx_worker ingested
-rx_worker idle_yields
-
-tx_worker enabled / running
-tx_worker loops
-tx_worker flush_attempts
-tx_worker flush_successes
-tx_worker idle_yields
+command_worker enabled / running / classified_rx
+command_worker wakes
+command_worker service_runs
+command_worker idle_polls
+command_worker frames_staged
+command_worker completions
+command_worker rx_polls
+command_worker rx_batches
+command_worker rx_chunks
+command_worker rx_frames
+command_worker rx_max_batch
 ```
 
-A valid worker test must demonstrate all of the following:
+Interpretation:
+
+| Counter | Meaning | Healthy expectation |
+|---|---|---|
+| `enabled` | Configured worker state | Matches YAML |
+| `running` | FreeRTOS task is active | `YES` when enabled |
+| `classified_rx` | Worker owns RX draining/synchronisation/classification | `YES` for queue-backed RX drivers; `NO` for `fast_gpio_rx` |
+| `wakes` | Explicit notifications consumed by the worker | Increases with command changes and completed command transactions |
+| `service_runs` | Combined command/RX service passes | Increases while the worker is active |
+| `idle_polls` | Timed polls without an explicit notification | May increase steadily; should not correlate with drops or regressions |
+| `frames_staged` | Frames accepted by the selected transport | Increases with commands and background requests |
+| `completions` | Command frames reported complete after a real bus transaction | Increases only for command-bearing TX envelopes |
+| `rx_polls` | Worker RX polling passes | Increases only when `classified_rx=YES` |
+| `rx_batches` | Polls that produced at least one valid frame | Should increase continuously on an active bus |
+| `rx_chunks` | Transport chunks drained by the worker | Tracks queue/DMA handoff activity |
+| `rx_frames` | Valid frames synchronised and catalogued by the worker | Should broadly track common `valid_frames` |
+| `rx_max_batch` | Largest number of valid frames processed in one poll | Normally small; sustained growth indicates worker starvation |
+| `worker_decode status/extended` | Decoded status writes and latest-value overwrites | Overwrites are expected when repeated status arrives before main-loop apply |
+| `worker_decode candidates` | Generation-sensitive command confirmation snapshots | Should increase while commands are awaiting confirmation |
+| `worker_decode opdata_merges` | Decoded opdata frames merged into the pending snapshot | Should track active opdata traffic |
+| `worker_decode opdata_field_overwrites` | Repeated semantic opdata fields replaced before main-loop apply | Acceptable when bounded; different fields remain preserved |
+| `worker_decode unknown` | Bounded unknown-frame ring writes/overwrites | Overwrites are diagnostic only and must not affect status or opdata |
+| `worker_decode publish_batches` | Main-loop decoded snapshot batches applied | Should increase while the bus is active |
+
+A valid first-stage test must demonstrate all of the following:
 
 - The configured worker starts on the intended core.
+- A staged command does not create a pending confirmation until `completions` increases.
 - Commands continue to confirm.
 - `command_confirmation_timeouts` remains zero.
 - Opdata continues to publish.
 - Home Assistant state remains synchronised with the physical unit.
-- Frame overwrite and drop counters remain zero.
-- Loop timing improves without introducing functional regressions.
+- Transport overwrite, queue, and drop counters remain clean.
+- `command_worker: false` remains a working synchronous fallback.
 
-Do not enable workers in a normal installation until the worker path is explicitly promoted from experimental status.
+For queue-backed RX drivers, RX draining, synchronisation, classification, and protocol decoding run in the same worker. The main loop consumes bounded decoded snapshots and remains the only context that mutates published state or calls ESPHome publication APIs. `fast_gpio_rx` remains entirely main-loop driven.
 
 ## `rmt_spi_rx` diagnostics
 
@@ -279,7 +305,7 @@ AC model
 frame size
 SCK/MOSI/MISO pins
 RX selection and effective TX
-worker settings
+command-worker settings
 tuning overrides
 ```
 
@@ -387,7 +413,7 @@ Check:
 - Catalogue overwrites
 - Background TX attempts and failures
 - Confirmation deferrals
-- Worker state
+- Command-worker state
 
 If status frames remain healthy but opdata stops, investigate TX request scheduling and catalogue handling rather than RX synchronisation alone.
 
@@ -397,16 +423,15 @@ Synchronous FastGPIO RX or TX can block the ESPHome loop while following the ext
 
 Identify whether the time is concentrated in `transport`, `TX`, `RX`, or `publish`. Clean protocol counters are necessary but not sufficient; commands and opdata must remain functional.
 
-### Worker mode looks faster but behaviour regresses
+### Command-worker mode regresses behaviour
 
-Disable workers:
+Disable the experimental path:
 
 ```yaml
-rx_worker: false
-tx_worker: false
+command_worker: false
 ```
 
-Workers are not considered successful unless confirmation and opdata behaviour remain correct. Lower loop timing alone is not an acceptance result.
+Compare the same command sequence against the synchronous fallback. The worker path is not successful unless actual TX completion, command confirmation, opdata flow, and Home Assistant state remain correct. Lower loop timing alone is not an acceptance result.
 
 ### Sensor remains unavailable
 
@@ -420,6 +445,6 @@ Review command masks and confirmation diagnostics to determine whether the AC ac
 
 ## Reporting a hardware result
 
-Include the hardware-validation record and both the common and driver-specific end-of-test diagnostic lines. State whether workers were enabled and identify every non-default tuning value.
+Include the hardware-validation record and both the common and driver-specific end-of-test diagnostic lines. State whether `command_worker` was enabled and identify every non-default tuning value.
 
 The hardware compatibility table should only be updated after the evidence is repeatable and the maturity status is clear.

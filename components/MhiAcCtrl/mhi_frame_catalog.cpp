@@ -157,19 +157,22 @@ void MhiFrameCatalog::copy_slot_(const MhiCatalogSlot& slot, MhiCatalogedFrame& 
 }
 
 MhiCatalogSlot* MhiFrameCatalog::find_or_allocate_opdata_slot_(uint16_t opdata_key) {
-  MhiCatalogSlot* empty = nullptr;
+  MhiCatalogSlot* reusable = nullptr;
 
   for (auto& slot : opdata_slots_) {
     if (slot.kind == MhiFrameKind::OPDATA && slot.opdata_key == opdata_key) {
       return &slot;
     }
 
-    if (empty == nullptr && slot.writes == 0U && !slot.valid) {
-      empty = &slot;
+    // Once a decoded value has been consumed the raw slot can be reused for a
+    // different key. A valid slot is never displaced, so distinct pending
+    // opdata keys remain isolated.
+    if (reusable == nullptr && !slot.valid) {
+      reusable = &slot;
     }
   }
 
-  return empty;
+  return reusable;
 }
 
 MhiCatalogIngestResult MhiFrameCatalog::write_slot_(MhiCatalogSlot& slot, const MhiFrameView& frame, MhiFrameKind kind,

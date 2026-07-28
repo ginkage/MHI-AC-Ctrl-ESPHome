@@ -29,9 +29,7 @@ class SetVerticalVanesAction : public Action<Ts...> {
       return;
     }
 
-    auto& command = this->parent_->state().command();
-    command.vertical_vane_set = true;
-    command.vertical_vane = static_cast<uint8_t>(position);
+    this->parent_->request_vertical_vane_command(static_cast<uint8_t>(position));
   }
 
  protected:

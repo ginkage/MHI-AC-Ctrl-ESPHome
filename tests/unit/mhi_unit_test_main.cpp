@@ -22,11 +22,42 @@ int main() {
   duplex_tx_mailbox_latest_stage_replaces_unclaimed_frame();
   duplex_tx_mailbox_rejects_invalid_frames_without_losing_pending_data();
 
+  command_coordinator_starts_confirmation_after_tx_completion();
+  command_coordinator_restores_command_when_stage_is_rejected();
+  command_coordinator_requeues_failed_command();
+  command_coordinator_restores_vertical_vane_after_stage_rejection();
+  command_coordinator_restores_horizontal_vane_after_tx_failure();
+  command_coordinator_combines_vertical_and_horizontal_vanes();
+  command_coordinator_preserves_3d_auto_louver_context();
+  command_coordinator_restores_3d_auto_after_tx_failure();
+  command_coordinator_ignores_background_and_stale_completions();
+  command_coordinator_blocks_prepare_while_in_flight_or_confirming();
+  command_coordinator_preserves_newer_same_field_after_tx_failure();
+  command_coordinator_preserves_newer_same_field_after_stage_rejection();
+  command_patch_merges_combined_climate_fields();
+  command_coordinator_encodes_combined_climate_patch_in_one_envelope();
+  command_patch_applies_allowed_fields_without_losing_existing_state();
+  command_patch_rejects_invalid_vanes_but_keeps_valid_fields();
+  command_coordinator_restores_failed_field_without_losing_new_unrelated_command();
+  command_coordinator_assigns_increasing_generations();
+  command_coordinator_supersedes_pending_confirmation_with_newer_value();
+  command_coordinator_does_not_confirm_old_value_when_newer_request_is_queued();
+  command_coordinator_retries_only_remaining_fields_and_caps_attempts();
+  command_coordinator_reports_staged_timeout_once();
+  tx_completion_queue_preserves_order_and_rejects_overflow();
+
+  worker_decoded_store_latest_status_overwrites_stale_status();
+  worker_decoded_store_keeps_command_candidate_separate();
+  worker_decoded_store_merges_distinct_opdata_fields();
+  worker_decoded_store_overwrites_only_repeated_opdata_field();
+  worker_decoded_store_unknown_ring_is_bounded();
+
   frame_classifier_classifies_status_opdata_and_extended_status();
   frame_catalog_overwrites_repeated_status_with_latest();
   frame_catalog_keeps_opdata_slots_separate_by_key();
   frame_catalog_keeps_command_candidate_side_slot_latest_only();
   frame_catalog_reports_unknown_frames();
+  frame_catalog_reuses_consumed_opdata_slots();
 
   fan_profile_defaults_to_four_speed();
   fan_profile_three_speed_collapses_code_zero_to_low();
@@ -90,7 +121,8 @@ int main() {
   command_confirmation_confirms_horizontal_vane_feedback();
   command_confirmation_confirms_horizontal_swing_feedback();
   command_confirmation_confirms_3d_auto_feedback();
-  command_confirmation_requires_preserved_horizontal_context_for_3d_auto();
+  command_confirmation_accepts_3d_auto_when_louver_context_changes();
+  command_confirmation_supersedes_older_pending_value();
   command_confirmation_uses_longer_timeout_for_extended_louver_commands();
   command_confirmation_reports_pending_age_for_settle_window();
   command_confirmation_can_settle_extended_louver_pending_mask();
@@ -110,5 +142,8 @@ int main() {
   fixture_opdata_current_decodes();
 
   std::cout << "MHI protocol unit tests passed\n";
+  worker_policy_allows_queue_backed_rx_drivers();
+  worker_policy_keeps_synchronous_rx_in_main_loop();
+
   return 0;
 }

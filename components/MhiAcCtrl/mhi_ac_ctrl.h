@@ -2,7 +2,10 @@
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/portmacro.h>
+#include <freertos/semphr.h>
+#include <freertos/task.h>
 
+#include <atomic>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -15,7 +18,7 @@
 #include "esphome/components/switch/switch.h"
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/core/component.h"
-#include "mhi_command_confirmation.h"
+#include "mhi_command_coordinator.h"
 #include "mhi_defs.h"
 #include "mhi_diag.h"
 #include "mhi_fan_profile.h"
@@ -27,6 +30,7 @@
 #include "mhi_status_decoder.h"
 #include "mhi_transport_manager.h"
 #include "mhi_tx_builder.h"
+#include "mhi_worker_decoded_store.h"
 
 namespace esphome {
 namespace mhi_ac_ctrl {
@@ -42,6 +46,8 @@ class MhiAcCtrl : public Component {
   void setup() override;
   void loop() override;
   void dump_config() override;
+  void on_shutdown() override;
+  bool teardown() override;
 
   void set_frame_size(int frame_size) {
     this->frame_size_ = frame_size;
@@ -95,63 +101,34 @@ class MhiAcCtrl : public Component {
     }
   }
 
-  void set_rx_worker(bool enabled) {
-    this->rx_worker_enabled_ = enabled;
+  void set_command_worker(bool enabled) {
+    this->command_worker_enabled_ = enabled;
   }
 
-  void set_rx_worker_start_delay_ms(int delay_ms) {
+  void set_command_worker_start_delay_ms(int delay_ms) {
     if (delay_ms >= 0) {
-      this->rx_worker_start_delay_ms_ = static_cast<uint32_t>(delay_ms);
+      this->command_worker_start_delay_ms_ = static_cast<uint32_t>(delay_ms);
     }
   }
 
-  void set_rx_worker_stack_size(int stack_size) {
+  void set_command_worker_stack_size(int stack_size) {
     if (stack_size >= 4096) {
-      this->rx_worker_stack_size_ = static_cast<uint32_t>(stack_size);
+      this->command_worker_stack_size_ = static_cast<uint32_t>(stack_size);
     }
   }
 
-  void set_rx_worker_priority(int priority) {
+  void set_command_worker_priority(int priority) {
     if (priority > 0) {
-      this->rx_worker_priority_ = static_cast<uint32_t>(priority);
+      this->command_worker_priority_ = static_cast<uint32_t>(priority);
     }
   }
 
-  void set_rx_worker_core_id(int core_id) {
-    if (core_id >= -1) {
-      this->rx_worker_core_id_ = core_id;
+  void set_command_worker_core_id(int core_id) {
+    if (core_id >= -1 && core_id <= 1) {
+      this->command_worker_core_id_ = core_id;
     }
   }
 
-  void set_tx_worker(bool enabled) {
-    this->tx_worker_enabled_ = enabled;
-  }
-
-  void set_tx_worker_start_delay_ms(int delay_ms) {
-    if (delay_ms >= 0) {
-      this->tx_worker_start_delay_ms_ = static_cast<uint32_t>(delay_ms);
-    }
-  }
-
-  void set_tx_worker_stack_size(int stack_size) {
-    if (stack_size >= 4096) {
-      this->tx_worker_stack_size_ = static_cast<uint32_t>(stack_size);
-    }
-  }
-
-  void set_tx_worker_priority(int priority) {
-    if (priority > 0) {
-      this->tx_worker_priority_ = static_cast<uint32_t>(priority);
-    }
-  }
-
-  void set_tx_worker_core_id(int core_id) {
-    if (core_id >= -1) {
-      this->tx_worker_core_id_ = core_id;
-    }
-  }
-
-  // Compatibility with current __init__.py plumbing.
   void set_room_temp_api_timeout(int timeout_s) {
     this->room_temp_api_timeout_s_ = timeout_s;
   }
@@ -351,6 +328,12 @@ class MhiAcCtrl : public Component {
     return this->state_;
   }
 
+  uint32_t request_command_patch(const MhiCommandState& patch);
+  void request_power_command(bool power);
+  void request_mode_command(uint8_t mode);
+  void request_fan_command(uint8_t fan);
+  void request_target_temperature_command(float target_temp_c);
+  void request_vertical_vane_command(uint8_t vertical_vane);
   bool request_horizontal_vane_command(uint8_t horizontal_vane);
   bool request_three_d_auto_command(bool enabled);
 
@@ -363,12 +346,16 @@ class MhiAcCtrl : public Component {
 
  protected:
   void refresh_publish_targets_();
-  void build_and_stage_tx_frame_();
   void record_tx_build_result_(const MhiTxBuildResult& result, const MhiFrameBuffer& frame, bool sent);
   bool read_and_sync_rx_frame_();
+  bool service_classified_rx_pipeline_();
   bool ingest_rx_frame_(const MhiFrameBuffer& frame);
   bool decode_cataloged_frames_();
+  bool decode_cataloged_frames_to_worker_store_();
   bool decode_cataloged_frame_(const MhiCatalogedFrame& cataloged_frame);
+  bool decode_cataloged_frame_to_worker_store_(const MhiCatalogedFrame& cataloged_frame,
+                                               bool command_candidate = false);
+  bool apply_worker_decoded_snapshots_();
   bool take_latest_extended_status_(MhiCatalogedFrame& out);
   bool take_latest_status_(MhiCatalogedFrame& out);
   bool take_latest_command_candidate_(MhiCatalogedFrame& out);
@@ -376,14 +363,14 @@ class MhiAcCtrl : public Component {
   bool take_next_opdata_(MhiCatalogedFrame& out);
   bool take_latest_unknown_(MhiCatalogedFrame& out);
   MhiCatalogStats catalog_stats_snapshot_();
-  void start_rx_worker_();
-  void stop_rx_worker_();
-  static void rx_worker_task_entry_(void* arg);
-  void rx_worker_task_loop_();
-  void start_tx_worker_();
-  void stop_tx_worker_();
-  static void tx_worker_task_entry_(void* arg);
-  void tx_worker_task_loop_();
+  void start_command_worker_();
+  void stop_command_worker_();
+  static void command_worker_task_entry_(void* arg);
+  void command_worker_task_loop_();
+  void notify_command_worker_();
+  void service_command_pipeline_();
+  bool worker_handles_rx_() const;
+  void drain_tx_completions_();
   bool decode_frame_(const MhiFrameBuffer& frame);
   bool apply_status_update_(const MhiDecodedStatus& decoded_status, const MhiFrameBuffer& frame);
   bool apply_opdata_update_(const MhiDecodedOpData& decoded_opdata, const MhiFrameBuffer& frame);
@@ -433,9 +420,10 @@ class MhiAcCtrl : public Component {
 
   MhiStateStore state_{};
   MhiFrameSync frame_sync_{};
-  MhiFrameSync rx_worker_frame_sync_{};
   MhiFrameCatalog frame_catalog_{};
   portMUX_TYPE frame_catalog_mux_ = portMUX_INITIALIZER_UNLOCKED;
+  MhiWorkerDecodedStore worker_decoded_store_{};
+  portMUX_TYPE worker_decoded_store_mux_ = portMUX_INITIALIZER_UNLOCKED;
   MhiTransportManager transport_{};
   MhiDiagnostics diagnostics_{};
 
@@ -444,7 +432,8 @@ class MhiAcCtrl : public Component {
 
   MhiTxRuntime tx_runtime_{};
   MhiTxBuildConfig tx_config_{};
-  MhiCommandConfirmation command_confirmation_{};
+  MhiCommandCoordinator command_coordinator_{};
+  SemaphoreHandle_t command_mutex_{nullptr};
 
   uint32_t frame_start_idle_ms_{10U};
   uint32_t rmt_spi_frame_gap_us_{1000U};
@@ -459,32 +448,32 @@ class MhiAcCtrl : public Component {
   bool publish_requested_{false};
   uint32_t frame_catalog_sequence_{0U};
 
-  bool rx_worker_enabled_{false};
-  volatile bool rx_worker_running_{false};
-  volatile bool rx_worker_stop_requested_{false};
-  volatile bool rx_worker_started_{false};
-  void* rx_worker_task_{nullptr};
-  uint32_t rx_worker_start_delay_ms_{5000U};
-  uint32_t rx_worker_stack_size_{6144U};
-  uint32_t rx_worker_priority_{4U};
-  int rx_worker_core_id_{0};
-  volatile uint32_t rx_worker_loops_{0U};
-  volatile uint32_t rx_worker_idle_yields_{0U};
-  volatile uint32_t rx_worker_ingested_frames_{0U};
-
-  bool tx_worker_enabled_{false};
-  volatile bool tx_worker_running_{false};
-  volatile bool tx_worker_stop_requested_{false};
-  volatile bool tx_worker_started_{false};
-  void* tx_worker_task_{nullptr};
-  uint32_t tx_worker_start_delay_ms_{5000U};
-  uint32_t tx_worker_stack_size_{6144U};
-  uint32_t tx_worker_priority_{4U};
-  int tx_worker_core_id_{1};
-  volatile uint32_t tx_worker_loops_{0U};
-  volatile uint32_t tx_worker_idle_yields_{0U};
-  volatile uint32_t tx_worker_flush_attempts_{0U};
-  volatile uint32_t tx_worker_flush_successes_{0U};
+  bool command_worker_enabled_{false};
+  bool command_worker_classified_rx_enabled_{false};
+  std::atomic<bool> command_worker_running_{false};
+  std::atomic<bool> command_worker_stop_requested_{false};
+  std::atomic<bool> command_worker_started_{false};
+  TaskHandle_t command_worker_task_{nullptr};
+  uint32_t command_worker_start_delay_ms_{0U};
+  uint32_t command_worker_stack_size_{6144U};
+  uint32_t command_worker_priority_{4U};
+  int command_worker_core_id_{-1};
+  std::atomic<uint32_t> command_worker_wakes_{0U};
+  std::atomic<uint32_t> command_worker_service_runs_{0U};
+  std::atomic<uint32_t> command_worker_idle_polls_{0U};
+  std::atomic<uint32_t> command_worker_frames_staged_{0U};
+  std::atomic<uint32_t> command_worker_completions_{0U};
+  std::atomic<uint32_t> command_worker_rx_polls_{0U};
+  std::atomic<uint32_t> command_worker_rx_batches_{0U};
+  std::atomic<uint32_t> command_worker_rx_chunks_{0U};
+  std::atomic<uint32_t> command_worker_rx_frames_{0U};
+  std::atomic<uint32_t> command_worker_rx_max_batch_{0U};
+  std::atomic<uint32_t> command_worker_last_runtime_us_{0U};
+  std::atomic<uint32_t> command_worker_max_runtime_us_{0U};
+  std::atomic<uint32_t> command_worker_max_notify_batch_{0U};
+  std::atomic<uint32_t> command_worker_stack_high_water_bytes_{0U};
+  std::atomic<bool> shutting_down_{false};
+  bool transport_shutdown_{false};
 
   bool pending_extended_feedback_candidate_{false};
   bool pending_extended_feedback_swing_{false};

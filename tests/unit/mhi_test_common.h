@@ -12,6 +12,7 @@
 #include "mhi_checksum.h"
 #include "mhi_command.h"
 #include "mhi_command_confirmation.h"
+#include "mhi_command_coordinator.h"
 #include "mhi_defs.h"
 #include "mhi_diag.h"
 #include "mhi_duplex_tx_mailbox.h"
@@ -25,6 +26,8 @@
 #include "mhi_publish_bridge.h"
 #include "mhi_status_decoder.h"
 #include "mhi_tx_builder.h"
+#include "mhi_worker_policy.h"
+#include "mhi_worker_decoded_store.h"
 
 #define EXPECT_TRUE(expr)                                                                            \
   do {                                                                                               \
@@ -202,11 +205,43 @@ void duplex_tx_mailbox_stages_and_consumes_20_byte_frame();
 void duplex_tx_mailbox_latest_stage_replaces_unclaimed_frame();
 void duplex_tx_mailbox_rejects_invalid_frames_without_losing_pending_data();
 
+void command_coordinator_starts_confirmation_after_tx_completion();
+void command_coordinator_restores_command_when_stage_is_rejected();
+void command_coordinator_requeues_failed_command();
+void command_coordinator_restores_vertical_vane_after_stage_rejection();
+void command_coordinator_restores_horizontal_vane_after_tx_failure();
+void command_coordinator_combines_vertical_and_horizontal_vanes();
+void command_coordinator_preserves_3d_auto_louver_context();
+void command_coordinator_restores_3d_auto_after_tx_failure();
+void command_coordinator_ignores_background_and_stale_completions();
+void command_coordinator_blocks_prepare_while_in_flight_or_confirming();
+void command_coordinator_preserves_newer_same_field_after_tx_failure();
+void command_coordinator_preserves_newer_same_field_after_stage_rejection();
+void command_patch_merges_combined_climate_fields();
+void command_coordinator_encodes_combined_climate_patch_in_one_envelope();
+void command_patch_applies_allowed_fields_without_losing_existing_state();
+void command_patch_rejects_invalid_vanes_but_keeps_valid_fields();
+void command_coordinator_restores_failed_field_without_losing_new_unrelated_command();
+void command_coordinator_assigns_increasing_generations();
+void command_coordinator_supersedes_pending_confirmation_with_newer_value();
+void command_coordinator_does_not_confirm_old_value_when_newer_request_is_queued();
+void command_coordinator_retries_only_remaining_fields_and_caps_attempts();
+void command_coordinator_reports_staged_timeout_once();
+void tx_completion_queue_preserves_order_and_rejects_overflow();
+
+
+void worker_decoded_store_latest_status_overwrites_stale_status();
+void worker_decoded_store_keeps_command_candidate_separate();
+void worker_decoded_store_merges_distinct_opdata_fields();
+void worker_decoded_store_overwrites_only_repeated_opdata_field();
+void worker_decoded_store_unknown_ring_is_bounded();
+
 void frame_classifier_classifies_status_opdata_and_extended_status();
 void frame_catalog_overwrites_repeated_status_with_latest();
 void frame_catalog_keeps_opdata_slots_separate_by_key();
 void frame_catalog_keeps_command_candidate_side_slot_latest_only();
 void frame_catalog_reports_unknown_frames();
+void frame_catalog_reuses_consumed_opdata_slots();
 
 void status_decoder_decodes_core_fields();
 void status_decoder_decodes_33_byte_vane_feedback();
@@ -260,7 +295,8 @@ void command_confirmation_detects_duplicate_pending_commands();
 void command_confirmation_confirms_horizontal_vane_feedback();
 void command_confirmation_confirms_horizontal_swing_feedback();
 void command_confirmation_confirms_3d_auto_feedback();
-void command_confirmation_requires_preserved_horizontal_context_for_3d_auto();
+void command_confirmation_accepts_3d_auto_when_louver_context_changes();
+void command_confirmation_supersedes_older_pending_value();
 void command_confirmation_uses_longer_timeout_for_extended_louver_commands();
 void command_confirmation_reports_pending_age_for_settle_window();
 void command_confirmation_can_settle_extended_louver_pending_mask();
@@ -290,4 +326,8 @@ void publish_bridge_three_speed_maps_code_zero_to_low();
 void publish_bridge_four_speed_maps_code_zero_to_quiet();
 void tx_builder_encodes_quiet_fan_code_zero();
 void command_confirmation_confirms_quiet_fan_code_zero();
+
+void worker_policy_allows_queue_backed_rx_drivers();
+void worker_policy_keeps_synchronous_rx_in_main_loop();
+
 }  // namespace mhi_unit_tests

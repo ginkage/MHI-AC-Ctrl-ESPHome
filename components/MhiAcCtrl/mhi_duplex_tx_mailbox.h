@@ -1,12 +1,9 @@
 #pragma once
 
-#include <algorithm>
-#include <array>
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
 
-#include "mhi_defs.h"
+#include "mhi_tx_contract.h"
 
 namespace esphome {
 namespace mhi_ac_ctrl {
@@ -18,8 +15,8 @@ namespace mhi_ac_ctrl {
 // platform-neutral makes replacement and ownership semantics unit-testable.
 class MhiDuplexTxMailbox {
  public:
-  bool stage(const uint8_t* data, std::size_t len) {
-    if (data == nullptr || (len != kMhiFrame20Bytes && len != kMhiFrame33Bytes)) {
+  bool stage(const MhiTxEnvelope& envelope) {
+    if (!envelope.valid()) {
       return false;
     }
 
@@ -27,35 +24,28 @@ class MhiDuplexTxMailbox {
       overwritten_frames_++;
     }
 
-    frame_.fill(0U);
-    std::memcpy(frame_.data(), data, std::min<std::size_t>(len, frame_.size()));
-    len_ = len;
+    envelope_ = envelope;
     pending_ = true;
-    generation_++;
     return true;
   }
 
-  bool take(uint8_t* dst, std::size_t capacity, std::size_t& len, uint32_t& generation) {
-    len = 0U;
-    generation = 0U;
+  bool take(uint8_t* dst, std::size_t capacity, MhiTxEnvelope& envelope) {
+    envelope = {};
 
-    if (!pending_ || dst == nullptr || capacity < len_) {
+    if (!pending_ || dst == nullptr || capacity < envelope_.len) {
       return false;
     }
 
-    std::memcpy(dst, frame_.data(), len_);
-    len = len_;
-    generation = generation_;
+    envelope = envelope_;
+    std::memcpy(dst, envelope.frame.data(), envelope.len);
     pending_ = false;
-    len_ = 0U;
+    envelope_ = {};
     return true;
   }
 
   void clear() {
-    frame_.fill(0U);
-    len_ = 0U;
+    envelope_ = {};
     pending_ = false;
-    generation_ = 0U;
     overwritten_frames_ = 0U;
   }
 
@@ -64,11 +54,11 @@ class MhiDuplexTxMailbox {
   }
 
   std::size_t pending_len() const {
-    return len_;
+    return envelope_.len;
   }
 
   uint32_t generation() const {
-    return generation_;
+    return envelope_.generation;
   }
 
   uint32_t overwritten_frames() const {
@@ -76,10 +66,8 @@ class MhiDuplexTxMailbox {
   }
 
  private:
-  std::array<uint8_t, kMhiMaxFrameBytes> frame_{};
-  std::size_t len_{0U};
+  MhiTxEnvelope envelope_{};
   bool pending_{false};
-  uint32_t generation_{0U};
   uint32_t overwritten_frames_{0U};
 };
 

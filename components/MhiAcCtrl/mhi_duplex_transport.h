@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "mhi_transport_pins.h"
+#include "mhi_tx_contract.h"
 
 namespace esphome {
 namespace mhi_ac_ctrl {
@@ -21,7 +22,11 @@ class IMhiDuplexTransport {
 
   // Stages one MISO frame for the next available bus transaction. A later
   // stage may replace an older frame that has not yet been handed to hardware.
-  virtual bool send(const uint8_t* data, std::size_t len) = 0;
+  virtual bool send(const MhiTxEnvelope& envelope) = 0;
+
+  // Returns one completed TX attempt. The completion is emitted only after
+  // the bus transaction has actually finished.
+  virtual bool take_tx_completion(MhiTxCompletion& completion) = 0;
 
   virtual const char* name() const = 0;
   virtual bool ready() const = 0;
@@ -32,6 +37,24 @@ class IMhiDuplexTransport {
     return 0U;
   }
   virtual uint32_t tx_failures() const {
+    return 0U;
+  }
+  virtual std::size_t tx_completion_queue_depth() const {
+    return 0U;
+  }
+  virtual std::size_t tx_completion_queue_high_water() const {
+    return 0U;
+  }
+  virtual uint32_t tx_completion_queue_dropped() const {
+    return 0U;
+  }
+  virtual std::size_t rx_queue_depth() const {
+    return 0U;
+  }
+  virtual std::size_t rx_queue_high_water() const {
+    return 0U;
+  }
+  virtual uint32_t rx_queue_overwritten() const {
     return 0U;
   }
 

@@ -31,10 +31,7 @@ void MhiVerticalVanesSelect::control(const std::string& value) {
     return;
   }
 
-  auto& command = this->parent_->state().command();
-
-  command.vertical_vane_set = true;
-  command.vertical_vane = static_cast<uint8_t>(index.value() + 1U);
+  this->parent_->request_vertical_vane_command(static_cast<uint8_t>(index.value() + 1U));
 
   ESP_LOGD(TAG, "Vertical vanes command staged: %s; waiting for confirmed MOSI state", value.c_str());
 }
