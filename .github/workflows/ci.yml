@@ -63,6 +63,32 @@ jobs:
       - name: Run unit tests
         run: ./scripts/test.sh
 
+  sanitizers:
+    name: sanitizers
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes g++
+
+      - name: Run ASAN and UBSAN
+        env:
+          SANITIZERS: "1"
+          ASAN_OPTIONS: "detect_leaks=1:halt_on_error=1"
+          UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1"
+        run: ./scripts/test.sh
+
   esphome-tests:
     name: esphome-tests
     runs-on: ubuntu-latest

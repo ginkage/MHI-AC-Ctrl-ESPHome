@@ -1,0 +1,22 @@
+version: 2
+
+updates:
+  # Keep GitHub Actions versions current.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+      timezone: "Australia/Brisbane"
+    open-pull-requests-limit: 5
+
+  # Keep Python CI dependencies current, including ESPHome.
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:30"
+      timezone: "Australia/Brisbane"
+    open-pull-requests-limit: 5

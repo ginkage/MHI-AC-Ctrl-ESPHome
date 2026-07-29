@@ -11,11 +11,24 @@ mkdir -p "${BUILD_DIR}"
 
 CXX="${CXX:-g++}"
 
+SANITIZER_FLAGS=()
+
+if [[ "${SANITIZERS:-0}" == "1" ]]; then
+  SANITIZER_FLAGS=(
+    -O1
+    -g
+    -fno-omit-frame-pointer
+    -fsanitize=address,undefined
+    -fno-sanitize-recover=all
+  )
+fi
+
 "${CXX}" \
   -std=c++17 \
   -Wall \
   -Wextra \
   -Werror \
+  "${SANITIZER_FLAGS[@]}" \
   -Itests/stubs \
   -Icomponents/MhiAcCtrl \
   tests/unit/mhi_unit_test_main.cpp \
