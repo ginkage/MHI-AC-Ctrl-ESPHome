@@ -191,8 +191,8 @@ void MhiClimate::update_status(ACStatus status, int value) {
             }
 
         }
-        this->publish_state();
         this->vanesLR_pos_state_ = value;
+        this->publish_state();
         break;
     case status_troom:
         // Calculate the temperature and apply the offset for 0.5°C steps
