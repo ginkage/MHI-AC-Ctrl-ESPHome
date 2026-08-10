@@ -141,8 +141,8 @@ void MhiClimate::update_status(ACStatus status, int value) {
                     break;
             }
         }
-        this->publish_state();
         this->vanesLR_pos_state_ = value;
+        this->publish_state();
         break;
     case status_troom:
         this->current_temperature = ((value - 61) / 4.0) - this->temperature_offset_;
