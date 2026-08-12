@@ -42,7 +42,7 @@ private:
     int vanes_pos_old_state_;
     int vanes_pos_state_;
     MhiPlatform* platform_;
-
+    
 public:
     void set_temperature_offset_enabled(bool enabled) { 
         this->temperature_offset_enabled_ = enabled; 
@@ -51,6 +51,9 @@ public:
     void set_minimum_temperature(float temp) { 
         this->minimum_temperature_ = temp; 
     }
+
+    // Diese leere Funktion verhindert den Abbruch des Updates
+    void set_icon(const std::string &icon) {} 
 };
 
 }

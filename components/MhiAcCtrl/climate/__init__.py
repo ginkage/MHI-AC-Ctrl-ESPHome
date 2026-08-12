@@ -20,8 +20,11 @@ CONFIG_SCHEMA = climate.climate_schema(MhiClimate).extend(
         cv.GenerateID(CONF_MHI_AC_CTRL_ID): cv.use_id(MhiAcCtrl),
         cv.Optional(CONF_TEMPERATURE_OFFSET, default=False): cv.boolean,
         cv.Optional(CONF_VISUAL_MIN_TEMPERATURE, default=18.0): cv.temperature,
+        # Diese Zeile erzwingt, dass kein Icon-Code generiert wird, der set_icon aufruft:
+        cv.Optional("icon"): cv.invalid("Icons werden für diese Komponente in 2026.3 via C++ nicht unterstützt"),
     }
 ).extend(cv.COMPONENT_SCHEMA)
+
 
 
 

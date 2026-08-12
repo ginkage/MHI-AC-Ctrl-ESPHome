@@ -5,15 +5,18 @@ from .. import MhiAcCtrl, CONF_MHI_AC_CTRL_ID
 
 CONF_VERTICAL = "vertical_vanes"
 CONF_VERTICAL_SELECTS = [
+    "Stop",
     "Up",
     "Up/Center",
+    "Mid",
     "Center/Down",
     "Down",
-    "Swing",
+    "Swing",    
 ]
 ICON_UP_DOWN = "mdi:arrow-up-down"
 CONF_HORIZONTAL = "horizontal_vanes"
 CONF_HORIZONTAL_SELECTS = [
+    "Stop",
     "Left",
     "Left/Center",
     "Center",

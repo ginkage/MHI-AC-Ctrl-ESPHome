@@ -79,6 +79,25 @@ void MhiPlatform::dump_config() {
 void MhiPlatform:: cbiStatusFunction(ACStatus status, int value) {
     ESP_LOGD(TAG, "received status=%i value=%i", status, value);
 
+    constexpr unsigned long COMMAND_CORRELATION_WINDOW_MS = 10000;
+    if (status == status_power) {
+        const bool recent = this->power_command_seen_ &&
+                            millis() - this->last_power_command_ms_ <= COMMAND_CORRELATION_WINDOW_MS;
+        const bool matches = recent && value == this->last_power_command_;
+        ESP_LOGI(TAG, "power status origin hint: %s, reported=%i, last_command=%i, age_ms=%lu",
+                 matches ? "recent_local_command" : "no_matching_recent_local_command",
+                 value, this->last_power_command_,
+                 this->power_command_seen_ ? millis() - this->last_power_command_ms_ : 0UL);
+    } else if (status == status_mode) {
+        const bool recent = this->mode_command_seen_ &&
+                            millis() - this->last_mode_command_ms_ <= COMMAND_CORRELATION_WINDOW_MS;
+        const bool matches = recent && value == this->last_mode_command_;
+        ESP_LOGI(TAG, "mode status origin hint: %s, reported=%i, last_command=%i, age_ms=%lu",
+                 matches ? "recent_local_command" : "no_matching_recent_local_command",
+                 value, this->last_mode_command_,
+                 this->mode_command_seen_ ? millis() - this->last_mode_command_ms_ : 0UL);
+    }
+
     for (MhiStatusListener* listener:this->listeners_) {
         listener->update_status(status, value);
     }
@@ -100,13 +119,23 @@ float MhiPlatform::get_room_temp_offset() {
 
 void MhiPlatform::transfer_room_temperature(float value) {
     if (isnan(value)) {
+        if (!this->external_temperature_state_known_ || this->external_temperature_available_) {
+            ESP_LOGW(TAG, "external room temperature unavailable (NaN); falling back to the indoor-unit sensor");
+        }
+        this->external_temperature_state_known_ = true;
+        this->external_temperature_available_ = false;
         if (!isnan(this->last_room_temperature_)) {
-            ESP_LOGD(TAG, "set room_temp_api: value is NaN, using internal sensor");
             mhi_ac_ctrl_core_.set_troom(0xff); // reset target, use internal sensor
             this->last_room_temperature_ = NAN; // reset last room temperature
         }
         return;
     }
+
+    if (!this->external_temperature_state_known_ || !this->external_temperature_available_) {
+        ESP_LOGI(TAG, "external room temperature available again: %.2f C", value);
+    }
+    this->external_temperature_state_known_ = true;
+    this->external_temperature_available_ = true;
 
     if (this->temperature_offset_ > 0.0f) {  // if we have a offset value add this before setting troom value
         float orig_value = value;
@@ -129,12 +158,20 @@ void MhiPlatform::transfer_room_temperature(float value) {
 }
 
 void MhiPlatform::set_power(ACPower value) {
+    this->last_power_command_ = value;
+    this->last_power_command_ms_ = millis();
+    this->power_command_seen_ = true;
+    ESP_LOGI(TAG, "writing MHI command: power=%s", value == power_on ? "ON" : "OFF");
     this->mhi_ac_ctrl_core_.set_power(value);
 }
 void MhiPlatform::set_fan(int value) {
     this->mhi_ac_ctrl_core_.set_fan(value);
 }
 void MhiPlatform::set_mode(ACMode value){
+    this->last_mode_command_ = value;
+    this->last_mode_command_ms_ = millis();
+    this->mode_command_seen_ = true;
+    ESP_LOGI(TAG, "writing MHI command: mode=%i", value);
     this->mhi_ac_ctrl_core_.set_mode(value);
 }
 void MhiPlatform::set_tsetpoint(float value) {

@@ -1,0 +1,284 @@
+# Sanitized compile fixture based on a real D1 mini / SRK25ZSX-W setup.
+# This intentionally uses the local checkout as external component source so CI
+# validates the current branch against ESPHome 2026.4.5.
+esphome:
+  name: mhi-srk25zsxw
+  friendly_name: "Klimaanlage OG01 Schlafzimmer"
+  min_version: 2026.4.5
+  platformio_options:
+    board_build.f_cpu: 160000000L
+    build_flags:
+      - -D USE_HW_SPI
+
+substitutions:
+  devicename: mhi-srk25zsxw
+
+esp8266:
+  board: d1_mini
+  framework:
+    version: recommended
+
+logger:
+  # Compile INFO messages, but keep unrelated components at WARN.
+  # The two MHI tags distinguish incoming ESPHome control calls from
+  # status changes reported by the indoor unit on the MHI bus.
+  level: INFO
+  initial_level: WARN
+  logs:
+    mhi.climate: INFO
+    mhi.platform: INFO
+  baud_rate: 0
+
+ota:
+  - platform: esphome
+    password: "test-ota-password"
+
+wifi:
+  ssid: "test-ssid"
+  password: "test-password"
+  min_auth_mode: WPA2
+  power_save_mode: none
+  ap:
+    ssid: "MHI-SRK25 Fallback"
+    password: "test-fallback-password"
+
+captive_portal:
+
+external_components:
+  - source:
+      type: local
+      path: ../../components
+    components: [MhiAcCtrl]
+
+api:
+  encryption:
+    # Dummy 32-byte key for compile tests only. Do not use in production.
+    key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+  reboot_timeout: 0s
+  services:
+    - service: set_external_room_temperature
+      variables:
+        temperature_value: float
+      then:
+        - climate.mhi.set_external_room_temperature:
+            temperature: !lambda "return temperature_value;"
+
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+
+MhiAcCtrl:
+  id: mhi_ac_ctrl
+  frame_size: 33
+  sck_pin: 14
+  mosi_pin: 13
+  miso_pin: 12
+  initial_vertical_vanes_position: 5
+  initial_horizontal_vanes_position: 8
+  room_temp_timeout: 60
+  external_temperature_sensor: room_temperature_sensor
+
+button:
+  - platform: restart
+    name: "Neustart"
+    entity_category: diagnostic
+
+climate:
+  - platform: MhiAcCtrl
+    name: "Klimaanlage OG01 Schlafzimmer"
+    id: mhi_ac
+    temperature_offset: false
+    visual:
+      min_temperature: 15
+      temperature_step:
+        target_temperature: 0.5
+        current_temperature: 0.1
+    on_control:
+      - sensor.template.publish:
+          id: power
+          state: 0
+
+binary_sensor:
+  - platform: MhiAcCtrl
+    defrost:
+      name: "Abtauvorgang"
+    vanes_3d_auto_enabled:
+      name: "3D-Auto aktiviert"
+
+number:
+  - platform: template
+    name: "Netzspannung"
+    id: grid_voltage
+    unit_of_measurement: "V"
+    optimistic: true
+    min_value: 220
+    max_value: 240
+    step: 0.1
+    initial_value: 230
+
+sensor:
+  - platform: homeassistant
+    id: room_temperature_sensor
+    entity_id: sensor.klimasensor_schlafzimmer_temperature
+    filters:
+      - heartbeat: 30s
+
+  - platform: uptime
+    name: "Betriebszeit"
+
+  - platform: wifi_signal
+    name: "WLAN-Signal"
+    update_interval: 30s
+
+  - platform: MhiAcCtrl
+    outdoor_temperature:
+      name: "Außentemperatur"
+    return_air_temperature:
+      name: "Rücklufttemperatur"
+    outdoor_unit_fan_speed:
+      name: "Außengerät Lüftergeschwindigkeit"
+    indoor_unit_fan_speed:
+      name: "Innengerät Lüftergeschwindigkeit"
+    compressor_frequency:
+      name: "Verdichterfrequenz"
+    indoor_unit_total_run_time:
+      name: "Innengerät Laufzeit (gesamt)"
+    compressor_total_run_time:
+      name: "Kompressorlaufzeit (gesamt)"
+    current_power:
+      name: "Stromaufnahme"
+      id: ac_current_power
+      on_value:
+        then:
+          - sensor.template.publish:
+              id: power
+              state: !lambda "return id(ac_current_power).state * id(grid_voltage).state;"
+    energy_used:
+      name: "Energieverbrauch"
+    vanes_pos:
+      name: "Lamellenstellung"
+    vanesLR_pos:
+      name: "Lamellen Links⁄Rechts"
+
+  - platform: template
+    id: power
+    name: "Aktuelle Leistung"
+    unit_of_measurement: W
+    device_class: power
+    state_class: measurement
+    icon: mdi:lightning-bolt
+
+  - platform: total_daily_energy
+    name: "Tagesenergie (gesamt)"
+    power_id: power
+    unit_of_measurement: kWh
+    method: left
+    filters:
+      - multiply: 0.001
+      - throttle: 300s
+    icon: mdi:lightning-bolt
+
+  - platform: template
+    id: power_heat
+    name: "Leistung (Heizen)"
+    unit_of_measurement: W
+    device_class: power
+    state_class: measurement
+    lambda: |-
+      if (id(mhi_ac).mode == climate::CLIMATE_MODE_HEAT) return id(power).state;
+      return 0.0;
+
+  - platform: template
+    id: power_cool
+    name: "Leistung (Kühlen)"
+    unit_of_measurement: W
+    device_class: power
+    state_class: measurement
+    lambda: |-
+      if (id(mhi_ac).mode == climate::CLIMATE_MODE_COOL) return id(power).state;
+      return 0.0;
+
+  - platform: template
+    id: power_fan
+    name: "Leistung (Nur Lüften)"
+    unit_of_measurement: W
+    device_class: power
+    state_class: measurement
+    lambda: |-
+      if (id(mhi_ac).mode == climate::CLIMATE_MODE_FAN_ONLY) return id(power).state;
+      return 0.0;
+
+  - platform: template
+    id: power_dry
+    name: "Leistung (Entfeuchten)"
+    unit_of_measurement: W
+    device_class: power
+    state_class: measurement
+    lambda: |-
+      if (id(mhi_ac).mode == climate::CLIMATE_MODE_DRY) return id(power).state;
+      return 0.0;
+
+  - platform: total_daily_energy
+    name: "Tagesenergie (Heizen)"
+    power_id: power_heat
+    unit_of_measurement: kWh
+    method: left
+    filters:
+      - multiply: 0.001
+      - throttle: 300s
+    icon: mdi:fire
+
+  - platform: total_daily_energy
+    name: "Tagesenergie (Kühlen)"
+    power_id: power_cool
+    unit_of_measurement: kWh
+    method: left
+    filters:
+      - multiply: 0.001
+      - throttle: 300s
+    icon: mdi:snowflake
+
+  - platform: total_daily_energy
+    name: "Tagesenergie (Nur Lüften)"
+    power_id: power_fan
+    unit_of_measurement: kWh
+    method: left
+    filters:
+      - multiply: 0.001
+      - throttle: 300s
+    icon: mdi:fan
+
+  - platform: total_daily_energy
+    name: "Tagesenergie (Entfeuchten)"
+    power_id: power_dry
+    unit_of_measurement: kWh
+    method: left
+    filters:
+      - multiply: 0.001
+      - throttle: 300s
+    icon: mdi:water-percent
+
+text_sensor:
+  - platform: version
+    name: "ESPHome-Version"
+  - platform: wifi_info
+    ip_address:
+      name: "IP-Adresse"
+  - platform: MhiAcCtrl
+    protection_state:
+      name: "Verdichter-Schutzstatus"
+
+select:
+  - platform: MhiAcCtrl
+    vertical_vanes:
+      name: "Lamellensteuerung Hoch-Runter"
+      id: vertical_vanes
+    horizontal_vanes:
+      name: "Lamellensteuerung Links-Rechts"
+    fan_speed:
+      name: "Lüftergeschwindigkeit"
+
+switch:
+  - platform: MhiAcCtrl
+    vanes_3d_auto:
+      name: "3D-Auto"

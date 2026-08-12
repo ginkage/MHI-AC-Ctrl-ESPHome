@@ -48,6 +48,15 @@ private:
     void transfer_room_temperature(float value);
     float last_room_temperature_ = NAN; 
     float temperature_offset_ = 0.0f;
+    bool external_temperature_state_known_ = false;
+    bool external_temperature_available_ = false;
+
+    unsigned long last_power_command_ms_ = 0;
+    unsigned long last_mode_command_ms_ = 0;
+    ACPower last_power_command_ = power_off;
+    ACMode last_mode_command_ = mode_auto;
+    bool power_command_seen_ = false;
+    bool mode_command_seen_ = false;
 
     int frame_size_;
     unsigned long room_temp_api_timeout_start_ = millis();
