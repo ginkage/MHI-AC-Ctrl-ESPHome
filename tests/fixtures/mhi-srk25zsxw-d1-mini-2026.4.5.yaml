@@ -19,7 +19,14 @@ esp8266:
     version: recommended
 
 logger:
-  level: WARN
+  # Compile INFO messages, but keep unrelated components at WARN.
+  # The two MHI tags distinguish incoming ESPHome control calls from
+  # status changes reported by the indoor unit on the MHI bus.
+  level: INFO
+  initial_level: WARN
+  logs:
+    mhi.climate: INFO
+    mhi.platform: INFO
   baud_rate: 0
 
 ota:
@@ -87,7 +94,6 @@ climate:
         target_temperature: 0.5
         current_temperature: 0.1
     on_control:
-      - logger.log: "Steuerbefehl empfangen; Leistung zurückgesetzt!"
       - sensor.template.publish:
           id: power
           state: 0

@@ -7,6 +7,29 @@ namespace mhi {
 
 static const char* TAG = "mhi.climate";
 
+static const char *climate_mode_name(climate::ClimateMode mode) {
+    switch (mode) {
+    case climate::CLIMATE_MODE_OFF: return "OFF";
+    case climate::CLIMATE_MODE_HEAT_COOL: return "HEAT_COOL";
+    case climate::CLIMATE_MODE_COOL: return "COOL";
+    case climate::CLIMATE_MODE_HEAT: return "HEAT";
+    case climate::CLIMATE_MODE_DRY: return "DRY";
+    case climate::CLIMATE_MODE_FAN_ONLY: return "FAN_ONLY";
+    default: return "UNKNOWN";
+    }
+}
+
+static const char *mhi_mode_name(int mode) {
+    switch (mode) {
+    case mode_auto: return "AUTO/HEAT_COOL";
+    case mode_dry: return "DRY";
+    case mode_cool: return "COOL";
+    case mode_fan: return "FAN_ONLY";
+    case mode_heat: return "HEAT";
+    default: return "UNKNOWN";
+    }
+}
+
 void MhiClimate::setup() {
     this->power_ = power_off;
     this->current_temperature = NAN;
@@ -44,6 +67,8 @@ void MhiClimate::update_status(ACStatus status, int value) {
 
     switch (status) {
     case status_power:
+        ESP_LOGI(TAG, "MHI bus status: power=%s. This is a status reported by the indoor unit; the originating controller is not present on the MHI bus.",
+                 value == power_on ? "ON" : "OFF");
         if (value == power_on) {
             this->power_ = power_on;
             update_status(status_mode, mode_tmp);
@@ -54,6 +79,7 @@ void MhiClimate::update_status(ACStatus status, int value) {
         }
         break;
     case status_mode:
+        ESP_LOGI(TAG, "MHI bus status: mode=%s (%i)", mhi_mode_name(value), value);
         mode_tmp = value;
     case opdata_mode:
     case erropdata_mode:
@@ -165,6 +191,24 @@ void MhiClimate::update_status(ACStatus status, int value) {
 }
 
 void MhiClimate::control(const climate::ClimateCall& call) {
+    // ESPHome's ClimateCall does not include the Home Assistant context, user,
+    // automation or client device. Home Assistant's logbook must be used to
+    // identify that upstream origin. This log proves that a climate control
+    // call reached the ESPHome entity before a matching MHI bus status change.
+    ESP_LOGI(TAG, "ESPHome climate control request received; upstream caller identity is unavailable on the device");
+    if (call.get_mode().has_value()) {
+        ESP_LOGI(TAG, "Control request: mode=%s", climate_mode_name(*call.get_mode()));
+    }
+    if (call.get_target_temperature().has_value()) {
+        ESP_LOGI(TAG, "Control request: target_temperature=%.1f C", *call.get_target_temperature());
+    }
+    if (call.get_fan_mode().has_value()) {
+        ESP_LOGI(TAG, "Control request: fan_mode=%i", static_cast<int>(*call.get_fan_mode()));
+    }
+    if (call.get_swing_mode().has_value()) {
+        ESP_LOGI(TAG, "Control request: swing_mode=%i", static_cast<int>(*call.get_swing_mode()));
+    }
+
     if (call.get_target_temperature().has_value()) {
         float target_temp = *call.get_target_temperature();
         this->target_temperature = target_temp; 
