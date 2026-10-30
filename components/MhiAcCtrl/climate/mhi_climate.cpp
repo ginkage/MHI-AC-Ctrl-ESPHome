@@ -27,12 +27,19 @@ void MhiClimate::setup() {
     if (isnan(this->target_temperature))
         this->target_temperature = 20;
 
+    // Restored operating settings must not make a reboot look like a power-on.
+    this->mode = climate::CLIMATE_MODE_OFF;
+
     this->vanesLR_pos_old_state_ = 4;
     this->vanes_pos_old_state_ = 4;
 
     this->platform_ = this->parent_;
     this->platform_->add_listener(this);
     
+}
+
+void MhiClimate::publish_state_deferred_() {
+    this->defer("publish_state", [this]() { this->publish_state(); });
 }
 
 void MhiClimate::dump_config() {
@@ -49,7 +56,7 @@ void MhiClimate::update_status(ACStatus status, int value) {
     if (this->power_ == power_off) {
         // Workaround for status after reboot
         this->mode = climate::CLIMATE_MODE_OFF;
-        this->publish_state();
+        this->publish_state_deferred_();
     }
 
     switch (status) {
@@ -63,7 +70,7 @@ void MhiClimate::update_status(ACStatus status, int value) {
             // output_P(status, PSTR(TOPIC_MODE), PSTR(PAYLOAD_MODE_OFF));
             this->power_ = power_off;
             this->mode = climate::CLIMATE_MODE_OFF;
-            this->publish_state();
+            this->publish_state_deferred_();
         }
         break;
     case status_mode:
@@ -97,7 +104,7 @@ void MhiClimate::update_status(ACStatus status, int value) {
         default:
             ESP_LOGD(TAG, "unknown status mode value %i", value);
         }
-        this->publish_state();
+        this->publish_state_deferred_();
         break;
     case status_fan:
         switch (value) {
@@ -117,7 +124,7 @@ void MhiClimate::update_status(ACStatus status, int value) {
             this->fan_mode = climate::CLIMATE_FAN_AUTO;
             break;
         }
-        this->publish_state();
+        this->publish_state_deferred_();
         break;
     case status_vanes:
         // Vanes Up Down, also known as Vertical
@@ -153,7 +160,7 @@ void MhiClimate::update_status(ACStatus status, int value) {
 
         }
         this->vanes_pos_state_ = value;
-        this->publish_state();
+        this->publish_state_deferred_();
         break;
     case status_vanesLR:
         if (this->vanes_pos_state_ == vanes_swing) {
@@ -192,12 +199,12 @@ void MhiClimate::update_status(ACStatus status, int value) {
 
         }
         this->vanesLR_pos_state_ = value;
-        this->publish_state();
+        this->publish_state_deferred_();
         break;
     case status_troom:
         // Calculate the temperature and apply the offset for 0.5°C steps
         this->current_temperature = ((value - 61) / 4.0) - this->temperature_offset_;
-        this->publish_state();
+        this->publish_state_deferred_();
         break;
 
     case status_tsetpoint: {
@@ -218,7 +225,7 @@ void MhiClimate::update_status(ACStatus status, int value) {
         ESP_LOGI(TAG, "Remote setpoint change detected. Updating target to %.1f", ac_setpoint);
         this->target_temperature = ac_setpoint;
         this->temperature_offset_ = 0.0;
-        this->publish_state();
+        this->publish_state_deferred_();
         break;
     }
     default:
@@ -331,7 +338,7 @@ void MhiClimate::control(const climate::ClimateCall& call) {
         this->platform_->set_vanes(vanes_); // Set vanes to swing
     }
 
-    this->publish_state();
+    this->publish_state_deferred_();
 }
 
 

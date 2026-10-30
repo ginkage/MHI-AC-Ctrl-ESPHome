@@ -41,27 +41,27 @@ protected:
     void update_status(ACStatus status, int value) override;
 private:
 
-    Sensor* error_code_;
-    Sensor* outdoor_temperature_;
-    Sensor* return_air_temperature_;
-    Sensor* outdoor_unit_fan_speed_;
-    Sensor* indoor_unit_fan_speed_;
-    Sensor* compressor_frequency_;
-    Sensor* indoor_unit_total_run_time_;
-    Sensor* compressor_total_run_time_;
-    Sensor* current_power_;
-    Sensor* vanes_pos_;
-    Sensor* energy_used_;
-    Sensor* indoor_unit_thi_r1_;
-    Sensor* indoor_unit_thi_r2_;
-    Sensor* indoor_unit_thi_r3_;
-    Sensor* outdoor_unit_tho_r1_;
-    Sensor* outdoor_unit_expansion_valve_;
-    Sensor* outdoor_unit_discharge_pipe_;
-    Sensor* outdoor_unit_discharge_pipe_super_heat_;
-    Sensor* protection_state_number_;
-    Sensor* vanesLR_pos_;
-    MhiPlatform* platform_;
+    Sensor* error_code_{nullptr};
+    Sensor* outdoor_temperature_{nullptr};
+    Sensor* return_air_temperature_{nullptr};
+    Sensor* outdoor_unit_fan_speed_{nullptr};
+    Sensor* indoor_unit_fan_speed_{nullptr};
+    Sensor* compressor_frequency_{nullptr};
+    Sensor* indoor_unit_total_run_time_{nullptr};
+    Sensor* compressor_total_run_time_{nullptr};
+    Sensor* current_power_{nullptr};
+    Sensor* vanes_pos_{nullptr};
+    Sensor* energy_used_{nullptr};
+    Sensor* indoor_unit_thi_r1_{nullptr};
+    Sensor* indoor_unit_thi_r2_{nullptr};
+    Sensor* indoor_unit_thi_r3_{nullptr};
+    Sensor* outdoor_unit_tho_r1_{nullptr};
+    Sensor* outdoor_unit_expansion_valve_{nullptr};
+    Sensor* outdoor_unit_discharge_pipe_{nullptr};
+    Sensor* outdoor_unit_discharge_pipe_super_heat_{nullptr};
+    Sensor* protection_state_number_{nullptr};
+    Sensor* vanesLR_pos_{nullptr};
+    MhiPlatform* platform_{nullptr};
 };
 
 }

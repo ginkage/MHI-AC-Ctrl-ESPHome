@@ -211,15 +211,11 @@ void MhiSensors::update_status(ACStatus status, int value) {
         break;
     case erropdata_td:
     case opdata_td:
-        if (value < 0x2) {
-            if (this->outdoor_unit_discharge_pipe_ != NULL) { 
-                this->outdoor_unit_discharge_pipe_ -> publish_state(30); 
-            }
-        }
-        else {
-            if (this->outdoor_unit_discharge_pipe_ != NULL) { 
-                this->outdoor_unit_discharge_pipe_ -> publish_state(value / 2 + 32); 
-            }
+        if (this->outdoor_unit_discharge_pipe_ != NULL) {
+            // Values below 0x12 mean "30 C or colder", not a calibrated
+            // temperature. Publishing NaN avoids plausible but false values.
+            this->outdoor_unit_discharge_pipe_->publish_state(
+                value < 0x12 ? NAN : value / 2.0f + 32.0f);
         }
         break;
     case opdata_ct:

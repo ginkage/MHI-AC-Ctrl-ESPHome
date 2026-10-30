@@ -11,6 +11,21 @@ Create a new device within ESPHome builder and combine the yaml with one of the 
 - [`simple-energy-management.yaml`](https://github.com/ginkage/MHI-AC-Ctrl-ESPHome/blob/master/examples/simple-energy-measurement.yaml): Contains the basics to get started with energy measuring (assuming a voltage of 230v to convert A to Wh).
 
 # MHI-AC-Ctrl-ESPHome
+
+## Persistent operating settings
+
+The component saves the last mode, target temperature, fan speed, vertical and horizontal vane positions, swing state, and 3D Auto state. The settings are restored when the AC is explicitly turned on.
+
+Saved settings are updated from both ESPHome commands and status frames received from the indoor unit, so changes made by another controller are retained. Writes are delayed and coalesced to reduce flash wear.
+
+On an ESP restart, the saved power state is deliberately not restored and no power-on command is sent. This prevents an AC that was off from starting unexpectedly after a controller restart or power failure.
+
+Commands are sent twice by default to improve reliability on noisy links. Set `command_retries` under `MhiAcCtrl` to a value from 1 to 5 to tune this behavior. Communication errors are rate-limited in the log so a disconnected or noisy controller cannot flood ESPHome logs.
+
+Silent Operation is available as an experimental switch using the traced DB9/DB10 protocol. Self Clean is available as an explicitly emulated button because no verified native SPI command exists: it runs Fan Only at low speed for `self_clean_duration` (120 minutes by default), then turns the unit off. Any normal power command cancels the emulated cycle.
+
+On ESP8266, the timing-critical SPI path uses direct GPIO register access and avoids re-entering the frame reader during the inter-frame guard period. This reduces checksum and signature errors caused by late bit sampling while preserving timeout recovery for disconnected or stalled links.
+
 This project is a simple integration of the amazing work [absalom-muc](https://github.com/absalom-muc) has done with his project [MHI-AC-Ctrl](https://github.com/absalom-muc/MHI-AC-Ctrl).\
 It's supposed to simplify the [Home Assistant](https://www.home-assistant.io/) setup, while giving you OTA and auto-discovery with virtually zero effort and no MQTT needed, powered by [ESPHome](https://ESPHome.io/).\
 `MHI-AC-Ctrl-core.*` files were forked directly, with a small modification to allow for pin setting in yaml, whereas your WiFi credentials should go into the `*.yaml` file, and `mhi_ac_ctrl.h` is the core of the integration.

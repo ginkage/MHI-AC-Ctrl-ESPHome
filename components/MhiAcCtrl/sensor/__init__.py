@@ -7,12 +7,16 @@ from esphome.const import (
     DEVICE_CLASS_TEMPERATURE,
     DEVICE_CLASS_ENERGY,
     STATE_CLASS_MEASUREMENT,
+    STATE_CLASS_TOTAL,
     STATE_CLASS_TOTAL_INCREASING,
     UNIT_CELSIUS,
     UNIT_HOUR,
     UNIT_HERTZ,
     UNIT_AMPERE,
     UNIT_KILOWATT_HOURS,
+    UNIT_PERCENT,
+    UNIT_SECOND,
+    ENTITY_CATEGORY_DIAGNOSTIC,
     ICON_THERMOMETER,
     ICON_FAN,
 )
@@ -44,6 +48,10 @@ CONF_PROTECTION_STATE_NUMBER = "protection_state_number"
 CONF_VANESLR_POS = "vanesLR_pos"
 CONF_VANESLR_POS_OLD = "vanesLR_pos_old"
 CONF_THREED_AUTO = "threeD_auto_enabled"
+CONF_COMMUNICATION_ERRORS = "communication_errors"
+CONF_SUCCESSFUL_FRAMES = "successful_frames"
+CONF_COMMUNICATION_SUCCESS_RATE = "communication_success_rate"
+CONF_LAST_VALID_FRAME_AGE = "last_valid_frame_age"
 
 ICON_SINE = "mdi:sine-wave"
 ICON_CLOCK = "mdi:clock"
@@ -113,7 +121,7 @@ CONFIG_SCHEMA = cv.Schema({
         unit_of_measurement=UNIT_KILOWATT_HOURS,
         accuracy_decimals=2,
         device_class=DEVICE_CLASS_ENERGY,
-        state_class=STATE_CLASS_TOTAL_INCREASING,
+        state_class=STATE_CLASS_TOTAL,
     ),
     cv.Optional(CONF_INDOOR_UNIT_THI_R1): sensor.sensor_schema(
         icon = ICON_THERMOMETER,
@@ -167,7 +175,33 @@ CONFIG_SCHEMA = cv.Schema({
     ),
     cv.Optional(CONF_VANESLR_POS): sensor.sensor_schema(
         icon=ICON_AIR,
-    )
+    ),
+    cv.Optional(CONF_COMMUNICATION_ERRORS): sensor.sensor_schema(
+        icon="mdi:alert-circle-outline",
+        accuracy_decimals=0,
+        state_class=STATE_CLASS_TOTAL_INCREASING,
+        entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+    ),
+    cv.Optional(CONF_SUCCESSFUL_FRAMES): sensor.sensor_schema(
+        icon="mdi:check-network-outline",
+        accuracy_decimals=0,
+        state_class=STATE_CLASS_TOTAL_INCREASING,
+        entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+    ),
+    cv.Optional(CONF_COMMUNICATION_SUCCESS_RATE): sensor.sensor_schema(
+        icon="mdi:percent-circle-outline",
+        unit_of_measurement=UNIT_PERCENT,
+        accuracy_decimals=1,
+        state_class=STATE_CLASS_MEASUREMENT,
+        entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+    ),
+    cv.Optional(CONF_LAST_VALID_FRAME_AGE): sensor.sensor_schema(
+        icon="mdi:timer-sand",
+        unit_of_measurement=UNIT_SECOND,
+        accuracy_decimals=1,
+        state_class=STATE_CLASS_MEASUREMENT,
+        entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+    ),
 })
 
 
@@ -258,3 +292,15 @@ async def to_code(config):
         conf = config[CONF_VANESLR_POS]
         sens = await sensor.new_sensor(conf)
         cg.add(var.set_vanesLR_pos(sens))
+    if CONF_COMMUNICATION_ERRORS in config:
+        sens = await sensor.new_sensor(config[CONF_COMMUNICATION_ERRORS])
+        cg.add(mhi.set_communication_errors_sensor(sens))
+    if CONF_SUCCESSFUL_FRAMES in config:
+        sens = await sensor.new_sensor(config[CONF_SUCCESSFUL_FRAMES])
+        cg.add(mhi.set_successful_frames_sensor(sens))
+    if CONF_COMMUNICATION_SUCCESS_RATE in config:
+        sens = await sensor.new_sensor(config[CONF_COMMUNICATION_SUCCESS_RATE])
+        cg.add(mhi.set_communication_success_rate_sensor(sens))
+    if CONF_LAST_VALID_FRAME_AGE in config:
+        sens = await sensor.new_sensor(config[CONF_LAST_VALID_FRAME_AGE])
+        cg.add(mhi.set_last_valid_frame_age_sensor(sens))

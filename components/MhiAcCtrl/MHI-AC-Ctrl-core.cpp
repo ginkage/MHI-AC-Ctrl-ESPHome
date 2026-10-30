@@ -3,6 +3,17 @@
 
 #include "MHI-AC-Ctrl-core.h"
 
+#if defined(ESP8266) || defined(ARDUINO_ARCH_ESP8266)
+#include <esp8266_peri.h>
+#define MHI_GPIO_READ(pin) GPIP(pin)
+#define MHI_GPIO_WRITE_HIGH(pin) (GPOS = (1U << (pin)))
+#define MHI_GPIO_WRITE_LOW(pin) (GPOC = (1U << (pin)))
+#else
+#define MHI_GPIO_READ(pin) digitalRead(pin)
+#define MHI_GPIO_WRITE_HIGH(pin) digitalWrite(pin, HIGH)
+#define MHI_GPIO_WRITE_LOW(pin) digitalWrite(pin, LOW)
+#endif
+
 uint16_t calc_checksum(byte* frame) {
   uint16_t checksum = 0;
   for (int i = 0; i < CBH; i++)
@@ -47,6 +58,7 @@ void MHI_AC_Ctrl_Core::reset_old_values() {  // used e.g. when MQTT connection t
   op_protection_no_old = 0xff;
   op_ou_fanspeed_old = 0xff;
   op_defrost_old = 0x00;
+  op_silent_operation_old = 0xff;
   op_comp_old = 0xffff;
   op_td_old  = 0x00;
   op_ou_eev1_old = 0xffff;
@@ -57,30 +69,37 @@ void MHI_AC_Ctrl_Core::init() {
   pinMode(SCK_PIN, INPUT);
   pinMode(MOSI_PIN, INPUT);
   pinMode(MISO_PIN, OUTPUT);
+  MHI_GPIO_WRITE_LOW(MISO_PIN);
   MHI_AC_Ctrl_Core::reset_old_values();
 }
 
 void MHI_AC_Ctrl_Core::set_power(boolean power) {
   new_Power = 0b10 | power;
+  power_retries = command_retries;
 }
 
 void MHI_AC_Ctrl_Core::set_mode(ACMode mode) {
   new_Mode = 0b00100000 | mode;
+  mode_retries = command_retries;
 }
 
 void MHI_AC_Ctrl_Core::set_tsetpoint(uint tsetpoint) {
   new_Tsetpoint = 0b10000000 | tsetpoint;
+  tsetpoint_retries = command_retries;
 }
 
 void MHI_AC_Ctrl_Core::set_fan(uint fan) {
   new_Fan = 0b00001000 | fan;
+  fan_retries = command_retries;
 }
 
 void MHI_AC_Ctrl_Core::set_3Dauto(AC3Dauto Dauto) {
   new_3Dauto = 0b00001010 | Dauto;
+  auto3d_retries = command_retries;
 }
 
 void MHI_AC_Ctrl_Core::set_vanes(uint vanes) {
+  vanes_retries = command_retries;
   if (vanes == vanes_swing) {
     new_Vanes0 = 0b11000000; // enable swing
   }
@@ -91,6 +110,7 @@ void MHI_AC_Ctrl_Core::set_vanes(uint vanes) {
 }
 
 void MHI_AC_Ctrl_Core::set_vanesLR(uint vanesLR) {
+  vanesLR_retries = command_retries;
   if (vanesLR == vanesLR_swing) {
     new_VanesLR0 = 0b00001011; // enable swing
   }
@@ -122,6 +142,15 @@ void MHI_AC_Ctrl_Core::set_frame_size(byte framesize) {
     frameSize = framesize;
 }
 
+void MHI_AC_Ctrl_Core::set_command_retries(byte retries) {
+  command_retries = retries;
+}
+
+void MHI_AC_Ctrl_Core::set_silent_operation(bool enabled) {
+  new_silent_operation = enabled ? 0x01 : 0x00;
+  silent_operation_retries = command_retries;
+}
+
 int MHI_AC_Ctrl_Core::loop(uint max_time_ms) {
   const byte opdataCnt = sizeof(opdata) / sizeof(byte) / 2;
   static byte opdataNo = 0;               //
@@ -137,14 +166,19 @@ static byte MOSI_frame[33];
 
   static uint call_counter = 0;           // counts how often this loop was called
   static unsigned long lastTroomInternalMillis = 0; // remember when Troom internal has changed
+  static unsigned long lastFrameTime = 0;
   if (frameSize == 33)
     MISO_frame[0] = 0xAA;
 
    
   call_counter++;
+
+  if (lastFrameTime > 0 && millis() - lastFrameTime < 18)
+    return err_msg_valid_frame;
+
   int SCKMillis = millis();               // time of last SCK low level
   while (millis() - SCKMillis < 5) {      // wait for 5ms stable high signal to detect a frame start
-    if (!digitalRead(SCK_PIN))
+    if (!MHI_GPIO_READ(SCK_PIN))
       SCKMillis = millis();
     if (millis() - startMillis > max_time_ms)
       return err_msg_timeout_SCK_low;       // SCK stuck@ low error detection
@@ -182,6 +216,7 @@ static byte MOSI_frame[33];
     MISO_frame[DB0] = 0x00;
     MISO_frame[DB1] = 0x00;
     MISO_frame[DB2] = 0x00;
+    MISO_frame[DB10] = 0xff;
 
     if (erropdataCnt > 0) {                 // error operating data available
       MISO_frame[DB6] = 0x80;
@@ -190,22 +225,38 @@ static byte MOSI_frame[33];
     }
 
     // set Power, Mode, Tsetpoint, Fan, Vanes
-    MISO_frame[DB0] = new_Power;
-    new_Power = 0;
+    if (power_retries > 0) {
+      MISO_frame[DB0] = new_Power;
+      power_retries--;
+    }
 
-    MISO_frame[DB0] |= new_Mode;
-    new_Mode = 0;
+    if (mode_retries > 0) {
+      MISO_frame[DB0] |= new_Mode;
+      mode_retries--;
+    }
 
-    MISO_frame[DB2] = new_Tsetpoint;
-    new_Tsetpoint = 0;
+    if (tsetpoint_retries > 0) {
+      MISO_frame[DB2] = new_Tsetpoint;
+      tsetpoint_retries--;
+    }
 
-    MISO_frame[DB1] = new_Fan;
-    new_Fan = 0;
+    if (fan_retries > 0) {
+      MISO_frame[DB1] = new_Fan;
+      fan_retries--;
+    }
 
-    MISO_frame[DB0] |= new_Vanes0;
-    MISO_frame[DB1] |= new_Vanes1;
-    new_Vanes0 = 0;
-    new_Vanes1 = 0;
+    if (vanes_retries > 0) {
+      MISO_frame[DB0] |= new_Vanes0;
+      MISO_frame[DB1] |= new_Vanes1;
+      vanes_retries--;
+    }
+
+    if (silent_operation_retries > 0) {
+      MISO_frame[DB6] = 0x00;
+      MISO_frame[DB9] = 0x21;
+      MISO_frame[DB10] = new_silent_operation;
+      silent_operation_retries--;
+    }
 
     if (request_erropData) {
       MISO_frame[DB6] = 0x80;
@@ -222,13 +273,16 @@ static byte MOSI_frame[33];
 
   if (frameSize == 33) { // Only for framesize 33 (WF-RAC)
     MISO_frame[DB16] = 0;
-    MISO_frame[DB16] |= new_VanesLR1;
     MISO_frame[DB17] = 0;
-    MISO_frame[DB17] |= new_VanesLR0;  
-    MISO_frame[DB17] |= new_3Dauto;
-    new_3Dauto = 0;
-    new_VanesLR0 = 0;
-    new_VanesLR1 = 0;
+    if (vanesLR_retries > 0) {
+      MISO_frame[DB16] |= new_VanesLR1;
+      MISO_frame[DB17] |= new_VanesLR0;
+      vanesLR_retries--;
+    }
+    if (auto3d_retries > 0) {
+      MISO_frame[DB17] |= new_3Dauto;
+      auto3d_retries--;
+    }
 
     checksum = calc_checksumFrame33(MISO_frame);
     MISO_frame[CBL2] = lowByte(checksum);
@@ -242,16 +296,19 @@ static byte MOSI_frame[33];
     byte bit_mask = 1;
     for (uint8_t bit_cnt = 0; bit_cnt < 8; bit_cnt++) { // read and write 1 byte
       SCKMillis = millis();
-      while (digitalRead(SCK_PIN)) { // wait for falling edge
+      while (MHI_GPIO_READ(SCK_PIN)) { // wait for falling edge
         if (millis() - startMillis > max_time_ms)
           return err_msg_timeout_SCK_high;       // SCK stuck@ high error detection
       } 
       if ((MISO_frame[byte_cnt] & bit_mask) > 0)
-        digitalWrite(MISO_PIN, 1);
+        MHI_GPIO_WRITE_HIGH(MISO_PIN);
       else
-        digitalWrite(MISO_PIN, 0);
-      while (!digitalRead(SCK_PIN)) {} // wait for rising edge
-      if (digitalRead(MOSI_PIN))
+        MHI_GPIO_WRITE_LOW(MISO_PIN);
+      while (!MHI_GPIO_READ(SCK_PIN)) { // wait for rising edge
+        if (millis() - startMillis > max_time_ms)
+          return err_msg_timeout_SCK_low;
+      }
+      if (MHI_GPIO_READ(MOSI_PIN))
         MOSI_byte += bit_mask;
       bit_mask = bit_mask << 1;
     }
@@ -262,7 +319,7 @@ static byte MOSI_frame[33];
   }
 
   checksum = calc_checksum(MOSI_frame);
-  if (((MOSI_frame[SB0] & 0xfe) != 0x6c) | (MOSI_frame[SB1] != 0x80) | (MOSI_frame[SB2] != 0x04))
+  if (((MOSI_frame[SB0] & 0xfe) != 0x6c) || (MOSI_frame[SB1] != 0x80) || (MOSI_frame[SB2] != 0x04))
     return err_msg_invalid_signature;
   if ((MOSI_frame[CBH] << 8 | MOSI_frame[CBL]) != checksum)
     return err_msg_invalid_checksum;
@@ -578,6 +635,15 @@ static byte MOSI_frame[33];
             m_cbiStatus->cbiStatusFunction(erropdata_ou_eev1, MOSI_frame[DB12] << 8 | MOSI_frame[DB11]);
         }
         break;
+      case 0xdd:
+        if (MOSI_frame[DB10] == 0x80) {
+          byte silent_operation = (MOSI_frame[DB11] & 0x20) != 0;
+          if (silent_operation != op_silent_operation_old) {
+            op_silent_operation_old = silent_operation;
+            m_cbiStatus->cbiStatusFunction(opdata_silent_operation, silent_operation);
+          }
+        }
+        break;
       case 0x45: // last error number or count of following error operating data
         if ((MOSI_frame[DB6] & 0x80) != 0) {
           if (MOSI_frame[DB10] == 0x11) {     // last error number
@@ -597,5 +663,6 @@ static byte MOSI_frame[33];
         // Serial.printf("Unknown operating data, MOSI_frame[DB9]=%i MOSI_frame[D10]=%i\n", MOSI_frame[DB9], MOSI_frame[DB10]);
     }
   }
+  lastFrameTime = millis();
   return call_counter;
 }

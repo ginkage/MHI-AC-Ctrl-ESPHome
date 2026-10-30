@@ -25,6 +25,8 @@ protected:
     void update_status(ACStatus status, int value) override;
 
 private:
+    void publish_state_deferred_();
+
     bool temperature_offset_enabled_{false};
     float temperature_offset_{0.0};
     float minimum_temperature_{18.0f};
