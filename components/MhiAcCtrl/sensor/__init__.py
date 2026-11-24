@@ -129,10 +129,12 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_INDOOR_UNIT_FAN_SPEED): sensor.sensor_schema(
             icon=ICON_FAN,
             accuracy_decimals=0,
+            state_class=STATE_CLASS_MEASUREMENT,
         ),
         cv.Optional(CONF_OUTDOOR_UNIT_FAN_SPEED): sensor.sensor_schema(
             icon=ICON_FAN,
             accuracy_decimals=0,
+            state_class=STATE_CLASS_MEASUREMENT,
         ),
         cv.Optional(CONF_INDOOR_UNIT_TOTAL_RUN_TIME): sensor.sensor_schema(
             icon=ICON_CLOCK,
@@ -199,6 +201,7 @@ CONFIG_SCHEMA = cv.Schema(
             icon=ICON_VALVE,
             unit_of_measurement=UNIT_PULSE,
             accuracy_decimals=0,
+            state_class=STATE_CLASS_MEASUREMENT,
         ),
         cv.Optional(CONF_OUTDOOR_UNIT_DISCHARGE_PIPE): sensor.sensor_schema(
             icon=ICON_THERMOMETER,
@@ -217,6 +220,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_PROTECTION_STATE_NUMBER): sensor.sensor_schema(
             icon=ICON_ALERT_OUTLINE,
             accuracy_decimals=0,
+            state_class=STATE_CLASS_MEASUREMENT,
         ),
         cv.Optional(CONF_OPDATA_OLDEST_AGE): sensor.sensor_schema(
             icon=ICON_DATABASE_CLOCK,
