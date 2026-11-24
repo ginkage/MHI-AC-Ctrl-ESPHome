@@ -157,6 +157,14 @@ class MhiAcCtrl : public Component, public IMhiTransportTransitionListener {
     this->external_room_temperature_sensor_ = sensor;
   }
 
+  void set_external_temperature_fallback_on_homeassistant_disconnect(bool enabled) {
+    this->external_temperature_fallback_on_homeassistant_disconnect_ = enabled;
+  }
+
+  void set_external_temperature_disconnect_grace_period_ms(uint32_t grace_period_ms) {
+    this->external_temperature_disconnect_grace_period_ms_ = grace_period_ms;
+  }
+
   void set_external_room_temperature(float value);
 
   // Compatibility aliases for old config names.
@@ -475,9 +483,12 @@ class MhiAcCtrl : public Component, public IMhiTransportTransitionListener {
   bool background_tx_due_(uint32_t now_ms) const;
   bool command_confirmation_pending_() const;
   bool background_tx_allowed_(uint32_t now_ms);
-  void apply_external_room_temperature_(float value);
+  bool apply_external_room_temperature_(float value);
+  void handle_external_room_temperature_sensor_state_(float value);
   void clear_external_room_temperature_();
   void check_external_room_temperature_timeout_();
+  bool is_homeassistant_api_connected_() const;
+  void check_external_temperature_homeassistant_connection_();
 
   static uint32_t elapsed_us_(uint32_t start_us);
   static uint8_t detect_chip_core_count_();
@@ -487,6 +498,13 @@ class MhiAcCtrl : public Component, public IMhiTransportTransitionListener {
   uint32_t room_temperature_publish_interval_ms_{15000U};
   float room_temperature_immediate_delta_c_{1.0f};
   bool room_temp_api_active_{false};
+  bool external_room_temperature_sensor_active_{false};
+  bool external_temperature_fallback_on_homeassistant_disconnect_{false};
+  bool homeassistant_api_connected_{false};
+  bool homeassistant_disconnect_grace_active_{false};
+  uint32_t external_temperature_disconnect_grace_period_ms_{60000U};
+  uint32_t homeassistant_disconnect_start_ms_{0U};
+  uint32_t last_homeassistant_connection_check_ms_{0U};
   uint32_t room_temp_api_timeout_start_ms_{0U};
   float last_external_room_temperature_c_{NAN};
 

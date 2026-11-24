@@ -3,8 +3,14 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
+#include <cstring>
+
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
+
+#ifdef USE_API_HOMEASSISTANT_STATES
+#include "esphome/components/api/api_server.h"
+#endif
 
 namespace esphome {
 namespace mhi_ac_ctrl {
@@ -16,6 +22,8 @@ static constexpr uint32_t kLoopBudgetUs = 30000U;
 static constexpr std::size_t kMaxRxChunksPerLoop = 4U;
 static constexpr std::size_t kMaxRxChunksPerWorkerPoll = 8U;
 static constexpr uint32_t kCommandWorkerPollMs = 10U;
+static constexpr uint32_t kExternalTemperatureConnectionCheckMs = 1000U;
+static constexpr char kHomeAssistantClientPrefix[] = "Home Assistant";
 static constexpr uint32_t kNoPendingExtendedFeedbackMask = MHI_COMMAND_HORIZONTAL_VANE | MHI_COMMAND_THREE_D_AUTO;
 
 namespace {
@@ -27,6 +35,8 @@ bool in_range(float value, float min_value, float max_value) {
 }  // namespace
 
 void MhiAcCtrl::set_external_room_temperature(float value) {
+  this->external_room_temperature_sensor_active_ = false;
+
   if (std::isnan(value)) {
     this->room_temp_api_active_ = false;
     this->clear_external_room_temperature_();
@@ -35,23 +45,28 @@ void MhiAcCtrl::set_external_room_temperature(float value) {
 
   this->room_temp_api_active_ = true;
   this->room_temp_api_timeout_start_ms_ = millis();
-  this->apply_external_room_temperature_(value);
+  if (!this->apply_external_room_temperature_(value)) {
+    this->room_temp_api_active_ = false;
+  }
 }
 
-void MhiAcCtrl::apply_external_room_temperature_(float value) {
+bool MhiAcCtrl::apply_external_room_temperature_(float value) {
   if (std::isnan(value)) {
     this->clear_external_room_temperature_();
-    return;
+    return false;
   }
 
   if (value <= -10.0f || value >= 48.0f) {
-    ESP_LOGW(DIAG_TAG, "external room temperature ignored: %.2fC is outside the supported range", value);
-    return;
+    ESP_LOGW(DIAG_TAG,
+             "external room temperature invalid: %.2fC is outside the supported range; using indoor-unit sensor",
+             value);
+    this->clear_external_room_temperature_();
+    return false;
   }
 
   if (!std::isnan(this->last_external_room_temperature_c_) &&
       std::fabs(value - this->last_external_room_temperature_c_) < 0.01f) {
-    return;
+    return true;
   }
 
   if (this->command_mutex_ != nullptr) {
@@ -68,6 +83,12 @@ void MhiAcCtrl::apply_external_room_temperature_(float value) {
   this->notify_command_worker_();
 
   ESP_LOGD(DIAG_TAG, "external room temperature staged: %.2fC raw=0x%02x", value, static_cast<unsigned int>(raw));
+  return true;
+}
+
+void MhiAcCtrl::handle_external_room_temperature_sensor_state_(float value) {
+  this->room_temp_api_active_ = false;
+  this->external_room_temperature_sensor_active_ = this->apply_external_room_temperature_(value);
 }
 
 void MhiAcCtrl::clear_external_room_temperature_() {
@@ -109,6 +130,85 @@ void MhiAcCtrl::check_external_room_temperature_timeout_() {
   this->room_temp_api_active_ = false;
   this->clear_external_room_temperature_();
   ESP_LOGI(DIAG_TAG, "external room temperature timed out after %ds", this->room_temp_api_timeout_s_);
+}
+
+bool MhiAcCtrl::is_homeassistant_api_connected_() const {
+#ifdef USE_API_HOMEASSISTANT_STATES
+  if (api::global_api_server == nullptr) {
+    return false;
+  }
+
+  for (const auto& client : api::global_api_server->active_clients()) {
+    if (client == nullptr || client->is_marked_for_removal() || !client->is_connection_setup()) {
+      continue;
+    }
+
+    const char* client_name = client->get_name();
+    if (client_name != nullptr &&
+        std::strncmp(client_name, kHomeAssistantClientPrefix, sizeof(kHomeAssistantClientPrefix) - 1U) == 0) {
+      return true;
+    }
+  }
+#endif
+  return false;
+}
+
+void MhiAcCtrl::check_external_temperature_homeassistant_connection_() {
+  if (!this->external_temperature_fallback_on_homeassistant_disconnect_ ||
+      this->external_room_temperature_sensor_ == nullptr) {
+    return;
+  }
+
+#ifdef USE_API_HOMEASSISTANT_STATES
+  const uint32_t now_ms = millis();
+  if (this->last_homeassistant_connection_check_ms_ != 0U &&
+      (now_ms - this->last_homeassistant_connection_check_ms_) < kExternalTemperatureConnectionCheckMs) {
+    return;
+  }
+  this->last_homeassistant_connection_check_ms_ = now_ms;
+
+  const bool connected = this->is_homeassistant_api_connected_();
+  if (connected) {
+    const bool recovered = !this->homeassistant_api_connected_;
+    const bool grace_was_active = this->homeassistant_disconnect_grace_active_;
+    this->homeassistant_api_connected_ = true;
+    this->homeassistant_disconnect_grace_active_ = false;
+    this->homeassistant_disconnect_start_ms_ = 0U;
+
+    if (recovered && grace_was_active) {
+      ESP_LOGI(DIAG_TAG, "Home Assistant reconnected during external-temperature grace period; override retained");
+    } else if (recovered && !this->external_room_temperature_sensor_active_) {
+      ESP_LOGD(DIAG_TAG, "Home Assistant connected; waiting for fresh external room temperature state");
+    }
+    return;
+  }
+
+  this->homeassistant_api_connected_ = false;
+  if (!this->external_room_temperature_sensor_active_) {
+    this->homeassistant_disconnect_grace_active_ = false;
+    this->homeassistant_disconnect_start_ms_ = 0U;
+    return;
+  }
+
+  if (!this->homeassistant_disconnect_grace_active_) {
+    this->homeassistant_disconnect_grace_active_ = true;
+    this->homeassistant_disconnect_start_ms_ = now_ms;
+    ESP_LOGW(DIAG_TAG, "Home Assistant disconnected; retaining external room temperature for %lums grace period",
+             static_cast<unsigned long>(this->external_temperature_disconnect_grace_period_ms_));
+    return;
+  }
+
+  if ((now_ms - this->homeassistant_disconnect_start_ms_) < this->external_temperature_disconnect_grace_period_ms_) {
+    return;
+  }
+
+  this->homeassistant_disconnect_grace_active_ = false;
+  this->homeassistant_disconnect_start_ms_ = 0U;
+  this->external_room_temperature_sensor_active_ = false;
+  this->clear_external_room_temperature_();
+  ESP_LOGW(DIAG_TAG, "Home Assistant remained disconnected for %lums; using indoor-unit room temperature sensor",
+           static_cast<unsigned long>(this->external_temperature_disconnect_grace_period_ms_));
+#endif
 }
 
 bool MhiAcCtrl::set_active_mode(bool enabled) {
@@ -361,6 +461,11 @@ void MhiAcCtrl::setup() {
   this->command_request_revision_ = 0U;
   this->staged_replacement_revision_ = 0U;
   this->room_temp_api_active_ = false;
+  this->external_room_temperature_sensor_active_ = false;
+  this->homeassistant_api_connected_ = false;
+  this->homeassistant_disconnect_grace_active_ = false;
+  this->homeassistant_disconnect_start_ms_ = 0U;
+  this->last_homeassistant_connection_check_ms_ = 0U;
   this->room_temp_api_timeout_start_ms_ = 0U;
   this->last_external_room_temperature_c_ = NAN;
   this->command_worker_running_.store(false, std::memory_order_release);
@@ -433,12 +538,30 @@ void MhiAcCtrl::setup() {
   }
 
   if (this->external_room_temperature_sensor_ != nullptr) {
-    this->external_room_temperature_sensor_->add_on_state_callback([this](float state) {
-      this->room_temp_api_active_ = false;
-      this->apply_external_room_temperature_(state);
-    });
-    this->apply_external_room_temperature_(this->external_room_temperature_sensor_->state);
+    this->external_room_temperature_sensor_->add_on_state_callback(
+        [this](float state) { this->handle_external_room_temperature_sensor_state_(state); });
+    this->handle_external_room_temperature_sensor_state_(this->external_room_temperature_sensor_->state);
   }
+
+#ifdef USE_API_HOMEASSISTANT_STATES
+  if (this->external_temperature_fallback_on_homeassistant_disconnect_) {
+    const uint32_t now_ms = millis();
+    this->last_homeassistant_connection_check_ms_ = now_ms;
+    this->homeassistant_api_connected_ = this->is_homeassistant_api_connected_();
+    if (!this->homeassistant_api_connected_ && this->external_room_temperature_sensor_active_) {
+      this->homeassistant_disconnect_grace_active_ = true;
+      this->homeassistant_disconnect_start_ms_ = now_ms;
+      ESP_LOGW(DIAG_TAG, "Home Assistant is not connected; retaining external room temperature for %lums grace period",
+               static_cast<unsigned long>(this->external_temperature_disconnect_grace_period_ms_));
+    }
+  }
+#else
+  if (this->external_temperature_fallback_on_homeassistant_disconnect_) {
+    ESP_LOGW(TAG,
+             "external_temperature_fallback_on_homeassistant_disconnect is enabled, but Home Assistant state "
+             "subscriptions are not compiled in");
+  }
+#endif
 
   if (transport_ready) {
     this->status_clear_error();
@@ -569,6 +692,7 @@ void MhiAcCtrl::loop() {
 
   section_start_us = micros();
   this->check_external_room_temperature_timeout_();
+  this->check_external_temperature_homeassistant_connection_();
   if (this->command_mutex_ != nullptr) {
     xSemaphoreTake(this->command_mutex_, portMAX_DELAY);
   }
@@ -646,6 +770,10 @@ void MhiAcCtrl::dump_config() {
   ESP_LOGCONFIG(TAG, "  Room temperature immediate delta: %.2fC", this->room_temperature_immediate_delta_c_);
   ESP_LOGCONFIG(TAG, "  External room temperature sensor: %s",
                 this->external_room_temperature_sensor_ != nullptr ? "YES" : "NO");
+  ESP_LOGCONFIG(TAG, "  External temperature fallback on Home Assistant disconnect: %s",
+                this->external_temperature_fallback_on_homeassistant_disconnect_ ? "YES" : "NO");
+  ESP_LOGCONFIG(TAG, "  External temperature disconnect grace period: %lums",
+                static_cast<unsigned long>(this->external_temperature_disconnect_grace_period_ms_));
   ESP_LOGCONFIG(TAG, "  Fan profile: %s", mhi_fan_profile_name(this->fan_profile_));
   ESP_LOGCONFIG(TAG, "  RX driver active: %s", diag.rx_driver_name);
   ESP_LOGCONFIG(TAG, "  TX driver active: %s", diag.tx_driver_name);
