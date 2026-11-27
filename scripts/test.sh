@@ -38,6 +38,7 @@ TEST_SOURCES=(
   tests/unit/test_frame_catalog.cpp
   tests/unit/test_fan_profile.cpp
   tests/unit/test_status_decoder.cpp
+  tests/unit/test_swing_restore.cpp
   tests/unit/test_opdata_decoder.cpp
   tests/unit/test_opdata_freshness.cpp
   tests/unit/test_power_estimator.cpp

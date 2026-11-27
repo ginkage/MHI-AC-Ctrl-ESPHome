@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include "../mhi_ac_ctrl.h"
+#include "../mhi_swing_restore.h"
 #include "esphome/components/climate/climate.h"
 #include "esphome/core/component.h"
 
@@ -12,6 +13,7 @@ namespace mhi_ac_ctrl {
 class MhiClimate : public climate::Climate, public Component, public Parented<MhiAcCtrl> {
  public:
   void setup() override;
+  void loop() override;
   void dump_config() override;
 
   void set_minimum_temperature(float temp) {
@@ -34,15 +36,11 @@ class MhiClimate : public climate::Climate, public Component, public Parented<Mh
   uint8_t mode_to_mhi_(climate::ClimateMode mode) const;
   bool fan_to_mhi_(climate::ClimateFanMode fan, uint8_t& out) const;
 
-  void apply_swing_command_(climate::ClimateSwingMode swing, MhiCommandState& patch);
-
   float minimum_temperature_{18.0f};
   float maximum_temperature_{30.0f};
   float temperature_step_{1.0f};
 
-  // Used when switching swing off, so we return to a tangible vane position.
-  uint8_t last_vertical_vane_position_{4};
-  uint8_t last_horizontal_vane_position_{4};
+  MhiSwingRestore swing_restore_{};
 };
 
 }  // namespace mhi_ac_ctrl

@@ -39,6 +39,12 @@ void MhiClimate::setup() {
   this->publish_state();
 }
 
+void MhiClimate::loop() {
+  if (this->parent_ != nullptr) {
+    this->swing_restore_.observe(this->parent_->state().status());
+  }
+}
+
 void MhiClimate::dump_config() {
   ESP_LOGCONFIG(TAG, "MHI Climate");
   ESP_LOGCONFIG(TAG, "  Min temperature: %.1f°C", this->minimum_temperature_);
@@ -89,8 +95,40 @@ void MhiClimate::control(const climate::ClimateCall& call) {
     }
   }
 
-  if (call.get_swing_mode().has_value()) {
-    this->apply_swing_command_(*call.get_swing_mode(), patch);
+  MhiSwingRestorePlan swing_plan{};
+  const bool has_swing_request = call.get_swing_mode().has_value();
+  if (has_swing_request) {
+    MhiSwingSelection selection = MhiSwingSelection::OFF;
+    switch (*call.get_swing_mode()) {
+      case climate::CLIMATE_SWING_VERTICAL:
+        selection = MhiSwingSelection::VERTICAL;
+        break;
+      case climate::CLIMATE_SWING_HORIZONTAL:
+        selection = MhiSwingSelection::HORIZONTAL;
+        break;
+      case climate::CLIMATE_SWING_BOTH:
+        selection = MhiSwingSelection::BOTH;
+        break;
+      case climate::CLIMATE_SWING_OFF:
+      default:
+        break;
+    }
+
+    this->swing_restore_.observe(this->parent_->state().status());
+    swing_plan = this->swing_restore_.plan(selection, this->parent_->state().status());
+    if (swing_plan.missing_vertical_restore || swing_plan.missing_horizontal_restore) {
+      ESP_LOGW(TAG, "Swing OFF skipped unknown restore position vertical=%u horizontal=%u",
+               static_cast<unsigned int>(swing_plan.missing_vertical_restore),
+               static_cast<unsigned int>(swing_plan.missing_horizontal_restore));
+    }
+    if (swing_plan.patch.vertical_vane_set) {
+      patch.vertical_vane_set = true;
+      patch.vertical_vane = swing_plan.patch.vertical_vane;
+    }
+    if (swing_plan.patch.horizontal_vane_set) {
+      patch.horizontal_vane_set = true;
+      patch.horizontal_vane = swing_plan.patch.horizontal_vane;
+    }
   }
 
   if (!patch.has_pending_command()) {
@@ -98,6 +136,9 @@ void MhiClimate::control(const climate::ClimateCall& call) {
   }
 
   const uint32_t accepted_mask = this->parent_->request_command_patch(patch);
+  if (has_swing_request) {
+    this->swing_restore_.commit(swing_plan, accepted_mask);
+  }
   if (accepted_mask != 0U) {
     ESP_LOGD(TAG, "Climate command batch staged mask=0x%08lx; waiting for confirmed MOSI state",
              static_cast<unsigned long>(accepted_mask));
@@ -149,35 +190,6 @@ bool MhiClimate::fan_to_mhi_(climate::ClimateFanMode fan, uint8_t& out) const {
 
   const MhiFanProfile profile = this->parent_ != nullptr ? this->parent_->fan_profile() : MhiFanProfile::FOUR_SPEED;
   return mhi_fan_code_from_mode(profile, mode, out);
-}
-
-void MhiClimate::apply_swing_command_(climate::ClimateSwingMode swing, MhiCommandState& patch) {
-  switch (swing) {
-    case climate::CLIMATE_SWING_OFF:
-      patch.vertical_vane_set = true;
-      patch.vertical_vane = this->last_vertical_vane_position_;
-      patch.horizontal_vane_set = true;
-      patch.horizontal_vane = this->last_horizontal_vane_position_;
-      break;
-
-    case climate::CLIMATE_SWING_VERTICAL:
-      patch.vertical_vane_set = true;
-      patch.vertical_vane = 5U;  // TX builder treats 5 as vertical swing.
-      break;
-
-    case climate::CLIMATE_SWING_HORIZONTAL:
-      patch.horizontal_vane_set = true;
-      patch.horizontal_vane = 8U;  // TX builder treats 8 as horizontal swing.
-      break;
-
-    case climate::CLIMATE_SWING_BOTH:
-    default:
-      patch.vertical_vane_set = true;
-      patch.vertical_vane = 5U;
-      patch.horizontal_vane_set = true;
-      patch.horizontal_vane = 8U;
-      break;
-  }
 }
 
 #if ESPHOME_VERSION_CODE >= VERSION_CODE(2025, 11, 0)

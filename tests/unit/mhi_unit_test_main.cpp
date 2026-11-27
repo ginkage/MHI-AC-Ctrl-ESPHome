@@ -66,6 +66,14 @@ int main() {
   fan_profile_four_speed_exposes_code_zero_as_quiet();
   fan_profile_encodes_quiet_only_for_four_speed();
 
+  swing_restore_ignores_off_when_already_fixed();
+  swing_restore_snapshots_both_axes_and_restores_them();
+  swing_restore_changes_axes_independently();
+  swing_restore_never_fabricates_unknown_position();
+  swing_restore_ignores_rejected_swing_and_supports_fast_toggle();
+  swing_restore_requires_valid_fixed_feedback();
+  swing_restore_tracks_feedback_and_external_vane_changes();
+  swing_restore_can_restore_select_started_swing();
   status_decoder_decodes_core_fields();
   status_decoder_preserves_half_degree_setpoint();
   status_decoder_preserves_protocol_fan_code_zero();
